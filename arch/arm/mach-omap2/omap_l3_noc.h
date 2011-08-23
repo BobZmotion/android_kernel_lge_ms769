@@ -54,14 +54,14 @@
 #define L3_TARG_STDERRLOG_SLVOFSLSB	0x5c
 #define L3_FLAGMUX_REGERR0		0xc
 
-u32 l3_flagmux[L3_MODULES] = {
+static u32 l3_flagmux[L3_MODULES] = {
 	0x500,
 	0x1000,
 	0X0200
 };
 
 /* L3 Target standard Error register offsets */
-u32 l3_targ_inst_clk1[] = {
+static u32 l3_targ_inst_clk1[] = {
 	0x100, /* DMM1 */
 	0x200, /* DMM2 */
 	0x300, /* ABE */
@@ -69,7 +69,7 @@ u32 l3_targ_inst_clk1[] = {
 	0x600  /* CLK2 PWR DISC */
 };
 
-u32 l3_targ_inst_clk2[] = {
+static u32 l3_targ_inst_clk2[] = {
 	0x500, /* CORTEX M3 */
 	0x300, /* DSS */
 	0x100, /* GPMC */
@@ -90,11 +90,11 @@ u32 l3_targ_inst_clk2[] = {
 	0xB00 /* L4 PER2*/
 };
 
-u32 l3_targ_inst_clk3[] = {
+static u32 l3_targ_inst_clk3[] = {
 	0x0100	/* EMUSS */
 };
 
-char *l3_targ_inst_name[L3_MODULES][18] = {
+static char *l3_targ_inst_name[L3_MODULES][18] = {
 	{
 		"DMM1",
 		"DMM2",
@@ -127,40 +127,7 @@ char *l3_targ_inst_name[L3_MODULES][18] = {
 	},
 };
 
-u32 targ_reg_offset[L3_MODULES][18] = {
-	{
-	0x100,
-	0x200,
-	0x300,
-	0x400,
-	0x0,
-	},
-	{
-	0x500,
-	0x300,
-	0x100,
-	0x400,
-	0x700,
-	0x000,
-	0x000,
-	0x000,
-	0x000,
-	0x600,
-	0x800,
-	0x000,
-	0x000,
-	0x000,
-	0x000,
-	0x100,
-	0xA00,
-	0xB00,
-	},
-	{
-	0x000000
-	},
-};
-
-u32 *l3_targ[L3_MODULES] = {
+static u32 *l3_targ[L3_MODULES] = {
 	l3_targ_inst_clk1,
 	l3_targ_inst_clk2,
 	l3_targ_inst_clk3,
