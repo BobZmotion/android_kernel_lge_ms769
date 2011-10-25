@@ -5678,7 +5678,7 @@ static struct omap_hwmod omap44xx_uart3_hwmod = {
 	.class		= &omap44xx_uart_hwmod_class,
 // LGE_SJIT 2011-10-11 [jongrak.kwon@lge.com] remove boot warning message and reduce suspend power current
 #if !defined(CONFIG_MACH_LGE)
-	.flags		= (HWMOD_INIT_NO_IDLE | HWMOD_INIT_NO_RESET),
+	.flags		= (HWMOD_SWSUP_SIDLE | HWMOD_INIT_NO_IDLE | HWMOD_INIT_NO_RESET),
 #endif /* #if !defined(CONFIG_MACH_LGE) */
 	.mpu_irqs	= omap44xx_uart3_irqs,
 	.mpu_irqs_cnt	= ARRAY_SIZE(omap44xx_uart3_irqs),
