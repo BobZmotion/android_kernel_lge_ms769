@@ -656,7 +656,8 @@ static int fsg_setup(struct usb_function *f,
 		if (w_value != 0)
 			return -EDOM;	
 		#else
-		if (w_index != fsg->interface_number || w_value != 0)
+		if (w_index != fsg->interface_number || w_value != 0 ||
+				w_length != 0)
 			return -EDOM;
 		#endif
 		//!![E] 2011-08-04 by pilsu.kim@lge.com : 
