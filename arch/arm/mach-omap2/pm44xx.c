@@ -1820,6 +1820,8 @@ static int __init omap4_pm_init(void)
 		gpio_free(22);
 	}
 #endif
+	/* apply any pending bus throughput requests */
+	omap_pm_apply_min_bus_tput();
 
 err2:
 	return ret;
