@@ -495,11 +495,9 @@ int wl_android_wifi_on(struct net_device *dev)
 #endif
 
 		sdioh_start(NULL, 1);
-		dhd_dev_init_ioctl(dev);
-#ifdef PROP_TXSTATUS
-		dhd_wlfc_init(bcmsdh_get_drvdata());
-#endif
-		g_wifi_on = TRUE;
+		if (!ret)
+			dhd_dev_init_ioctl(dev);
+		g_wifi_on = 1;
 	}
 
 exit:
@@ -520,10 +518,7 @@ int wl_android_wifi_off(struct net_device *dev)
 
 	dhd_net_if_lock(dev);
 	if (g_wifi_on) {
-#ifdef PROP_TXSTATUS
-		dhd_wlfc_deinit(bcmsdh_get_drvdata());
-#endif
-		dhd_dev_reset(dev, 1);
+		ret = dhd_dev_reset(dev, TRUE);
 		sdioh_stop(NULL);
 		dhd_customer_gpio_wlan_ctrl(WLAN_RESET_OFF);
 		g_wifi_on = FALSE;
