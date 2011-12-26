@@ -19,6 +19,13 @@
 
 #include "proc-macros.S"
 
+#ifdef CONFIG_SECURE_REGS
+#include <mach/secure-regs.S>
+#else
+	.macro set_secure_regs, base, value
+	.endm
+#endif
+
 #define TTB_S		(1 << 1)
 #define TTB_RGN_NC	(0 << 3)
 #define TTB_RGN_OC_WBWA	(1 << 3)
@@ -290,7 +297,7 @@ __v7_setup:
 	mrc	p15, 0, r0, c0, c0, 0		@ read main ID register
 	and	r10, r0, #0xff000000		@ ARM?
 	teq	r10, #0x41000000
-	bne	3f
+	bne	4f
 	and	r5, r0, #0x00f00000		@ variant
 	and	r6, r0, #0x0000000f		@ revision
 	orr	r6, r6, r5, lsr #20-4		@ combine variant and revision
@@ -320,7 +327,7 @@ __v7_setup:
 	orreq	r10, r10, #(1 << 22)		@ set the Write Allocate disable bit
 	mcreq	p15, 1, r10, c9, c0, 2		@ write the L2 cache aux ctrl register
 #endif
-	b	3f
+	b	4f
 
 	/* Cortex-A9 Errata */
 2:	ldr	r10, =0x00000c09		@ Cortex-A9 primary part number
@@ -353,42 +360,14 @@ __v7_setup:
 	orrlt	r10, r10, #1 << 11		@ set bit #11
 	mcrlt	p15, 0, r10, c15, c0, 1		@ write diagnostic register
 #endif
-#if (defined(CONFIG_OMAP4_ARM_ERRATA_742230) || \
-	defined(CONFIG_OMAP4_ARM_ERRATA_751472) || \
-	defined(CONFIG_OMAP4_ARM_ERRATA_743622))
-	stmia	r12, {r0-r4}
-	ldr	r0, =0x4a0022c4			@ Ctrl module status reg addr
-	ldr	r1, [r0]
-	and	r1, r1, #0x700			@ Bits 10:8 = Processor type
-	cmp	r1, #0x300			@ GP devices have this to be 3
-	bne	zero_diagctrl0
-	mrc	p15, 0, r0, c15, c0, 1		@ read diagnostic register
-#ifdef CONFIG_OMAP4_ARM_ERRATA_742230
-	cmp	r6, #0x22
-	orrle	r0, r0, #1 << 4			@ set bit #4
-#endif
-#ifdef CONFIG_OMAP4_ARM_ERRATA_751472
-	cmp	r6, #0x30			@ present prior to r3p0
-	orrlt	r0, r0, #1 << 11		@ set bit #11
-#endif
-#ifdef CONFIG_OMAP4_ARM_ERRATA_743622
-	cmp	r6, #0x30
-	orrlt	r0, r0, #1 << 6			@ set bit #6
-#endif
-	cmp	r0, #0
-	beq	zero_diagctrl0
-	mov	r10, r12
-	mov	r12, #0x114			@ prep for SMC call to 0x114
-	dsb
-	smc	#0
-	dsb
-	mov	r12, r10
+	b	4f
+3:
+	set_secure_regs	r12, r0			@ write secure l2 actlr register
 
-zero_diagctrl0:
-	ldmia	r12, {r0-r4}
-#endif
-3:	mov	r10, #0
+4:	mov	r10, #0
+#ifdef HARVARD_CACHE
 	mcr	p15, 0, r10, c7, c5, 0		@ I+BTB cache invalidate
+#endif
 	dsb
 #ifdef CONFIG_MMU
 	mcr	p15, 0, r10, c8, c7, 0		@ invalidate I + D TLBs
