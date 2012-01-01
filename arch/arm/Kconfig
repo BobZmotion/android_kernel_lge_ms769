@@ -1242,6 +1242,17 @@ config ARM_ERRATA_754327
 	  This workaround defines cpu_relax() as smp_mb(), preventing correctly
 	  written polling loops from denying visibility of updates to memory.
 
+config ARM_ERRATA_761171
+	bool "ARM errata: Streaming write that does not allocate in L2 may cause data corruption"
+	depends on CPU_V7
+	help
+	  This option enables the workaround for erratum 761171
+	  affecting Cortex-A15 MPCore with two or more processors (all
+	  revisions till r0p3). Streaming write that will not allocate
+	  in L2 could lead to data corruption. This workaround disables the
+	  write no streaming no allocate threshold of the L1 ACTLR register
+	  to a value of 0x3.
+
 config ARM_ERRATA_764369
 	bool "ARM errata: Data cache line maintenance operation by MVA may not succeed"
 	depends on CPU_V7 && SMP
