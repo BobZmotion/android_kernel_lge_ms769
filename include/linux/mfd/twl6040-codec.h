@@ -268,8 +268,10 @@ struct twl6040 {
 	int power_count;
 	int thshut;
 
+	/* PLL configuration */
 	enum twl6040_pll_id pll;
 	unsigned int sysclk;
+	unsigned int mclk;
 	int icrev;
 	u8 cache[TWL6040_CACHEREGNUM];
 
