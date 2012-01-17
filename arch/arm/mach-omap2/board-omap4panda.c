@@ -659,17 +659,9 @@ static struct gpio panda_hdmi_gpios[] = {
 
 static void omap4_panda_hdmi_mux_init(void)
 {
-	u32 r;
-	int status;
-	/* PAD0_HDMI_HPD_PAD1_HDMI_CEC */
-	omap_mux_init_signal("hdmi_hpd.hdmi_hpd",
-				OMAP_PIN_INPUT_PULLUP);
-	omap_mux_init_signal("gpmc_wait2.gpio_100",
-			OMAP_PIN_INPUT_PULLDOWN);
-	omap_mux_init_signal("hdmi_cec.hdmi_cec",
+	omap_mux_init_signal("hdmi_cec",
 			OMAP_PIN_INPUT_PULLUP);
-	/* PAD0_HDMI_DDC_SCL_PAD1_HDMI_DDC_SDA */
-	omap_mux_init_signal("hdmi_ddc_scl.hdmi_ddc_scl",
+	omap_mux_init_signal("hdmi_ddc_scl",
 			OMAP_PIN_INPUT_PULLUP);
 	omap_mux_init_signal("hdmi_ddc_sda.hdmi_ddc_sda",
 			OMAP_PIN_INPUT_PULLUP);
