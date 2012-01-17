@@ -61,15 +61,19 @@
 
 #define WILINK_UART_DEV_NAME "/dev/ttyO1"
 
+#define LCD_BL_GPIO			27	/* LCD Backlight GPIO */
 #define ETH_KS8851_IRQ			34
-#define ETH_KS8851_POWER_ON		48
-#define ETH_KS8851_QUART		138
 #define OMAP4_TOUCH_IRQ_1		35
 #define OMAP4_TOUCH_IRQ_2		36
-#define HDMI_GPIO_CT_CP_HPD		60
-#define HDMI_GPIO_HPD			63  /* Hot plug pin for HDMI */
 #define HDMI_GPIO_LS_OE 41 /* Level shifter for HDMI */
-#define LCD_BL_GPIO		27	/* LCD Backlight GPIO */
+#define ETH_KS8851_POWER_ON		48
+#define ETH_KS8851_QUART		138
+#define HDMI_GPIO_CT_CP_HPD 60 /* HPD mode enable/disable */
+#define HDMI_GPIO_HPD			63  /* Hot plug pin for HDMI */
+
+#define OMAP4_SFH7741_SENSOR_OUTPUT_GPIO	184
+#define OMAP4_SFH7741_ENABLE_GPIO		188
+
 /* PWM2 and TOGGLE3 register offsets */
 #define LED_PWM2ON		0x03
 #define LED_PWM2OFF		0x04
@@ -81,7 +85,6 @@
 #define GPIO_WIFI_IRQ		53
 #define OMAP_HDMI_HPD_ADDR	0x4A100098
 #define OMAP_HDMI_PULLTYPE_MASK	0x00000010
-
 
 static const int sdp4430_keymap[] = {
 	KEY(0, 0, KEY_E),
@@ -819,7 +822,6 @@ static struct gpio sdp4430_hdmi_gpios[] = {
 	{HDMI_GPIO_LS_OE,      GPIOF_OUT_INIT_HIGH,    "hdmi_gpio_ls_oe" },
 };
 
-
 static void sdp4430_hdmi_mux_init(void)
 {
 	u32 r;
@@ -850,6 +852,11 @@ static void sdp4430_hdmi_mux_init(void)
 	if (status)
 		pr_err("%s:Cannot request HDMI GPIOs %x \n", __func__, status);
 }
+
+static struct gpio sdp4430_hdmi_gpios[] = {
+	{ HDMI_GPIO_CT_CP_HPD, GPIOF_OUT_INIT_HIGH, "hdmi_gpio_ct_cp_hpd" },
+	{ HDMI_GPIO_LS_OE,	GPIOF_OUT_INIT_HIGH,	"hdmi_gpio_ls_oe" },
+};
 
 static struct nokia_dsi_panel_data dsi1_panel = {
 		.name		= "taal",

@@ -69,9 +69,9 @@
 #define GPIO_HUB_NRESET		62
 #define GPIO_WIFI_PMENA		43
 #define GPIO_WIFI_IRQ		53
-#define HDMI_GPIO_CT_CP_HPD     60
-#define HDMI_GPIO_HPD 63 /* Hot plug pin for HDMI */
+#define HDMI_GPIO_CT_CP_HPD 60 /* HPD mode enable/disable */
 #define HDMI_GPIO_LS_OE 41 /* Level shifter for HDMI */
+#define HDMI_GPIO_HPD 63 /* Hot plug pin for HDMI */
 #define TPS62361_GPIO   7 /* VCORE1 power control */
 
 /* wl127x BT, FM, GPS connectivity chip */
@@ -686,8 +686,13 @@ static void omap4_panda_hdmi_mux_init(void)
 			ARRAY_SIZE(panda_hdmi_gpios));
 	if (status)
 		pr_err("%s: Cannot request HDMI GPIOs %x \n", __func__, status);
-	return status;
+//	return status;
 }
+
+static struct gpio panda_hdmi_gpios[] = {
+	{ HDMI_GPIO_CT_CP_HPD, GPIOF_OUT_INIT_HIGH, "hdmi_gpio_ct_cp_hpd" },
+	{ HDMI_GPIO_LS_OE,	GPIOF_OUT_INIT_HIGH, "hdmi_gpio_ls_oe" },
+};
 
 static void omap4_panda_panel_disable_hdmi(struct omap_dss_device *dssdev)
 {
