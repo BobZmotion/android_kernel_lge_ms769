@@ -221,17 +221,6 @@ static struct usb_configuration android_config_driver = {
             LG Gadget driver */
 	.unbind		= android_unbind_config,
 	.bConfigurationValue = 1,
-
-//!![S] 2011-05-06 by pilsu.kim@leg.com : change to bmAttributes for USB-IF Test
-//++            If you want to pass USB-IF test, you have to change like below things
-//++            bmAttributes    = USB_CONFIG__ATT_ONE | USB_CONFIG_ATT_WAKEUP
-#if defined(CONFIG_LGE_ANDROID_USB)
-	.bmAttributes   = USB_CONFIG_ATT_ONE | USB_CONFIG_ATT_WAKEUP,
-#else
-	.bmAttributes	= USB_CONFIG_ATT_ONE,
-#endif
-//!![E] 2011-05-06 by pilsu.kim@lge.com :
-	.bMaxPower	= 0xFA, /* 500ma */
 };
 
 /* Fix missing USB_DISCONNECTED uevent (QCT patch) */
