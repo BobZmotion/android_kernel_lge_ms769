@@ -675,7 +675,6 @@ struct twl4030_bci_platform_data {
 	unsigned int use_hw_charger;
 	unsigned int use_power_path;
 	unsigned long features;
-	unsigned int use_eeprom_config;
 
 	unsigned long errata;
 	/* LGE_SJIT 2012-01-25 [dojip.kim@lge.com]
