@@ -31,6 +31,7 @@
 #include <mach/emif.h>
 #include <mach/lpddr2-elpida.h>
 #include <mach/dmm.h>
+#include <mach/omap4_ion.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -46,7 +47,6 @@
 #include <plat/vram.h>
 #include <plat/omap-pm.h>
 #include "board-blaze.h"
-#include "omap4_ion.h"
 #include "omap_ram_console.h"
 #include "mux.h"
 #include "hsmmc.h"
