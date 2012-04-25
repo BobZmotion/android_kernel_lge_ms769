@@ -824,25 +824,7 @@ struct omap_dss_driver {
 	/* for wrapping around state changes */
 	void (*disable_orig)(struct omap_dss_device *display);
 	int (*enable_orig)(struct omap_dss_device *display);
-#if defined(CONFIG_MACH_LGE_COSMO_3D_DISPLAY) || defined(CONFIG_MACH_LGE_CX2_3D_DISPLAY)
-/* S3D specific */
-/* Used for displays that can switch 3D mode on/off
-3D only displays should return non-zero value when trying to disable */
-	int (*enable_s3d)(struct omap_dss_device *dssdev, bool enable);
-/* 3D only panels should return true always */
-	bool (*get_s3d_enabled)(struct omap_dss_device *dssdev);
-/* Only used for frame sequential displays*/
-	int (*set_s3d_view)(struct omap_dss_device *dssdev, enum s3d_disp_view view);
-/*Some displays may accept multiple 3D packing formats (like HDMI)
- *hence we add capability to choose the most optimal one given a source
- *Returns non-zero if the type was not supported*/
-	int (*set_s3d_disp_type)(struct omap_dss_device *dssdev, struct s3d_disp_info *info);
-	int (*get_s3d_disp_type)(struct omap_dss_device *dssdev, struct s3d_disp_info *info);
-// LGE_CHANGE [mo2sanggill.lee@lge.com] 2011-11-12 CX2 for realtime edid read
-	void (*get_edid_realtime)(struct omap_dss_device *dssdev,
-		struct omap_video_timings *timings);
-// LGE_CHANGE [mo2sanggill.lee@lge.com] 2011-11-12 CX2 for realtime edid read
-#endif //##	
+	int (*suspend_orig)(struct omap_dss_device *display);
 };
 
 int omap_dss_register_driver(struct omap_dss_driver *);
