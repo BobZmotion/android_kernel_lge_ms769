@@ -677,6 +677,7 @@ struct twl4030_bci_platform_data {
 	unsigned long features;
 	unsigned int use_eeprom_config;
 
+	unsigned long errata;
 	/* LGE_SJIT 2012-01-25 [dojip.kim@lge.com]
 	 * LGE specific platform data
 	 */
