@@ -1050,6 +1050,8 @@ static inline int twl4030charger_usb_en(int enable) { return 0; }
 #endif
 #define TWL6032_PREQ1_RES_ASS_A	0xd7
 
+#define TWL6032_ERRATA_DB00119490	(1 << 0)
+
 #if defined(CONFIG_MACH_LGE)
 
 #define CONTROLLER_INT_MASK	0x00
