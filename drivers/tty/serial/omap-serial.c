@@ -46,12 +46,29 @@
 #include <plat/serial.h>
 #include <plat/omap-pm.h>
 
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+#include <mach/omap4-common.h>
+#endif
+
 #define UART_OMAP_IIR_ID		0x3e
 #define UART_OMAP_IIR_RX_TIMEOUT	0xc
 //BEGIN: 0019630 hyuntae0.kim@lge.com 2012-4-1
 //ADD: 0019630 [P2_ICS][BT] TI fix for UART TX data broken. 
 #define RUNTIME_SYSC	0X0D  //by Joshua
 //END: 0019630 hyuntae0.kim@lge.com 2012-4-1
+
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+struct serial_dpll_cascading_blocker {
+	bool lock_dpll_cascading;
+	struct uart_omap_port *up;
+	struct work_struct dpll_blocker_work;
+};
+
+static struct serial_dpll_cascading_blocker dpll_blocker = {
+	.lock_dpll_cascading = true,
+	.up = NULL,
+};
+#endif
 
 static struct uart_omap_port *ui[OMAP_MAX_HSUART_PORTS];
 
@@ -1869,6 +1886,29 @@ static struct platform_driver serial_omap_driver = {
 	},
 };
 
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+static void serial_dpll_cascading_blocker_work(struct work_struct *work)
+{
+	struct serial_dpll_cascading_blocker *dpll_blocker;
+	struct device *dev;
+
+	dpll_blocker = container_of(work,
+			struct serial_dpll_cascading_blocker,
+			dpll_blocker_work);
+
+	if (!dpll_blocker->up) {
+		pr_err("%s NULL Uart port", __func__);
+		return;
+	}
+
+	dev = &dpll_blocker->up->pdev->dev;
+	if (dpll_blocker->lock_dpll_cascading)
+		omap4_dpll_cascading_blocker_hold(dev);
+	else
+		omap4_dpll_cascading_blocker_release(dev);
+}
+#endif
+
 static int __init serial_omap_init(void)
 {
 	int ret;
@@ -1879,6 +1919,10 @@ static int __init serial_omap_init(void)
 	ret = platform_driver_register(&serial_omap_driver);
 	if (ret != 0)
 		uart_unregister_driver(&serial_omap_reg);
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+	INIT_WORK(&dpll_blocker.dpll_blocker_work,
+			serial_dpll_cascading_blocker_work);
+#endif
 	return ret;
 }
 
@@ -1886,6 +1930,9 @@ static void __exit serial_omap_exit(void)
 {
 	platform_driver_unregister(&serial_omap_driver);
 	uart_unregister_driver(&serial_omap_reg);
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+	flush_work_sync(&dpll_blocker.dpll_blocker_work);
+#endif
 }
 
 /* Used by ext client device connected to uart to control uart */
@@ -1900,6 +1947,11 @@ int omap_serial_ext_uart_enable(u8 port_id)
 	} else {
 		up = ui[port_id];
 		serial_omap_port_enable(up);
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+		dpll_blocker.lock_dpll_cascading = true;
+		dpll_blocker.up = up;
+		schedule_work(&dpll_blocker.dpll_blocker_work);
+#endif
 	}
 	return err;
 }
@@ -1915,6 +1967,11 @@ int omap_serial_ext_uart_disable(u8 port_id)
 	} else {
 		up = ui[port_id];
 		serial_omap_port_disable(up);
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+		dpll_blocker.lock_dpll_cascading = false;
+		dpll_blocker.up = up;
+		schedule_work(&dpll_blocker.dpll_blocker_work);
+#endif
 	}
 	return err;
 }
