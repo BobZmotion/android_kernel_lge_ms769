@@ -102,12 +102,14 @@
 
 #include "musb_core.h"
 
-// hunsoo.lee
 /* USB is disconnect even if usb is pluged. Set wake_lock */
 #if defined(CONFIG_MACH_LGE)
 static struct wake_lock musb_wake_lock;
 #else
 static struct wake_lock musb_lock;
+
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+#include <mach/omap4-common.h>
 #endif
 
 #define TA_WAIT_BCON(m) max_t(int, (m)->a_wait_bcon, OTG_TIME_A_WAIT_BCON)
@@ -424,6 +426,9 @@ static irqreturn_t musb_stage0_irq(struct musb *musb, u8 int_usb,
 {
 	irqreturn_t handled = IRQ_NONE;
 
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+	musb->event = -1;
+#endif
 	dev_dbg(musb->controller, "<== Power=%02x, DevCtl=%02x, int_usb=0x%x\n", power, devctl,
 		int_usb);
 
@@ -693,6 +698,9 @@ static irqreturn_t musb_stage0_irq(struct musb *musb, u8 int_usb,
 		wake_lock(&musb_lock);
 #endif
 
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+		musb->event = USB_EVENT_ID;
+#endif
 #ifdef CONFIG_USB_MUSB_OTG
 		/* flush endpoints when transitioning from Device Mode */
 		if (is_peripheral_active(musb)) {
@@ -770,6 +778,9 @@ b_host:
 		wake_unlock(&musb_lock);
 #endif
 		
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+		musb->event = USB_EVENT_NONE;
+#endif
 		switch (musb->xceiv->state) {
 #ifdef CONFIG_USB_MUSB_HDRC_HCD
 		case OTG_STATE_A_HOST:
@@ -847,6 +858,10 @@ b_host:
 #else
 			wake_lock(&musb_lock);
 #endif			
+
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+				musb->event = USB_EVENT_VBUS;
+#endif
 			switch (musb->xceiv->state) {
 #ifdef CONFIG_USB_OTG
 			case OTG_STATE_A_SUSPEND:
@@ -1859,6 +1874,14 @@ static void musb_irq_work(struct work_struct *data)
 		old_state = musb->xceiv->state;
 		sysfs_notify(&musb->controller->kobj, NULL, "mode");
 	}
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+	if (USB_EVENT_VBUS == musb->event)
+		omap4_dpll_cascading_blocker_hold(musb->controller);
+	else if (USB_EVENT_ID == musb->event)
+		omap4_dpll_cascading_blocker_hold(musb->controller);
+	else if (USB_EVENT_NONE == musb->event)
+		omap4_dpll_cascading_blocker_release(musb->controller);
+#endif
 }
 
 /* --------------------------------------------------------------------------
