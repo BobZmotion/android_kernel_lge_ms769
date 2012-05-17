@@ -338,8 +338,6 @@ static int rpmsg_omx_connect(struct rpmsg_omx_instance *omx, struct omx_conn_req
 #ifdef CONFIG_MACH_LGE_U2
 	payload->hw_rev = system_rev; // [LGE_UPDATE] [dongyu.gwak@lge.com] [2012-06-27] board HW revision
 #endif
-	// [LGE_UPDATE_E] [dongyu.gwak@lge.com] [2012-03-21]
-	init_completion(&omx->reply_arrived);
 
 	/* send a conn req to the remote OMX connection service. use
 	 * the new local address that was just allocated by ->open */
@@ -485,6 +483,8 @@ static int rpmsg_omx_open(struct inode *inode, struct file *filp)
 					    (1 << OMAP_ION_HEAP_TYPE_TILER),
 					    "rpmsg-omx");
 #endif
+
+	init_completion(&omx->reply_arrived);
 
 	/* associate filp with the new omx instance */
 	filp->private_data = omx;
