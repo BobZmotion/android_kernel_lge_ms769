@@ -79,6 +79,9 @@ static unsigned long min_sample_time;
  */
 #define DEFAULT_TIMER_RATE 20 * USEC_PER_MSEC
 static unsigned long timer_rate;
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+static unsigned long default_timer_rate;
+#endif
 
 static unsigned int boost_timeout;
 
@@ -97,6 +100,19 @@ struct cpufreq_governor cpufreq_gov_interactive = {
 	.owner = THIS_MODULE,
 	.boost_cpu_freq = interactive_boost,
 };
+
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+void cpufreq_interactive_set_timer_rate(unsigned long val, unsigned int reset)
+{
+	if (!reset) {
+		default_timer_rate = timer_rate;
+		timer_rate = val;
+	} else {
+		if (timer_rate == val)
+			timer_rate = default_timer_rate;
+	}
+}
+#endif
 
 static void cpufreq_interactive_timer(unsigned long data)
 {
@@ -725,6 +741,9 @@ static int __init cpufreq_interactive_init(void)
 	go_hispeed_load = DEFAULT_GO_HISPEED_LOAD;
 	min_sample_time = DEFAULT_MIN_SAMPLE_TIME;
 	timer_rate = DEFAULT_TIMER_RATE;
+#ifdef CONFIG_OMAP4_DPLL_CASCADING
+	default_timer_rate = DEFAULT_TIMER_RATE;
+#endif
 
 	/* Initalize per-cpu timers */
 	for_each_possible_cpu(i) {
