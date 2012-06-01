@@ -267,6 +267,7 @@ void lge_omap4_prm_global_warm_sw_reset(const char *cmd)
 	v = omap4_prm_read_inst_reg(OMAP4430_PRM_DEVICE_INST,
 			OMAP4_RM_RSTCTRL);
 }
+#endif
 
 #ifdef CONFIG_OMAP4_DPLL_CASCADING
 static struct device fake_reset_dev;

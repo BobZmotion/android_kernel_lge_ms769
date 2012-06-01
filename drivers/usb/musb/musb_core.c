@@ -107,6 +107,7 @@
 static struct wake_lock musb_wake_lock;
 #else
 static struct wake_lock musb_lock;
+#endif
 
 #ifdef CONFIG_OMAP4_DPLL_CASCADING
 #include <mach/omap4-common.h>
