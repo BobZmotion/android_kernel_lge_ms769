@@ -1051,6 +1051,7 @@ static inline int twl4030charger_usb_en(int enable) { return 0; }
 
 #define TWL6032_ERRATA_DB00119490	(1 << 0)
 #define TWL6030_ERRATA_DB00112620	(1 << 1)
+#define TWL6030_ERRATA_DB00110684	(1 << 2)
 
 #if defined(CONFIG_MACH_LGE)
 
