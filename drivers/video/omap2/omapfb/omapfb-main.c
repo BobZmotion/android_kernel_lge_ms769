@@ -2425,10 +2425,9 @@ static void omapfb_vsync_isr(void *data, u32 mask)
 	schedule_work(&fbdev->vsync_work);
 }
 
-
 int omapfb_enable_vsync(struct omapfb2_device *fbdev, enum omap_channel ch,
 	bool enable)
- {
+{
 	int r = 0;
 	const u32 masks[] = {
 		DISPC_IRQ_VSYNC,
@@ -2440,7 +2439,7 @@ int omapfb_enable_vsync(struct omapfb2_device *fbdev, enum omap_channel ch,
 		pr_warn("%s wrong channel number\n", __func__);
 		return -ENODEV;
 	}
- 
+
 	if (enable)
 		r = omap_dispc_register_isr(omapfb_vsync_isr, fbdev,
 			masks[ch]);
@@ -2449,8 +2448,7 @@ int omapfb_enable_vsync(struct omapfb2_device *fbdev, enum omap_channel ch,
 			masks[ch]);
 
 	return r;
- }
- 
+}
 
 static int omapfb_probe(struct platform_device *pdev)
 {
