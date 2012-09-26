@@ -317,24 +317,9 @@ static void hdcp_wq_authentication_failure(void)
 	hdcp_lib_auto_bcaps_rdy_check(false);
 	hdcp_lib_set_av_mute(AV_MUTE_SET);
 	hdcp_lib_set_encryption(HDCP_ENC_OFF);
-//	hdcp_lib_set_encryption(HDCP_ENC_ON);
 
-	hdcp_cancel_work(&hdcp.pending_wq_event);
+	hdcp_wq_disable();
 
-	//hdcp_lib_disable();
-	hdcp.pending_disable = 0;
-#if 1
-	// 1A-04 and 1A-07a spec
-	hdcp.hdcp_state = HDCP_AUTHENTICATION_START;
-	hdcp.auth_state = HDCP_STATE_AUTH_FAIL_RESTARTING;
-	hdcp.pending_wq_event = hdcp_submit_work(HDCP_AUTH_REATT_EVENT, HDCP_REAUTH_DELAY);
-	DBG("HDCP : [3] %s() hdmi=%d hdcp=%d auth=%d",
-		__func__,
-		hdcp.hdmi_state,
-		hdcp.hdcp_state,
-		hdcp.auth_state);
-	
-#else
 	if (hdcp.retry_cnt && (hdcp.hdmi_state != HDMI_STOPPED)) {
 		if (hdcp.retry_cnt < HDCP_INFINITE_REAUTH) {
 			hdcp.retry_cnt--;
@@ -356,8 +341,7 @@ static void hdcp_wq_authentication_failure(void)
 		hdcp.hdcp_state = HDCP_ENABLE_PENDING;
 		hdcp.auth_state = HDCP_STATE_AUTH_FAILURE;
 	}
-#endif
-	HDCP_DBG_E();
+
 }
 
 /*-----------------------------------------------------------------------------
@@ -748,7 +732,12 @@ static void hdcp_irq_cb(int status)
 		hdcp.pending_disable = 1;	/* Used to exit on-going HDCP
 						 * work */
 		hdcp.hpd_low = 0;		/* Used to cancel HDCP works */
-		hdcp_lib_disable();
+		if (hdcp.pending_start) {
+			pr_err("cancelling work for pending start\n");
+			hdcp_cancel_work(&hdcp.pending_start);
+		}
+		hdcp_wq_disable();
+
 		/* In case of HDCP_STOP_FRAME_EVENT, HDCP stop
 		 * frame callback is blocked and waiting for
 		 * HDCP driver to finish accessing the HW
