@@ -348,6 +348,7 @@ subdir-ccflags-$(CONFIG_ARCH_OMAP2PLUS) += -Iarch/arm/mach-omap2/lge/include
 ## LGE_SJIT_E 2011-08-25 [choongryeol.lee@lge.com] Port lghdk on K3.0
 
 obj-$(CONFIG_OMAP_FIQ_DEBUGGER)		+= omap_fiq_debugger.o
+obj-$(CONFIG_RQ_STATS)			+= rq_stats.o
 
 ifeq ($(CONFIG_OMAP_REBOOT_REASON),y)
 obj-$(CONFIG_ARCH_OMAP4)		+= omap4-reboot-reason.o \
