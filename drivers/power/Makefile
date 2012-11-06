@@ -66,3 +66,4 @@ endif
 ifeq ($(CONFIG_MAX8971_CHARGER),y)
 obj-$(CONFIG_MAX8971_CHARGER) += max8971_charger.o
 endif
+obj-$(CONFIG_FUEL_GAUGE)	+= fg/
