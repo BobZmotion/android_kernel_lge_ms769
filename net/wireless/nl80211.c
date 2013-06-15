@@ -2038,8 +2038,8 @@ static int nl80211_del_beacon(struct sk_buff *skb, struct genl_info *info)
 		return -EOPNOTSUPP;
 
 	err = rdev->ops->del_beacon(&rdev->wiphy, dev);
-	if (!err)
-		wdev->beacon_interval = 0;
+	wdev->beacon_interval = 0;
+
 	return err;
 }
 
