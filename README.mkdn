@@ -1,0 +1,11 @@
+Kernel Build
+  - Unzip using following command at the android folder
+  - When you compile the kernel source code, you have to add google original prebuilt source(toolchain) 
+    into the android folder.
+  - cd kernel
+  - make configuration:
+	make u2_p769_defconfig ARCH=arm
+  - make kernel zImage:
+	make ARCH=arm CROSS_COMPILE=../prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi- zImage
+
+After Build, You Can find the build image at arch/arm/boot
