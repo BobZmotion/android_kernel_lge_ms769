@@ -17,6 +17,7 @@
 
 #include <asm/cacheflush.h>
 #include <asm/ftrace.h>
+#include <asm/mmu_writeable.h>
 
 #ifdef CONFIG_THUMB2_KERNEL
 #define	NOP		0xeb04f85d	/* pop.w {lr} */
@@ -124,6 +125,10 @@ static int ftrace_modify_code(unsigned long pc, unsigned long old,
 			      unsigned long new)
 {
 	unsigned long replaced;
+	unsigned long flags;
+
+        mem_text_writeable_spinlock(&flags);
+        mem_text_address_writeable(pc);
 
 	if (probe_kernel_read(&replaced, (void *)pc, MCOUNT_INSN_SIZE))
 		return -EFAULT;
@@ -135,6 +140,9 @@ static int ftrace_modify_code(unsigned long pc, unsigned long old,
 		return -EPERM;
 
 	flush_icache_range(pc, pc + MCOUNT_INSN_SIZE);
+
+	mem_text_address_restore();
+	mem_text_writeable_spinunlock(&flags);
 
 	return 0;
 }
