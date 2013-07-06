@@ -83,7 +83,7 @@ int mms100_download(int download_type)
 #if !MELFAS_ISP_DOWNLOAD
 	int i = 0;
 #endif
-	/*                                                  */
+	/* LGE_SJIT 2011-12-08 [dojip.kim@lge.com] mux gpio */
 	omap_mux_init_signal("i2c2_scl.gpio_128", OMAP_PIN_INPUT_PULLUP);
 	omap_mux_init_signal("i2c2_sda.gpio_129", OMAP_PIN_INPUT_PULLUP);
 
@@ -114,7 +114,7 @@ int mms100_download(int download_type)
 		ret = mcsdl_download((const UINT8 *) MELFAS_binary, (const UINT16)MELFAS_binary_nLength , 0);  /*ISP mode download ( CORE + PRIVATE )*/
 	}
 #endif
-	/*                                                  */
+	/* LGE_SJIT 2011-12-08 [dojip.kim@lge.com] mux gpio */
 	omap_mux_init_signal("i2c2_scl.i2c2_scl", OMAP_PIN_INPUT_PULLUP);
 	omap_mux_init_signal("i2c2_sda.i2c2_sda", OMAP_PIN_INPUT_PULLUP);
 

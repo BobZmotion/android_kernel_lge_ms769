@@ -21,23 +21,23 @@
 #include <linux/lge/pwm-vibrator.h>
 #include <linux/lge/leds_keypad.h>
 #include <linux/lge/lge_input.h>
-//                                          
+//LGE_TELECA_RIL_RECOVERY_CP_RESET_6  -START
 //20110505, ravi.holal@teleca.com, RIL RECOVERY
 //Description: Modem watcher functionality header file
 #include <linux/lge/mdm_watcher.h>
-//                                        
+//LGE_TELECA_RIL_RECOVERY_CP_RESET_6  -END
 #include <linux/switch_dp3t.h>
 #include <linux/switch_usif.h>
-//                                                                                 
+// LGE_SJIT_S 09/28/2011 [mohamed.khadri@lge.com] Enabled GPS Related configuration
 #if defined(CONFIG_GPS)
 #include <linux/lge/gps_gpio.h>
 #endif /* CONFIG_GPS */
-//                                                                                 
-//                                               
+// LGE_SJIT_E 09/28/2011 [mohamed.khadri@lge.com] Enabled GPS Related configuration
+//+++LG_BTDRV hyuntae0.kim@lge.com (2011-03-24): 
 #include <linux/lbee9qmb-rfkill.h>
 //---
 
-//                                                              
+// LGE_SJIT_S 11/18/2011 [mohamed.khadri@lge.com] BT UART Enable
 #define BT_UART_DEV_NAME "/dev/ttyO1"
 
 static bool uart_req;
@@ -68,10 +68,10 @@ static int plat_bt_uart_enable(void)
         }
         return err;
 }
-//                                                              
+// LGE_SJIT_E 11/18/2011 [mohamed.khadri@lge.com] BT UART Enable
 
 
-//                                                                                                                                  
+//+++LG_BTDRV hyuntae0.kim@lge.com (2011-03-24): gpio_reset=BT_EN(166), gpio_hostwake=BT_HOST_WAKEUP(160), gpio_btwake=BT_WAKEUP(23)
 static struct lbee9qmb_platform_data lbee9qmb_platform = {
 	.gpio_reset = GPIO_BT_RESET,
 #ifdef CONFIG_BRCM_BT_WAKE
@@ -82,10 +82,10 @@ static struct lbee9qmb_platform_data lbee9qmb_platform = {
 #endif	
 	.active_low = 1,
 	.delay = 10,
-//                                                              
+// LGE_SJIT_S 11/18/2011 [mohamed.khadri@lge.com] BT UART Enable
         .chip_enable = plat_bt_uart_enable,
         .chip_disable = plat_bt_uart_disable,
-//                                                              
+// LGE_SJIT_E 11/18/2011 [mohamed.khadri@lge.com] BT UART Enable
 
 };
 
@@ -115,17 +115,17 @@ static struct platform_device omap3430_hall_effect_dock = {
 
 //---
 
-//                                             
+//BEGIN: 0018892 hyuntae0.kim@lge.com 2011-5-18
 //ADD: 0018892 [B2][BT] FactoryTest AT command
-//                                                                            
+// 20101111 BT: dohyung10.lee@lge.com - For the BD Address Read /write [Start]
 struct platform_device bd_address_device = {
 	.name = "bd_address",
 	.id = -1,
 };
-//                                                                          
-//                                           
+// 20101111 BT: dohyung10.lee@lge.com - For the BD Address Read /write [End]
+//END: 0018892 hyuntae0.kim@lge.com 2011-5-18
 
-//                                   
+// LGE_CHANGE_S [sungho.jung@lge.com]
 #if defined(CONFIG_I2C_GPIO)
 #include <linux/i2c-gpio.h>
 #define GPIO_MHL_I2C_SCL	8
@@ -190,12 +190,12 @@ static void __init lge_add_i2c_gpio_device(void)
 	printk( "[MHL]i2c_register_board_info ret:%d\n", ret);
 }
 #endif
-//                                              
+// LGE_CHANGE_E [sungho.jung@lge.com] 2011-07-28
 
 
-//                                                                                 
+// LGE_SJIT_S 09/28/2011 [mohamed.khadri@lge.com] Enabled GPS Related configuration
 #if defined(CONFIG_GPS)
-//                                                                       
+// LGE_SJIT_S 12/21/2011 [mohamed.khadri@lge.com] GPS UART Enable/Disable
 #define GPS_UART_DEV_NAME "/dev/ttyO2"
 
 static bool gps_uart_req;
@@ -226,7 +226,7 @@ static int plat_gps_uart_enable(void)
         }
         return err;
 }
-//                                                                       
+// LGE_SJIT_E 12/21/2011 [mohamed.khadri@lge.com] GPS UART Enable/Disable
 
 static struct gps_gpio_platform_data gps_pdata = {
         .pwron   = GPS_PWR_ON_GPIO,
@@ -234,11 +234,11 @@ static struct gps_gpio_platform_data gps_pdata = {
 #if defined(CONFIG_P940_GPS_LNA_SD_USE)
         .lna_sd  = GPS_LNA_SD_GPIO,
 #endif
-//                                                                       
+// LGE_SJIT_S 12/21/2011 [mohamed.khadri@lge.com] GPS UART Enable/Disable
         .uart_dev_name = GPS_UART_DEV_NAME,
         .uart_enable = plat_gps_uart_enable,
         .uart_disable = plat_gps_uart_disable,
-//                                                                       
+// LGE_SJIT_E 12/21/2011 [mohamed.khadri@lge.com] GPS UART Enable/Disable
 
 };
 static struct platform_device gps_gpio =
@@ -250,21 +250,21 @@ static struct platform_device gps_gpio =
         }
 };
 #endif /* CONFIG_GPS */
-//                                                                                 
+// LGE_SJIT_E 09/28/2011 [mohamed.khadri@lge.com] Enabled GPS Related configuration
 
-//                                                                      
-/*                                             */
+// LGE_UPDATE_E taesook.yoon@lge.com 20110423 - GPS UART & GPIO Setting 
+/* LGE_CHANGE_E [miok.park@lge.com] 2010-09-13 */
 
-//                                                                             
+// LGE_CHANGE_S [yehan.ahn@lge.com] 2011-04-07, [P940] change the platform_data
 extern int vibrator_power_control(bool on);
-/*                                                    */
+/* LGE_SJIT 2011-11-29 [dojip.kim@lge.com] for TSPDRV */
 static struct pwm_vibrator_platform_data vib_data = {
 	.freq			= 227,
 	.gpio_enable		= 25,
 	.power			= vibrator_power_control,
 	.port			= 8,
 };
-//                                            
+// LGE_CHANGE_E [yehan.ahn@lge.com] 2011-04-07
 
 static struct platform_device vib = {
 	.name = "tspdrv",
@@ -274,7 +274,7 @@ static struct platform_device vib = {
 	},
 };
 
-/*                                                                           */
+/* LGE_SJIT 2011-12-02 [dojip.kim@lge.com] add platform_data for keypad leds */
 static struct leds_keypad_platform_data keypad_led_pdata = {
 	.name          = "button-backlight",
 	.use_hold_key  = 1,
@@ -295,23 +295,23 @@ void keyboard_mux_init(void)
 	return;
 }
 
-/*                                                                                  */
+/* LGE_CHANGE_S [alex.fedoseev@lge.com] 2010-12-06, Cosmopolitan: ETA logger device */
 #if defined(CONFIG_LGE_MTC_ETA)
 struct platform_device mtc_eta_log_device = {
 	.name = "lge_mtc_eta_logger",
 };
 #endif
-/*                                                 */
+/* LGE_CHANGE_E [alex.fedoseev@lge.com] 2010-12-06 */
 
 static struct platform_device charger_device= {
 	.name = "cosmo_charger",
 	.id	  = -1,
 };
 
-//                                          
+//LGE_TELECA_RIL_RECOVERY_CP_RESET_6  -START
 //20110505, ravi.holal@teleca.com, RIL RECOVERY
 //Description: Describes the GPIO configuration for Modem reset feature
-//                                                     
+//BEGIN : RIP-11133 : byeonggeun.kim@lge.com 2011-08-31
 //MOD : RIP-11133 : added CP coredump feature
 static struct mdm_watcher_event mdm_watcher_event_data[] __initdata  = {
 	{
@@ -330,7 +330,7 @@ static struct mdm_watcher_event mdm_watcher_event_data[] __initdata  = {
 		.msecs_delay = 5,
 		.key_code = 194,
 	},
-//                                                   
+//END : RIP-11133 : byeonggeun.kim@lge.com 2011-08-31
 #if 0 /* TODO: there is no gpio pin for auto_shutdown */
 	{
 		.type = MDM_AUTO_SHUTDOWN,
@@ -353,7 +353,7 @@ static struct platform_device p940_mdm_watcher_device __refdata = {
 		.platform_data = &p940_mdm_watcher_pdata,
 	},
 };
-//                                        
+//LGE_TELECA_RIL_RECOVERY_CP_RESET_6  -END
 
 #if defined(CONFIG_LGE_HANDLE_PANIC)
 static struct resource crash_log_resource[] = {
@@ -376,14 +376,14 @@ static struct platform_device panic_handler_device = {
 };
 #endif
 
-/*                                                      */
+/* 20110725 kyungtae.oh@lge.com GPIO_CONTROL [LGE_START]*/
 #ifdef CONFIG_LGE_GPIO_CONTROL
 static struct platform_device gpio_control = {
 	.name           = "gpio_control",
 	.id             = -1,
 };
 #endif
-/*                                                    */
+/* 20110725 kyungtae.oh@lge.com GPIO_CONTROL [LGE_END]*/
 
 struct dp3t_switch_platform_data dp3t_pdata = {
 	.ctrl_gpio1 = GPIO_DP3T_IN_1,
@@ -435,11 +435,11 @@ static struct platform_device gkpd_dev = {
 };
 
 static struct platform_device *pdevs[] __initdata = {
-//                                                                                 
+// LGE_SJIT_S 09/28/2011 [mohamed.khadri@lge.com] Enabled GPS Related configuration
 #if defined(CONFIG_GPS)
         &gps_gpio,
 #endif /* CONFIG_GPS */
-//                                                                                 
+// LGE_SJIT_E 09/28/2011 [mohamed.khadri@lge.com] Enabled GPS Related configuration
 
 #if defined(CONFIG_LGE_MTC_ETA)
 	&mtc_eta_log_device,
@@ -447,58 +447,58 @@ static struct platform_device *pdevs[] __initdata = {
 	&vib,
 	&keypad_led,
 	&charger_device,
-	//                                               
+	//+++LG_BTDRV hyuntae0.kim@lge.com (2011-03-24): 
 	&bcm4330_device,
-//                                             
+//BEGIN: 0018892 hyuntae0.kim@lge.com 2011-5-18
 //ADD: 0018892 [B2][BT] FactoryTest AT command
-	//                                                                            
+	// 20101115 BT: dohyung10.lee@lge.com - For the BD Address Read /write [Start]
 	&bd_address_device,
-	//                                                                          
-//                                           
-//                                          
+	// 20101115 BT: dohyung10.lee@lge.com - For the BD Address Read /write [End]
+//END: 0018892 hyuntae0.kim@lge.com 2011-5-18
+//LGE_TELECA_RIL_RECOVERY_CP_RESET_6  -START
 //20110505, ravi.holal@teleca.com, RIL RECOVERY
 //Description: Adding the p940_mdm_watcher_device structure to platform	
 	&p940_mdm_watcher_device,
-//                                         
+//LGE_TELECA_RIL_RECOVERY_CP_RESET_6  -END	
 #ifdef CONFIG_LGE_HANDLE_PANIC
 	&panic_handler_device,
 #endif
-/*                                                      */
+/* 20110725 kyungtae.oh@lge.com GPIO_CONTROL [LGE_START]*/
 #ifdef CONFIG_LGE_GPIO_CONTROL 
 	&gpio_control,
 #endif
-/*                                                    */
+/* 20110725 kyungtae.oh@lge.com GPIO_CONTROL [LGE_END]*/
 	&dp3t_dev,
 	&usif_dev,
 	&gkpd_dev,
 };
 
-/*                                                      */
+/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] for vibrator */
 static char vib_name_b[] = VIB_PWM_NAME;
 
 int __init p940_pdevs_init(void)
 {
-	/*                                             
-                                             
-  */
-	/*                                        
-                                 
-  */
+	/* LGE_CHANGE [sungho.jung@lge.com] 2011-07-28,
+	 * [SU540, P940] change MHL from I2C to GPIO
+	 */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com]
+	 * use gpio_i2c on HW C or later
+	 */
 #ifdef CONFIG_MACH_LGE_P2_P940
 	if (system_rev >= LGE_PCB_C) {
 		lge_add_i2c_gpio_device();
 	}
-//                                                                                           
+// LGE_CHANGE_S [sungho.jung@lge.com] 2012-02-13. Error fix for [SU540, KU5400, LU5400, L02D]
 #elif defined(CONFIG_MACH_LGE_P2_SU540) || defined(CONFIG_MACH_LGE_P2_KU5400) || defined(CONFIG_MACH_LGE_P2_LU5400) || defined(CONFIG_MACH_LGE_P2_DCM)
-//                               
+//	if (system_rev >= LGE_PCB_B) {
 		lge_add_i2c_gpio_device();
 //	}
-//                                              
+// LGE_CHANGE_E [sungho.jung@lge.com] 2012-02-13
 #endif
 
-	/*                                        
-                                
-  */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com]
+	 * fix the vibrator on revision
+	 */
 #ifdef CONFIG_MACH_LGE_P2_P940
 	if (system_rev <= LGE_PCB_B) {
 		vib_data.freq = 22000; // ERM_mode, HZ
@@ -507,9 +507,9 @@ int __init p940_pdevs_init(void)
 	}
 #endif
 
-	/*                                        
-                                  
-  */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com]
+	 * fix the leds gpios on revision
+	 */
 #ifdef CONFIG_MACH_LGE_P2_P940
 	if (system_rev <= LGE_PCB_EVB) {
 		keypad_led_pdata.keypad_gpio = 82;

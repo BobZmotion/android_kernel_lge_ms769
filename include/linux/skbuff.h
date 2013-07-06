@@ -187,11 +187,6 @@ enum {
 
 	/* ensure the originating sk reference is available on driver level */
 	SKBTX_DRV_NEEDS_SK_REF = 1 << 3,
-	/* device driver supports TX zero-copy buffers */
-	SKBTX_DEV_ZEROCOPY = 1 << 4,
-
-	/* generate wifi status information (where possible) */
-	SKBTX_WIFI_STATUS = 1 << 5,
 };
 
 /* This data is invariant across clones and lives at
@@ -402,8 +397,6 @@ struct sk_buff {
 	__u8			ndisc_nodetype:2;
 #endif
 	__u8			ooo_okay:1;
-	__u8			wifi_acked_valid:1;
-	__u8			wifi_acked:1;
 	kmemcheck_bitfield_end(flags2);
 
 	/* 0/13 bit hole */
@@ -1377,16 +1370,6 @@ static inline void skb_set_mac_header(struct sk_buff *skb, const int offset)
 }
 #endif /* NET_SKBUFF_DATA_USES_OFFSET */
 
-static inline void skb_mac_header_rebuild(struct sk_buff *skb)
-{
-	if (skb_mac_header_was_set(skb)) {
-		const unsigned char *old_mac = skb_mac_header(skb);
-
-		skb_set_mac_header(skb, -skb->mac_len);
-		memmove(skb_mac_header(skb), old_mac, skb->mac_len);
-	}
-}
-
 static inline int skb_checksum_start_offset(const struct sk_buff *skb)
 {
 	return skb->csum_start - skb_headroom(skb);
@@ -2060,14 +2043,6 @@ static inline void skb_tx_timestamp(struct sk_buff *skb)
 	skb_clone_tx_timestamp(skb);
 	sw_tx_timestamp(skb);
 }
-/**
- * skb_complete_wifi_ack - deliver skb with wifi status
- *
- * @skb: the original outgoing packet
- * @acked: ack status
- *
- */
-void skb_complete_wifi_ack(struct sk_buff *skb, bool acked);
 
 extern __sum16 __skb_checksum_complete_head(struct sk_buff *skb, int len);
 extern __sum16 __skb_checksum_complete(struct sk_buff *skb);

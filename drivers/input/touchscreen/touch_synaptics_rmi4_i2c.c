@@ -1620,10 +1620,10 @@ static void synaptics_ts_resume_func(struct synaptics_ts_data *ts)
 
 	queue_delayed_work(synaptics_wq,
 			&ts->work,msecs_to_jiffies(ts->pdata->ic_booting_delay));
-	//                                                  
+	// yonghoon.lee@lge.com add code to resume touch IC 
 	ret = i2c_smbus_write_byte_data(ts->client,
 			DEVICE_CONTROL_REG, DEVICE_CONTROL_REG_NOSLEEP); /* resume touch */
-	//                                                  
+	// yonghoon.lee@lge.com add code to resume touch IC 
 
 	if (ts->pdata->use_irq)
 		enable_irq(ts->client->irq);

@@ -128,8 +128,6 @@ struct usb_hcd {
 	unsigned		wireless:1;	/* Wireless USB HCD */
 	unsigned		authorized_default:1;
 	unsigned		has_tt:1;	/* Integrated TT in root hub */
-	unsigned		broken_pci_sleep:1;	/* Don't put the
-			controller in PCI-D3 for system sleep */
 
 	int			irq;		/* irq allocated */
 	void __iomem		*regs;		/* device memory/io */
@@ -345,11 +343,6 @@ struct hc_driver {
 		 * address is set
 		 */
 	int	(*update_device)(struct usb_hcd *, struct usb_device *);
-
-		/* Disconnect-reconnect functionality */
-	int	(*disconnect)(struct usb_hcd *hcd, int port);
-	int	(*reconnect)(struct usb_hcd *hcd, int port);
-
 };
 
 extern int usb_hcd_link_urb_to_ep(struct usb_hcd *hcd, struct urb *urb);

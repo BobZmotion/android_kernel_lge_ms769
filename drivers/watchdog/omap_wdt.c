@@ -94,11 +94,6 @@ static void omap_wdt_ping(struct omap_wdt_dev *wdev)
 static void omap_wdt_enable(struct omap_wdt_dev *wdev)
 {
 	void __iomem *base = wdev->base;
-	
-	#if ! defined (USER_MODE)  /*                                                          */
-		printk("[OMAP_WDT] \n");
-	return ;
-	#endif
 
 	/* Sequence to enable the watchdog */
 	__raw_writel(0xBBBB, base + OMAP_WATCHDOG_SPR);

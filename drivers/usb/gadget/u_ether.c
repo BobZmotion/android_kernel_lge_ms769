@@ -253,17 +253,7 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 	 * but on at least one, checksumming fails otherwise.  Note:
 	 * RNDIS headers involve variable numbers of LE32 values.
 	 */
-/* usb: g_ether: dma alignment fix (TI GB patch) */
-#if defined(CONFIG_LGE_ANDROID_USB)
-	/*
-	 * RX: Do not move data by IP_ALIGN:
-	 * if your DMA controller cannot handle it
-	 */
-	if (!gadget_dma32(dev->gadget))
-		skb_reserve(skb, NET_IP_ALIGN);
-#else 
 	skb_reserve(skb, NET_IP_ALIGN);
-#endif
 
 	req->buf = skb->data;
 	req->length = size;
@@ -296,16 +286,6 @@ static void rx_complete(struct usb_ep *ep, struct usb_request *req)
 	/* normal completion */
 	case 0:
 		skb_put(skb, req->actual);
-
-/* usb: g_ether: dma alignment fix (TI GB patch) */
-#if defined(CONFIG_LGE_ANDROID_USB)
-		if (gadget_dma32(dev->gadget) && NET_IP_ALIGN) {
-			u8 *data = skb->data;
-			size_t len = skb_headlen(skb);
-			skb_reserve(skb, NET_IP_ALIGN);
-			memmove(skb->data, data, len);
-		}
-#endif
 
 		if (dev->unwrap) {
 			unsigned long	flags;
@@ -597,27 +577,6 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 
 		length = skb->len;
 	}
-
-/* usb: g_ether: dma alignment fix (TI GB patch) */
-#if defined(CONFIG_LGE_ANDROID_USB)
-	/*
-	 * Align data to 32bit if the dma controller requires it
-	 */
-	if (gadget_dma32(dev->gadget)) {
-		unsigned long align = (unsigned long)skb->data & 3;
-		if (WARN_ON(skb_headroom(skb) < align)) {
-			dev_kfree_skb_any(skb);
-			goto drop;
-		} else if (align) {
-			u8 *data = skb->data;
-			size_t len = skb_headlen(skb);
-			skb->data -= align;
-			memmove(skb->data, data, len);
-			skb_set_tail_pointer(skb, len);
-		}
-	}
-#endif
-
 	req->buf = skb->data;
 	req->context = skb;
 	req->complete = tx_complete;
@@ -864,14 +823,11 @@ int gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
 
 	SET_ETHTOOL_OPS(net, &ops);
 
-/* Fix g_ether interface link status */
-#if !defined(CONFIG_LGE_ANDROID_USB)
 	/* two kinds of host-initiated state changes:
 	 *  - iff DATA transfer is active, carrier is "on"
 	 *  - tx queueing enabled if open *and* carrier is "on"
 	 */
 	netif_carrier_off(net);
-#endif
 
 	dev->gadget = g;
 	SET_NETDEV_DEV(net, &g->dev);
@@ -886,15 +842,6 @@ int gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
 		INFO(dev, "HOST MAC %pM\n", dev->host_mac);
 
 		the_dev = dev;
-
-/* Fix g_ether interface link status */
-#if defined(CONFIG_LGE_ANDROID_USB)
-		/* two kinds of host-initiated state changes:
-		 *  - iff DATA transfer is active, carrier is "on"
-		 *  - tx queueing enabled if open *and* carrier is "on"
-		 */
-		netif_carrier_off(net);
-#endif
 	}
 
 	return status;

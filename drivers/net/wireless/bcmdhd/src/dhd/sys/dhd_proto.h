@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_proto.h 343390 2012-07-06 22:34:19Z $
+ * $Id: dhd_proto.h 303834 2011-12-20 06:17:39Z $
  */
 
 #ifndef _dhd_proto_h_
@@ -34,7 +34,11 @@
 #include <wlioctl.h>
 
 #ifndef IOCTL_RESP_TIMEOUT
-#define IOCTL_RESP_TIMEOUT  2000  /* In milli second default value for Production FW */
+#ifdef CONFIG_COMMON_PATCH
+#define IOCTL_RESP_TIMEOUT  5000 /* In milli second */
+#else
+#define IOCTL_RESP_TIMEOUT  20000 /* In milli second */
+#endif
 #endif /* IOCTL_RESP_TIMEOUT */
 
 /*
@@ -54,10 +58,6 @@ extern int dhd_prot_init(dhd_pub_t *dhdp);
 
 /* Stop protocol: sync w/dongle state. */
 extern void dhd_prot_stop(dhd_pub_t *dhdp);
-#ifdef PROP_TXSTATUS
-extern int dhd_wlfc_init(dhd_pub_t *dhd);
-extern void dhd_wlfc_deinit(dhd_pub_t *dhd);
-#endif /* PROP_TXSTATUS */
 
 /* Add any protocol-specific data header.
  * Caller must reserve prot_hdrlen prepend space.

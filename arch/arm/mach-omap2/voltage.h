@@ -186,6 +186,7 @@ struct omap_volt_data {
 #define OMAP3_VP_VSTEPMAX_VSTEPMAX	0x04
 #define OMAP3_VP_VLIMITTO_TIMEOUT_US	200
 
+// LGE_CHANGE_START [bk.shin@lge.com] 2012-04-25, TI patch : recommeded VP registers settings
 #define OMAP4_VP_MPU_VLIMITTO_VDDMIN	830000
 #define OMAP4_VP_IVA_VLIMITTO_VDDMIN	830000
 #define OMAP4_VP_CORE_VLIMITTO_VDDMIN	830000
@@ -197,6 +198,7 @@ struct omap_volt_data {
 #define OMAP4460_VP_MPU_VLIMITTO_VDDMAX		1380000
 #define OMAP4460_VP_IVA_VLIMITTO_VDDMAX		1375000
 #define OMAP4460_VP_CORE_VLIMITTO_VDDMAX	1250000
+// LGE_CHANGE_END [bk.shin@lge.com] 2012-04-25
 
 #define OMAP4_VP_CONFIG_ERROROFFSET	0x00
 #define OMAP4_VP_VSTEPMIN_VSTEPMIN	0x01
@@ -216,8 +218,10 @@ struct omap_volt_data {
  * @i2c_scll_low: PMIC interface speed config for fullspeed mode (T low)
  * @i2c_scll_high: PMIC interface speed config for fullspeed mode (T high)
  * @switch_on_time: time taken for switch on the DCDC in uSec
+ // LGE_CHANGE_START [bk.shin@lge.com] 2012-04-25, TI patch :  rename vp_vddmin and vp_vddmax fields
  * @max_volt: Maximum supported voltage in uV (should be contigous till min)
  * @min_volt: Minimum supported voltage in uV (should be contigous till max)
+ // LGE_CHANGE_END [bk.shin@lge.com] 2012-04-25
  */
 struct omap_voltdm_pmic {
 	int slew_rate;
@@ -231,8 +235,10 @@ struct omap_voltdm_pmic {
 	u8 vp_erroroffset;
 	u8 vp_vstepmin;
 	u8 vp_vstepmax;
+// LGE_CHANGE_START [bk.shin@lge.com] 2012-04-25, TI patch :  rename vp_vddmin and vp_vddmax fields	
 	u32 min_volt;
 	u32 max_volt;
+// LGE_CHANGE_END [bk.shin@lge.com] 2012-04-25
 	u8 vp_timeout_us;
 	u16 i2c_slave_addr;
 	u16 volt_reg_addr;

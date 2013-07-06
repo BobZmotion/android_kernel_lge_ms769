@@ -772,7 +772,7 @@ extern int omap4_prm_assert_hardreset(void __iomem *rstctrl_reg, u8 shift);
 extern int omap4_prm_deassert_hardreset(void __iomem *rstctrl_reg, u8 shift);
 
 extern void omap4_prm_global_warm_sw_reset(void);
-/*                                                           */
+/* LGE_SJIT 2011-12-12 [dojip.kim@lge.com] lge crash handler */
 #ifdef CONFIG_LGE_HANDLE_PANIC
 extern void lge_omap4_prm_global_warm_sw_reset(const char *cmd);
 #endif

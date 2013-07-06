@@ -32,11 +32,11 @@
 #define ANDROID_ALARM_PRINT_INT (1U << 5)
 #define ANDROID_ALARM_PRINT_FLOW (1U << 6)
 
-/*                                                                     */
+/* LGE_CHANGE_S [jugwan.eom@lge.com] 2011-08-20, enable all debug logs */
 #define MAX_COUNT_SAME_TRIGGERED_ALARM 30
 static int alarm_triggered_count = 0;
 static s64 previous_triggered_but_not_called_time = 0;
-/*                                                                     */
+/* LGE_CHANGE_E [jugwan.eom@lge.com] 2011-08-20, enable all debug logs */
 static int debug_mask = ANDROID_ALARM_PRINT_ERROR | \
 			ANDROID_ALARM_PRINT_INIT_STATUS;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
@@ -341,8 +341,8 @@ static enum hrtimer_restart alarm_timer_triggered(struct hrtimer *timer)
 	while (base->first) {
 		alarm = container_of(base->first, struct alarm, node);
 #ifdef CONFIG_MACH_LGE
-		/*                                           
-                                                  */
+		/* LGE_CHANGE 2012-01-06 [jugwan.eom@lge.com]
+		 * Add 0.5 secs margin for early triggerd alarm */
 		if ((alarm->softexpires.tv64 > now.tv64) &&
 		    (alarm->softexpires.tv64 - now.tv64 > 500000000)) {
 #else
@@ -351,7 +351,7 @@ static enum hrtimer_restart alarm_timer_triggered(struct hrtimer *timer)
 			pr_alarm(FLOW, "don't call alarm, %pF, %lld (s %lld)\n",
 				alarm->function, ktime_to_ns(alarm->expires),
 				ktime_to_ns(alarm->softexpires));
-			/*                                                                      */
+			/* LGE_CHANGE_S [jugwan.eom@lge.com] 2011-08-20, to debug lock up issue */
 			if (previous_triggered_but_not_called_time == alarm->softexpires.tv64) {
 				if (alarm_triggered_count > MAX_COUNT_SAME_TRIGGERED_ALARM) {
 					/* We have seen that if an app. uses alarm API wrongly,
@@ -370,7 +370,7 @@ static enum hrtimer_restart alarm_timer_triggered(struct hrtimer *timer)
 				alarm_triggered_count = 0;
 				previous_triggered_but_not_called_time = alarm->softexpires.tv64;
 			}
-			/*                                                                      */
+			/* LGE_CHANGE_E [jugwan.eom@lge.com] 2011-08-20, to debug lock up issue */
 			break;
 		}
 		base->first = rb_next(&alarm->node);
@@ -457,8 +457,8 @@ static int alarm_suspend(struct platform_device *pdev, pm_message_t state)
 			rtc_alarm_time, rtc_current_time,
 			rtc_delta.tv_sec, rtc_delta.tv_nsec);
 #ifdef CONFIG_MACH_LGE
-		/*                                            
-                                */
+		/*  LGE_CHANGE 2012-01-06 [jugwan.eom@lge.com]
+		 *  verify set rtc alarm time */
 		rtc_read_alarm(alarm_rtc_dev, &current_rtc_alarm);
 		rtc_tm_to_time(&current_rtc_alarm.time, &current_rtc_alarm_time);
 		pr_alarm(SUSPEND,

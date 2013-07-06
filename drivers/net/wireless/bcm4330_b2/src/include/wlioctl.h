@@ -618,12 +618,12 @@ typedef struct {
 #define WPA_AUTH_NONE       0x0001  
 #define WPA_AUTH_UNSPECIFIED    0x0002  
 #define WPA_AUTH_PSK        0x0004  
-/*                                  */	//by sjpark 11-03-15
+/* LGE_CHANGE_S, 2011-0226, add CCX */	//by sjpark 11-03-15
 #ifdef BCMCCX
 #define WPA_AUTH_CCKM		0x0008	/* CCKM */
 #define WPA2_AUTH_CCKM		0x0010	/* CCKM2 */
 #endif /* BCMCCX */
-/*                                  */
+/* LGE_CHANGE_E, 2011-0226, add CCX */
 #define WPA2_AUTH_UNSPECIFIED   0x0040  
 #define WPA2_AUTH_PSK       0x0080  
 #define BRCM_AUTH_PSK           0x0100  

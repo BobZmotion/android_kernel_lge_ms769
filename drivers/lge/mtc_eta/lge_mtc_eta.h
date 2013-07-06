@@ -58,5 +58,5 @@ enum {
 	ETA_TOUCH_UP = 5, /*Touch up at the current location*/
 	ETA_TOUCH_DEFAULT = 0xff,
 };
-#endif /*               */
+#endif /*_LGE_MTC_ETA_H_*/
 

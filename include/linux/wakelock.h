@@ -75,7 +75,7 @@ int wake_lock_active(struct wake_lock *lock);
  */
 long has_wake_lock(int type);
 
-/*                                                                    */
+/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com] auspend autotest (demigod) */
 #ifdef CONFIG_LGE_SUSPEND_AUTOTEST
 int wake_lock_active_name(char *name);
 #endif
@@ -92,7 +92,7 @@ static inline void wake_unlock(struct wake_lock *lock) {}
 static inline int wake_lock_active(struct wake_lock *lock) { return 0; }
 static inline long has_wake_lock(int type) { return 0; }
 
-/*                                                                    */
+/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com] auspend autotest (demigod) */
 #ifdef CONFIG_LGE_SUSPEND_AUTOTEST
 static inline int wake_lock_active_name(char *name) { return 0; }
 #endif

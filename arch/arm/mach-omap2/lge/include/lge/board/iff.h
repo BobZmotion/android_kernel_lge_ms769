@@ -38,7 +38,7 @@
 
 #define GPIO_MUIC_INT		163
 
-/*                                                               */
+/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com] definitions for touch */
 #define GPIO_TOUCH_INT			52
 #define GPIO_TOUCH_MAKER_ID		159
 #define MELFAS_TOUCH_I2C_SLAVE_ADDR	0x48
@@ -52,7 +52,7 @@
 #define GPIO_BT_WAKE		160
 #define GPIO_BT_HOST_WAKE	23
 
-/*                                                        */
+/* LGE_SJIT 2012-01-13 [dojip.kim@lge.com] only for rev_c */
 #define GPIO_KEY_VOLUMEUP	175
 #define GPIO_KEY_VOLUMEDOWN	171
 #define GPIO_KEY_BASE		176
@@ -61,24 +61,24 @@
 //#define GPIO_HALL_INT 42
 #endif
 
-/*                                                                      */
+/* LGE_SJIT_S 2011-12-14 [mohamed.khadri@lge.com] gpios for NFC - PN544 */
 #ifdef CONFIG_PN544_NFC
 #define NFC_GPIO_IRQ            4
 #define NFC_GPIO_VEN            62
 #define NFC_GPIO_FRIM           42
 #define NFC_I2C_SLAVE_ADDR      0x28
 #endif //CONFIG_PN544_NFC
-/*                                                                      */
+/* LGE_SJIT_E 2011-12-14 [mohamed.khadri@lge.com] gpios for NFC - PN544 */
 
-/*                                                              */
+/* LGE_SJIT_S 2011-12-19 [mohamed.khadri@lge.com] gpios for GPS */
 #if defined(CONFIG_GPS)
 #define GPS_PWR_ON_GPIO         0
 #define GPS_RESET_N_GPIO        1
 #endif
-/*                                                              */
+/* LGE_SJIT_E 2011-12-19 [mohamed.khadri@lge.com] gpios for GPS */
 
 /* XXX: REVISIT: find right ram_console region. the last 1MB of RAM? */
-/*                                                                                                   */
+/* LGE_SJIT_E 2011-10-19 [jongrak.kwon@lge.com] Adjust the value referring to OMAP4_RAMCONSOLE value */
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
 #ifdef CONFIG_LGE_HANDLE_PANIC
 #define LGE_RAM_CONSOLE_START_DEFAULT (0xA0000000)
@@ -91,7 +91,7 @@ void lge_set_reboot_reason(unsigned int reason);
 #else
 #define LGE_RAM_CONSOLE_START_DEFAULT (0xA0000000)
 #define LGE_RAM_CONSOLE_SIZE_DEFAULT  (SZ_2M)
-#endif /*                         */
+#endif /* CONFIG_LGE_HANDLE_PANIC */
 #endif /* CONFIG_ANDROID_RAM_CONSOLE */
 
-#endif /*                   */
+#endif /* __LGE_BOARD_IFF_H */

@@ -25,7 +25,7 @@
 #define TEMP_LOW_RECHARGING             -50
 #define TEMP_HIGH_RECHARGING            500
 
-#define TEMP_CHANGE_CHARGING_MODE      450    /*                                                                                                      */
+#define TEMP_CHANGE_CHARGING_MODE      450    /* LGE_CHANGE [wonhui.lee@lge.com] 2011-11-23, To change the charging mode according battery temperature*/
 
 #define RECHARGING_BAT_SOC_CON  97
 
@@ -42,7 +42,7 @@ typedef enum {
 void charger_fsm(charger_fsm_cause reason);
 
 
-//                                               
+// [jongho3.lee@lge.com] export temperature func.
 int twl6030battery_temperature(void);
 int get_bat_soc(void);
 struct delayed_work* get_charger_work(void);
@@ -74,15 +74,15 @@ typedef enum {
 
 
 /*
-                        
-                                      
-                              
-                                
-                              
-                                                                  
-                                  
-                                  
-  
+enum power_supply_type {
+        POWER_SUPPLY_TYPE_BATTERY = 0,
+        POWER_SUPPLY_TYPE_UPS,
+        POWER_SUPPLY_TYPE_MAINS,
+        POWER_SUPPLY_TYPE_USB,
+        //LGE_CHANGE [jongho3.lee@lge.com]  adding factory charger
+        POWER_SUPPLY_TYPE_FACTROY,
+        POWER_SUPPLY_TYPE_UNKNOWN,
+};
 */
 
 
@@ -208,8 +208,7 @@ struct max8971_platform_data {
 #define TA_CHARING_CURRENT      850
 #define TA_CHARING_CURRENT_3800      800
 
-#define TA_RECHARING_CURRENT     400
-#define TA_CHARING_CURRENT_AICL      600
+#define TA_RECHARING_CURRENT      500
 
 #define USB_CHARING_CURRENT     500
 #define USB_CHARING_CURRENT_MST     450
@@ -224,8 +223,7 @@ struct max8971_platform_data {
 #define TA_CHARING_CURRENT_3800      800
 
 
-#define TA_RECHARING_CURRENT      400
-#define TA_CHARING_CURRENT_AICL      600
+#define TA_RECHARING_CURRENT      500
 
 #define USB_CHARING_CURRENT     500
 #define USB_CHARING_CURRENT_MST     450
@@ -239,8 +237,7 @@ struct max8971_platform_data {
 #define TA_CHARING_CURRENT      850
 #define TA_CHARING_CURRENT_3800      800
 
-#define TA_RECHARING_CURRENT      400
-#define TA_CHARING_CURRENT_AICL      600
+#define TA_RECHARING_CURRENT      500
 
 #define USB_CHARING_CURRENT     500
 #define USB_CHARING_CURRENT_MST     450
@@ -259,8 +256,6 @@ int max8971_start_Factory_charging(void);
 
 extern int charging_done_flag ;
 
-int get_bat_volt(void);
 int get_unlimited_temp(void);
-int device_power_control(char *reg_id, int on);
 #endif
 

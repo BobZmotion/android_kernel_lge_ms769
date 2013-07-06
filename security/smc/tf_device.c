@@ -44,6 +44,10 @@
 
 #include "s_version.h"
 
+#ifdef CONFIG_TF_ION
+extern struct ion_device *omap_ion_device;
+#endif
+
 /*----------------------------------------------------------------------------
  * Forward Declarations
  *----------------------------------------------------------------------------*/
@@ -578,9 +582,9 @@ static long tf_device_ioctl(struct file *file, unsigned int ioctl_num,
 		/* Initialize ION connection */
 		if (connection->ion_client == NULL) {
 			connection->ion_client = ion_client_create(
-						zebra_ion_device,
+						omap_ion_device,
 						(1 << ION_HEAP_TYPE_CARVEOUT),
-						"tf");
+						"smc");
 		}
 
 		if (connection->ion_client == NULL) {

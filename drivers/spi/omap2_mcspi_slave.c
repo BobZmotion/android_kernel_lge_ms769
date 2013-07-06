@@ -41,7 +41,7 @@
 #include <plat/clock.h>
 #include <plat/mcspi.h>
 
-//                                                                                                                         
+//20110327 ws.yang@lge.com .. to max of vdd2_opp when dma is tx/rx /* 20110720 dongyu.gwak@lge.com L3 200Mhz from Justin */
 #include <plat/omap-pm.h>
 #define OMAP2_MCSPI_MAX_FREQ		48000000
 #define OMAP2_MCSPI_MAX_FIFODEPTH       64
@@ -162,10 +162,10 @@ struct omap2_mcspi_dma {
  * cache operations; better heuristics consider wordsize and bitrate.
  */
 #define DMA_MIN_BYTES			160
-#define DMA_TIMEOUT_LIMIT		((3)*(HZ)) //                                                        
-//                                                     
+#define DMA_TIMEOUT_LIMIT		((3)*(HZ)) //100->300 for delay	in first booting [hyunh0.cho@lge.com]
+// LGE_UPDATE_S eungbo.shim@lge.com [EBS] For DMA FIFO 
 #define LGE_RIL_SPI
-//                                       
+// LGE_UPDATE_E eungbo.shim@lge.com [EBS]
 #define SPI_RETRY_ENABLE
 
 struct omap2_mcspi {
@@ -185,12 +185,12 @@ struct omap2_mcspi {
 	u8			force_cs_mode;
 	u16			fifo_depth;
 	struct  device          *dev;
-//                                       
+// LGE_UPDATE_S eungbo.shim@lge.com [EBS]
 #ifdef CONFIG_LGE_SPI
 	unsigned char		name[20];
 	struct workqueue_struct *wq;
 #endif
-//                                       
+// LGE_UPDATE_E eungbo.shim@lge.com [EBS]
 };
 
 struct omap2_mcspi_cs {
@@ -588,7 +588,7 @@ static inline int omap2_mcspi_enable_clocks(struct omap2_mcspi *mcspi)
 	return pm_runtime_get_sync(mcspi->dev);
 }
 
-//                                                     
+// LGE_UPDATE_S eungbo.shim@lge.com [EBS] For DMA FIFO 
 static int                                                                                     
 omap2_mcspi_dump_regs(struct spi_device *spi, int channel)                                                  
 {   
@@ -663,7 +663,7 @@ omap2_mcspi_dump_regs(struct spi_device *spi, int channel)
 
 	return 0;                                                                                  
 }          
-//                                       
+// LGE_UPDATE_E eungbo.shim@lge.com [EBS]
 
 static unsigned
 omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
@@ -690,13 +690,13 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 	volatile int ti_temp_6 = 0;
 	// temp ti end
 #endif /* SPI_RETRY_ENABLE */
-//                                                               
+// LGE_UPDATE_S eungbo.shim@lge.com [EBS] For BURST Mode Setting 
 #ifdef LGE_RIL_SPI
 #ifdef CONFIG_LGE_SPI
 	int chk_set = 0;
 #endif
 #endif
-//                                       
+// LGE_UPDATE_E eungbo.shim@lge.com [EBS]
 	u32			l;
 	u8			* rx;
 	const u8		* tx;
@@ -742,7 +742,7 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 		sync_type = OMAP_DMA_SYNC_ELEMENT;
 		frame_count = 1;
 	}
-//                                                               
+// LGE_UPDATE_S eungbo.shim@lge.com [EBS] For BURST Mode Setting 
 #ifdef LGE_RIL_SPI
 #ifdef CONFIG_LGE_SPI
 	if( mcspi->master->bus_num == 4 )
@@ -770,7 +770,7 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 	}
 #endif
 #endif
-//                                       
+// LGE_UPDATE_E eungbo.shim@lge.com [EBS]
 	if (tx != NULL) {
 		omap_set_dma_transfer_params(mcspi_dma->dma_tx_channel,
 				data_type, element_count, frame_count,
@@ -823,8 +823,8 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 	mcspi_write_reg(mcspi->master, OMAP2_MCSPI_IRQSTATUS,
 			0x00010001);
 
-//                                                          
-#if 0 //                
+// LGE_UPDATE_S eungbo.shim@lge.com [EBS] For DMA Debugging 
+#if 0 //def LGE_RIL_SPI	
 #if 1 // TEDCHO DMA Monitor - TRM 11.5.4 Synchronized Transfer Monitoring Using CDAC
  omap_dma_set_global_params(DMA_DEFAULT_ARB_RATE, 0x20, 1); // SPI_IPC
  omap_dma_set_prio_lch(mcspi_dma->dma_tx_channel, 0, DMA_CH_PRIO_HIGH);  
@@ -833,7 +833,7 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
  // omap_set_dma_write_mode(mcspi_dma->dma_tx_channel, OMAP_DMA_WRITE_POSTED);
 #endif // TEDCHO
 #endif 
-//                                       
+// LGE_UPDATE_E eungbo.shim@lge.com [EBS]
 
 #if 1 //EBS 
 		omap_writel(0, ((DMA4_CDAC_ADDRESS) + (mcspi_dma->dma_tx_channel * 0x60))); // OMAP_DMA4_CDACi
@@ -871,7 +871,7 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 #endif /* SPI_RETRY_ENABLE */
 	// et.jo test end
 	
-#if 0	//                                              
+#if 0	//location change for test  [hyunh0.cho@lge.com]
 	#ifdef CONFIG_LGE_SPI
             if (mcspi->mcspi_mode == OMAP2_MCSPI_SLAVE) 
             {
@@ -922,7 +922,7 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 
 	if (tx != NULL) 
 	{
-		//                                                          
+		// LGE_UPDATE_S eungbo.shim@lge.com [EBS] SPI Retry Routine 
 #ifdef LGE_RIL_SPI// KNK_TEST
 #ifdef CONFIG_LGE_SPI
 		if (mcspi->mcspi_mode == OMAP2_MCSPI_SLAVE) //For RIL SPI 
@@ -938,7 +938,7 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 			int wait_ret ,rt_cnt=0;
 			do 
 			{
-				wait_ret = wait_for_completion_timeout(&mcspi_dma->dma_tx_completion, DMA_TIMEOUT_LIMIT) ;  /*                                           */
+				wait_ret = wait_for_completion_timeout(&mcspi_dma->dma_tx_completion, DMA_TIMEOUT_LIMIT) ;  /* 20110304 dongyu.gwak@lge.com Retry Scheme */
 				if( wait_ret == 0 )
 				{
 					volatile unsigned long tmp_dma_read, tmp_dma_read1;
@@ -971,12 +971,12 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 
                     
 					//return -ETIMEDOUT;
-					printk(KERN_ERR "[LGE-SPI] SPI Host Req. Retry -----------------[%d] \n",rt_cnt);  /*                                         */
+					printk(KERN_ERR "[LGE-SPI] SPI Host Req. Retry -----------------[%d] \n",rt_cnt);  /* 20110311 dongyu.gwak@lge.com Don't Retry*/
 					
 					// temp code for debugging for TD 34233		
 					printk(KERN_ERR "<< omap2_mcspi_txrx_dma %d %d %d %d %d %d\n", 
 									ti_temp_1, ti_temp_2, ti_temp_3, ti_temp_4, ti_temp_5, ti_temp_6);
-//                                            
+// [LGE_IPC] LGE_UPDATE_S DMA RESET TEST et.jo
 #if 1 
 								if( rx != NULL )
 								{
@@ -995,19 +995,19 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 									pm_qos_update_request(&pm_qos_handle_for_spi, PM_QOS_DEFAULT_VALUE);
 									omap_pm_set_min_bus_tput(&spi->dev,OCP_INITIATOR_AGENT, -1);    //omap-pm.c
 								}
-								//                                            
+								// [LGE_IPC] LGE_UPDATE_S DMA RESET TEST et.jo
 													
 #endif /* DMA_RESET_TEST by et.jo */
 					return -1; // for no retry in dma timeout
 				}
 				else 
 					break ;
-			} while((++rt_cnt <= 2)) ;  /*                                          */
+			} while((++rt_cnt <= 2)) ;  /* 20110304 dongyu.gwak@lge.com Don't Retry */
 #endif	/* SPI_RETRY_ENABLE */
 		}
 		else
-#endif	/*                 */
-#endif	/*              */
+#endif	/* CONFIG_LGE_SPI 	*/
+#endif	/* LGE_RIL_SPI		*/
 
 			wait_for_completion(&mcspi_dma->dma_tx_completion); //For dmB mode 
 
@@ -1023,13 +1023,13 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 		}
 
 		dma_unmap_single(NULL, xfer->tx_dma, count, DMA_TO_DEVICE);
-		//                                                                                                                   
+		//20110329 ws.yang@lge.com .. Reset Through-put requirement /* 20110719 dongyu.gwak@lge.com L3 200Mhz from Justin */ 
 	}
 
 	if (rx != NULL) 
 	{
 
-//                                                                 
+// LGE_UPDATE_S eungbo.shim@lge.com [EBS] -- For SPI Retry Routine 
 #ifdef LGE_RIL_SPI // KNK_TEST
 #ifdef CONFIG_LGE_SPI
 					if (mcspi->mcspi_mode == OMAP2_MCSPI_SLAVE)
@@ -1076,7 +1076,7 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 								printk(KERN_ERR "<< omap2_mcspi_txrx_dma %d %d %d %d %d %d\n", 
 											ti_temp_1, ti_temp_2, ti_temp_3, ti_temp_4, ti_temp_5, ti_temp_6);
 
-								//                                            
+								// [LGE_IPC] LGE_UPDATE_S DMA RESET TEST et.jo
 #if 1 
 								omap2_mcspi_set_dma_req(spi, 1, 0);
 								omap_stop_dma(mcspi_dma->dma_rx_channel);
@@ -1094,7 +1094,7 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 									omap_pm_set_min_bus_tput(&spi->dev,OCP_INITIATOR_AGENT, -1);    //omap-pm.c
 								}
 #endif /* DMA_RESET_TEST by et.jo */
-								//                                            
+								// [LGE_IPC] LGE_UPDATE_S DMA RESET TEST et.jo
 
 								return -1; // for no retry in dma timeout
 								// temp code end
@@ -1107,9 +1107,9 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 #endif /* SPI_RETRY_ENABLE */
 					}
 					else
-#endif	/*                 */
-#endif	/*               */
-//                                      
+#endif	/* CONFIG_LGE_SPI 	*/
+#endif	/* LGE_RIL_SPI 		*/
+//LGE_UPDATE_E eungbo.shim@lge.com [EBS]
 	
 		wait_for_completion(&mcspi_dma->dma_rx_completion);
 
@@ -1169,23 +1169,23 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 		} 
 		// if (mcspi->fifo_depth == 0)  // check later
 		omap2_mcspi_set_enable(spi, 1);
-//                                                                 
+// LGE_UPDATES_S eungbo.shim@lge.com [EBS] Move to slave Rdy Code  
 #if 0 // KNK_TEST
 #if 1
 	if (mcspi->mcspi_mode == OMAP2_MCSPI_SLAVE)
 		spi->slave_ready(spi, 0);
 #endif
 #endif
-//                                                                 
+// LGE_UPDATES_E eungbo.shim@lge.com [EBS] Move to slave Rdy Code  
 	}
 	
-	//                                              
+	// [LGE-IPC] LGE_UPDATE_S et.jo@lge.com 20111126
 	if( mcspi->master->bus_num == 4 )
 	{
 		pm_qos_update_request(&pm_qos_handle_for_spi, PM_QOS_DEFAULT_VALUE);
 		omap_pm_set_min_bus_tput(&spi->dev, OCP_INITIATOR_AGENT, -1); 		
 	}
-	//                                     
+	// [LGE-IPC] LGE_UPDATE_E et.jo@lge.com
 	return count;
 }
 
@@ -1687,15 +1687,15 @@ static void omap2_mcspi_work(struct work_struct *work)
 			if (t->len) {
 				unsigned	count;
 #if 0
-//                                
-//                                                                                       
+// LGE_CHANGE_S jisil.park@lge.com
+//LGE_CHANGE_S [david.seo, kibum] 2011-02-05, common : after wakeup,  dma not ready, temp
                                 //TI JANGHANLEE 20110205 OFF_MODE_DMA_WA [START]
-//                                                                                                      
-                                int offmode_enter;              //                              
+//                              extern int offmode_enter;               // LGE_CHANGE jisil.park@lge.com
+                                int offmode_enter;              // LGE_CHANGE jisil.park@lge.com
                                 int dma_sysconfig_cnt;
                                 unsigned long dma_sysconfig_value;
                                 //TI JANGHANLEE 20110205 OFF_MODE_DMA_WA [END]
-//                                                                                 
+//LGE_CHANGE_E [david.seo, kibum] 2011-02-05, common : after wakeup,  dma not ready
 #endif /* blocked by et.jo 20111108 */
 				/* RX_ONLY mode needs dummy data in TX reg */
 				if (t->tx_buf == NULL)
@@ -1727,9 +1727,9 @@ static void omap2_mcspi_work(struct work_struct *work)
 
 				if (count != t->len) {
 					status = -EIO;
-//                                                                                             
+// TODO:[EBS] LGE_UPDATE_S eungbo.shim@lge.com 20110713 For Ril recovery Debugging printk 					
 					printk("[%s] [omap2_mcspi status = %d, count = %d , m->length = %d\n", __FUNCTION__, status, count, m->actual_length);
-//                                                                       
+// TODO:[EBS] LGE_UPDATE_E eungbo.shim@lge.com 20110713 For Ril recovery 
 					break;
 				}
 			}
@@ -1969,13 +1969,13 @@ static int __init omap2_mcspi_probe(struct platform_device *pdev)
 	mcspi->dev = &pdev->dev;
 	INIT_WORK(&mcspi->work, omap2_mcspi_work);
 
-//                                                                      
+// LGE_UPDATE_S eungbo.shim@lge.com [EBS] for make multiple SPI thread 	
 #ifdef CONFIG_LGE_SPI
 	/* make multiple workqueue for multiple spi */
 	sprintf(mcspi->name, "%s_wq%d", pdev->name, pdev->id);
 	mcspi->wq = create_workqueue(mcspi->name);//create_singlethread_workqueue create_rt_workqueue->create_workqueue
 #endif
-//                                                                     
+// LGE_UPDATE_E eungbo.shim@lge.com [EBS] for make multiple SPI thread	
 
 	spin_lock_init(&mcspi->lock);
 	INIT_LIST_HEAD(&mcspi->msg_queue);
@@ -2085,13 +2085,9 @@ static int __init omap2_mcspi_init(void)
 {
 #ifdef CONFIG_LGE_SPI
 #else
-#ifdef CONFIG_LGE_BROADCAST_TDMB
-	omap2_mcspi_wq = create_rt_workqueue(
-				omap2_mcspi_driver.driver.name);
-#else
 	omap2_mcspi_wq = create_singlethread_workqueue(
 				omap2_mcspi_driver.driver.name);
-#endif
+
 	if (omap2_mcspi_wq == NULL)
 		return -1;
 #endif

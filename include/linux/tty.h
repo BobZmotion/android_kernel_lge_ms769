@@ -52,8 +52,8 @@
 #define N_TI_WL		22	/* Texas Instruments WiLink shared transport */
 #define N_TRACESINK	23	/* Trace data routing for MIPI P1149.7 */
 #define N_TRACEROUTER	24	/* Trace data routing for MIPI P1149.7 */
-#define N_RIN		25 /*                                                                         */
-#define N_TS2710	26 /*                                            */
+#define N_RIN		25 /*LGE_SJIT 2011-09-15 [zening.chen@lge.com] ldisk index for rindrv.c driver*/
+#define N_TS2710	26 /* [LGE_IPC] 2012_01_31. ldisc for ts0710_mux */
 /*
  * This character is the same as _POSIX_VDISABLE: it cannot be used as
  * a c_cc[] character, but indicates that a particular special character

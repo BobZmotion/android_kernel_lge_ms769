@@ -2985,8 +2985,6 @@ static void sock_rmem_free(struct sk_buff *skb)
  */
 int sock_queue_err_skb(struct sock *sk, struct sk_buff *skb)
 {
-	int len = skb->len;
-
 	if (atomic_read(&sk->sk_rmem_alloc) + skb->truesize >=
 	    (unsigned)sk->sk_rcvbuf)
 		return -ENOMEM;
@@ -3001,7 +2999,7 @@ int sock_queue_err_skb(struct sock *sk, struct sk_buff *skb)
 
 	skb_queue_tail(&sk->sk_error_queue, skb);
 	if (!sock_flag(sk, SOCK_DEAD))
-		sk->sk_data_ready(sk, len);
+		sk->sk_data_ready(sk, skb->len);
 	return 0;
 }
 EXPORT_SYMBOL(sock_queue_err_skb);
@@ -3044,26 +3042,6 @@ void skb_tstamp_tx(struct sk_buff *orig_skb,
 		kfree_skb(skb);
 }
 EXPORT_SYMBOL_GPL(skb_tstamp_tx);
-
-void skb_complete_wifi_ack(struct sk_buff *skb, bool acked)
-{
-	struct sock *sk = skb->sk;
-	struct sock_exterr_skb *serr;
-	int err;
-
-	skb->wifi_acked_valid = 1;
-	skb->wifi_acked = acked;
-
-	serr = SKB_EXT_ERR(skb);
-	memset(serr, 0, sizeof(*serr));
-	serr->ee.ee_errno = ENOMSG;
-	serr->ee.ee_origin = SO_EE_ORIGIN_TXSTATUS;
-
-	err = sock_queue_err_skb(sk, skb);
-	if (err)
-		kfree_skb(skb);
-}
-EXPORT_SYMBOL_GPL(skb_complete_wifi_ack);
 
 
 /**

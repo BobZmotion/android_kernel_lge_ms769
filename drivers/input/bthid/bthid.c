@@ -1,6 +1,6 @@
 /************************************************************************************
  *
- *  Copyright (C) 2009-2012 Broadcom Corporation
+ *  Copyright (C) 2009-2011 Broadcom Corporation
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNOppU General Public License, version 2, as published by
@@ -205,13 +205,7 @@ static ssize_t bthid_write(struct file *file, const char __user *buffer, size_t 
     return 0;
 }
 
-static int bthid_output_raw_report(struct hid_device *hid, unsigned char *data, size_t count,
-                                   unsigned char report_type)
-{
-    return count;	
-}
-
-static long bthid_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static int bthid_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     int ret;
     struct bthid_ctrl *p_ctrl;
@@ -264,7 +258,6 @@ static long bthid_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned l
     p_dev->hid->country     = p_ctrl->ctry_code;
     p_dev->hid->ll_driver   = &bthid_ll_driver;
     p_dev->hid->driver_data = p_ctrl;
-    p_dev->hid->hid_output_raw_report = bthid_output_raw_report;
 
     // strcpy(p_dev->hid->name, "Broadcom Bluetooth HID");
     strncpy(p_dev->hid->name, p_ctrl->dev_name, BTHID_MAX_DEV_NAME_LEN);

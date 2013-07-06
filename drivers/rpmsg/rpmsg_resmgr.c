@@ -43,6 +43,7 @@
 #define AUX_CLK_MIN	0
 #define AUX_CLK_MAX	5
 #define GPTIMERS_MAX	11
+#define MHZ		1000000
 #define MAX_MSG		(sizeof(struct rprm_ack) + sizeof(struct rprm_sdma))
 
 static struct dentry *rprm_dbg;
@@ -176,11 +177,11 @@ static int rprm_auxclk_request(struct rprm_elem *e, struct rprm_auxclk *obj)
 		return -EINVAL;
 	}
 
-//                                                                                                           
+// [LGE_UPDATE_S] [junhyoung.cho@lge.com] [2012-07-04] OMAPS00273242 [LGE-U2] MCLK is high when Camera is off
 #if 1   // CLK_EXT_SET - OMAPS00273242
     omap_writew(0x0000, 0x4A10019A);
 #endif    
-//                                                                                                           
+// [LGE_UPDATE_E] [junhyoung.cho@lge.com] [2012-07-04] OMAPS00273242 [LGE-U2] MCLK is high when Camera is off
 
 	/* Create auxclks depot */
 	acd = kmalloc(sizeof(*acd), GFP_KERNEL);
@@ -188,9 +189,9 @@ static int rprm_auxclk_request(struct rprm_elem *e, struct rprm_auxclk *obj)
 		return -ENOMEM;
 
 	sprintf(clk_name, "auxclk%d_ck", obj->id);
-//                                                                                                           
+// [LGE_UPDATE_S] [junhyoung.cho@lge.com] [2012-07-04] OMAPS00273242 [LGE-U2] MCLK is high when Camera is off
     printk("<<< auxclk%d_ck\n", obj->id);
-//                                                                                                           
+// [LGE_UPDATE_E] [junhyoung.cho@lge.com] [2012-07-04] OMAPS00273242 [LGE-U2] MCLK is high when Camera is off
 	acd->aux_clk = clk_get(NULL, clk_name);
 	if (!acd->aux_clk) {
 		pr_err("%s: unable to get clock %s\n", __func__, clk_name);
@@ -217,7 +218,7 @@ static int rprm_auxclk_request(struct rprm_elem *e, struct rprm_auxclk *obj)
 		goto error_aux_src;
 	}
 
-	ret = clk_set_rate(src_parent, obj->parent_src_clk_rate);
+	ret = clk_set_rate(src_parent, (obj->parent_src_clk_rate * MHZ));
 	if (ret) {
 		pr_err("%s: rate not supported by %s\n", __func__,
 					clk_src_name[obj->parent_src_clk]);
@@ -239,7 +240,7 @@ static int rprm_auxclk_request(struct rprm_elem *e, struct rprm_auxclk *obj)
 		goto error_aux_src_parent;
 	}
 
-	ret = clk_set_rate(acd->aux_clk, obj->clk_rate);
+	ret = clk_set_rate(acd->aux_clk, (obj->clk_rate * MHZ));
 	if (ret) {
 		pr_err("%s: rate not supported by %s\n", __func__, clk_name);
 		goto error_aux_enable;
@@ -276,13 +277,13 @@ static void rprm_auxclk_release(struct rprm_auxclk_depot *obj)
 	clk_disable((struct clk *)obj->src);
 	clk_put((struct clk *)obj->src);
 
-//                                                                                                           
+// [LGE_UPDATE_S] [junhyoung.cho@lge.com] [2012-07-04] OMAPS00273242 [LGE-U2] MCLK is high when Camera is off
     printk("<<< release auxclk_ck %s\n", obj->aux_clk->name);
 
 #if 1   // CLK_EXT_SET - OMAPS00273242
     omap_writew(0x000f, 0x4A10019A);
 #endif
-//                                                                                                           
+// [LGE_UPDATE_E] [junhyoung.cho@lge.com] [2012-07-04] OMAPS00273242 [LGE-U2] MCLK is high when Camera is off
 
 	kfree(obj);
 }
@@ -1182,7 +1183,7 @@ static struct rpmsg_device_id rprm_id_table[] = {
 	},
 	{ },
 };
-MODULE_DEVICE_TABLE(rpmsg, rprm_id_table);
+MODULE_DEVICE_TABLE(platform, rprm_id_table);
 
 static struct rpmsg_driver rprm_driver = {
 	.drv.name	= KBUILD_MODNAME,

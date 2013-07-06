@@ -922,10 +922,10 @@ static int dx11d100vm_power_on(struct omap_dss_device *dssdev)
 
 		omapdss_dsi_vc_enable_hs(dssdev, td->channel, true);
 
-		/*                                              
-                                                                    
-                                                                                  
-   */
+		/* LGE_SJIT 2012-03-06 [choongryeol.lee@lge.com]
+		 * For ignoring "DISPC_IRQ_SYNC_LOST_DIGIT" that could be happened
+		 * when lcd is resumed, we set the "first_vsync" value as false for HDMI channel
+		 */
 		omap_dispc_set_first_vsync(OMAP_DSS_CHANNEL_DIGIT, false);
 
 		dsi_video_mode_enable(dssdev, 0x3e);

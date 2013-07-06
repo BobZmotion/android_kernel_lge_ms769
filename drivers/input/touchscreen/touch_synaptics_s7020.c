@@ -24,7 +24,7 @@
 #include <mach/gpio.h>
 
 #include <linux/input/lge_touch_core.h>
-#include <linux/input/touch_synaptics.h>
+#include <linux/input/touch_synaptics_s3200.h>
 
 #if defined(CONFIG_MACH_LGE_U2_P769)
 #include "SynaImage_p769.h"
@@ -145,9 +145,6 @@
 #define FLASH_PAGE						(ts->flash_fc.function_page)
 #define DEFAULT_PAGE					0x00
 
-#ifdef CONFIG_MACH_LGE_U2
-#define BUTTON_CONTROL_REG				(ts->button_fc.dsc.control_base)
-#endif
 /* Get user-finger-data from register.
  */
 #define TS_SNTS_GET_X_POSITION(_high_reg, _low_reg) \
@@ -209,7 +206,7 @@ int synaptics_ts_page_data_read(struct i2c_client *client, u8 page, u8 reg, int 
 	return 0;
 }
 
-int synaptics_ts_page_data_write(struct i2c_client *client, u8 page, u8 reg, int size, u8 *data)
+int ts_page_data_write(struct i2c_client *client, u8 page, u8 reg, int size, u8 *data)
 {
 	if (unlikely(touch_i2c_write_byte(client, PAGE_SELECT_REG, page) < 0)) {
 		TOUCH_ERR_MSG("PAGE_SELECT_REG write fail\n");
@@ -259,6 +256,9 @@ int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data)
 	u8 index=0;
 	u8 buf=0;
 	u8 cnt;
+#ifdef CONFIG_MACH_LGE_U2
+	int retry = 5;
+#endif
 	data->total_num = 0;
 
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
@@ -274,13 +274,21 @@ int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data)
 	if (unlikely(touch_debug_mask & DEBUG_GET_DATA))
 		TOUCH_INFO_MSG("Interrupt_status : 0x%x\n", ts->ts_data.interrupt_status_reg);
 
-#ifndef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200
+#ifdef CONFIG_MACH_LGE_U2
+/* Insert check routine for Interrupt status register */
+	while (retry-- > 0 && ts->ts_data.interrupt_status_reg == 0) {
+		msleep(10);
+		touch_i2c_read(client, INTERRUPT_STATUS_REG,
+                        sizeof(ts->ts_data.interrupt_status_reg),
+                        &ts->ts_data.interrupt_status_reg);
+	}
+#endif
+
 	/* IC bug Exception handling - Interrupt status reg is 0 when interrupt occur */
 	if (ts->ts_data.interrupt_status_reg == 0) {
 		TOUCH_ERR_MSG("Interrupt_status reg is 0. Something is wrong in IC\n");
 		goto err_synaptics_device_damage;
 	}
-#endif
 
 	/* Because of ESD damage... */
 	if (unlikely(ts->ts_data.interrupt_status_reg & INTERRUPT_MASK_FLASH)){
@@ -338,7 +346,7 @@ int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data)
 				TS_SNTS_GET_X_POSITION(ts->ts_data.finger.finger_reg[finger_index][REG_X_POSITION],
 									   ts->ts_data.finger.finger_reg[finger_index][REG_YX_POSITION]);
 #if defined(CONFIG_MACH_LGE_U2_P769)
-			if (system_rev == 1 /*         */)	/* for Rev.A - U2 LCD(540 x 960) & X3 Touch panel (1440 x 2780) */
+			if (system_rev == 1 /*LGE_PCB_A*/)	/* for Rev.A - U2 LCD(540 x 960) & X3 Touch panel (1440 x 2780) */
                                 data->curr_data[finger_index].y_position = ts->pdata->caps->y_max - TS_SNTS_GET_Y_POSITION(ts->ts_data.finger.finger_reg[finger_index][REG_Y_POSITION],
                                                                            ts->ts_data.finger.finger_reg[finger_index][REG_YX_POSITION]);
 			else
@@ -391,14 +399,6 @@ int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data)
 						ts->ts_data.button.key_code = ts->pdata->caps->button_name[cnt];
 						data->curr_button.key_code = ts->ts_data.button.key_code;
 						data->curr_button.state = 1;
-#ifdef CONFIG_MACH_LGE_U2
-                                                if ((ts->ts_data.button_data_reg >> (cnt+1)) & 0xf)
-                                                {
-                                                        if (data->curr_button.key_code == data->prev_button.key_code)
-                                                                break;
-                                                }
-                                                else
-#endif
 						break;
 					}
 				}
@@ -565,7 +565,7 @@ int get_ic_info(struct synaptics_ts_data* ts, struct touch_fw_info* fw_info)
 
 	ts->fw_info.fw_image_rev = ts->fw_info.fw_start[31];
 
-#ifdef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200       /*                                                                                        */
+#ifdef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200       /* seungbum.park@lge.com - 2012/06/11 - for synaptics 3200 serise (S3203) and 7000 serise */
 	// copy CONFIG_ID of fw image header file
         snprintf(fw_info->fw_identifier, sizeof(fw_info->fw_identifier),
                         "%s", ts->fw_info.fw_image_product_id);
@@ -663,29 +663,6 @@ int synaptics_ts_init(struct i2c_client* client, struct touch_fw_info* fw_info)
 			return -EIO;
 		}
 	}
-
-#ifdef CONFIG_MACH_LGE_U2
-/* button threshold is adjusted */
-	if (unlikely(touch_i2c_write_byte(client, PAGE_SELECT_REG, 0x02) < 0)) {
-		TOUCH_ERR_MSG("PAGE_SELECT_REG write fail\n");
-		return -EIO;
-	}
-
-	if (unlikely(touch_i2c_write_byte(client, BUTTON_CONTROL_REG+19, 0x82) < 0)) {
-		TOUCH_ERR_MSG("BUTTON0_THRESHOLD_REG write fail\n");
-		return -EIO;
-	}
-
-        if (unlikely(touch_i2c_write_byte(client, BUTTON_CONTROL_REG+20, 0x87) < 0)) {
-                TOUCH_ERR_MSG("BUTTON1_THRESHOLD_REG write fail\n");
-                return -EIO;
-        }
-
-	if (unlikely(touch_i2c_write_byte(ts->client, PAGE_SELECT_REG, 0x00) < 0)) {
-		TOUCH_ERR_MSG("PAGE_SELECT_REG write fail\n");
-		return -EIO;
-	}
-#endif
 
 	if (unlikely(touch_i2c_read(client, INTERRUPT_STATUS_REG, 1, &buf) < 0)) {
 		TOUCH_ERR_MSG("INTERRUPT_STATUS_REG read fail\n");

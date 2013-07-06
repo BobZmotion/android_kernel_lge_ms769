@@ -704,7 +704,7 @@ static int wifi_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	DHD_TRACE(("##> %s\n", __FUNCTION__));
 #if defined(OOB_INTR_ONLY)
-//                                                                                             
+//	bcmsdh_oob_intr_set(0);    //real-wifi@lge.com by david.moon 110917 hostwakeup stabilization
 #endif /* (OOB_INTR_ONLY) */
 	return 0;
 }
@@ -713,7 +713,7 @@ static int wifi_resume(struct platform_device *pdev)
 {
 	DHD_TRACE(("##> %s\n", __FUNCTION__));
 #if defined(OOB_INTR_ONLY)
-//                                                                                            
+//	bcmsdh_oob_intr_set(1);   //real-wifi@lge.com by david.moon 110917 hostwakeup stabilization
 #endif /* (OOB_INTR_ONLY) */
 	return 0;
 }
@@ -774,5 +774,5 @@ void* wl_android_prealloc(int section, unsigned long size)
 	DHD_ERROR(("can't alloc section %d\n", section));
 	return 0;
 }
-#endif /*                                                                          */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_BRCM_USE_STATIC_BUF) */
 #endif /* defined(CONFIG_WIFI_CONTROL_FUNC) */

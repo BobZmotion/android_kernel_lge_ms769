@@ -96,13 +96,13 @@ void fc8050_isr(HANDLE hDevice)
 
 					bbm_data(hDevice, (BBM_COM_CH0_DATA+i), &mscBuffer[4], size);
 
-					if(pMscCallback)
+						if(pMscCallback)
 						(*pMscCallback)(gMscUserData, subChId, &mscBuffer[4], size);
+					}
+					}
 				}
 			}
-		}
-	}
-	
+
 	//bbm_write(hDevice, BBM_COM_INT_ENABLE, ENABLE_INT_MASK);
 }
 

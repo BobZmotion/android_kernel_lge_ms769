@@ -20,7 +20,7 @@ struct pwm_vibrator_platform_data {
 	u32 duty;
 	u32 gpio_enable;
 	int (*power)(bool bool);
-	int port;	//                                                        
+	int port;	//LGE_SJIT 2011-09-01 [jongrak.kwon@lge.com] pwm port info
 };
 
 #endif /* __PWM_VIBRATOR_H */

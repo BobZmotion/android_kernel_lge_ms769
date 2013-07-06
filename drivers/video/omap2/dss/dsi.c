@@ -134,7 +134,7 @@ struct dsi_reg { u16 idx; };
 #define DSI_IRQ_LDO_POWER_GOOD	(1 << 19)
 #define DSI_IRQ_TA_TIMEOUT	(1 << 20)
 #ifdef CONFIG_OMAP_USE_CMOS_TE_TRIGGER
-#define DSI_IRQ_TE0_LINE (1 << 21)  //                                                                 
+#define DSI_IRQ_TE0_LINE (1 << 21)  //LGE_SJIT 2012-01-26 [choongryeol.lee@lge.com] Add to use CMOS TE0
 #endif
 #define DSI_IRQ_ERROR_MASK \
 	(DSI_IRQ_HS_TX_TIMEOUT | DSI_IRQ_LP_RX_TIMEOUT | DSI_IRQ_SYNC_LOST | \
@@ -223,6 +223,13 @@ struct dsi_reg { u16 idx; };
 typedef void (*omap_dsi_isr_t) (void *arg, u32 mask);
 
 #define DSI_MAX_NR_ISRS                2
+
+#if 1	//##hwcho_20120512
+enum omap_dsi_mode {
+	OMAP_DSI_MODE_CMD = 0,
+	OMAP_DSI_MODE_VIDEO = 1,
+};
+#endif
 
 struct dsi_isr_data {
 	omap_dsi_isr_t	isr;
@@ -388,7 +395,7 @@ static int dsi_get_dsidev_id(struct platform_device *dsidev)
 	 * "omapdss_dsi.1" and so on */
 	BUG_ON(dsidev->id != -1);
 
-	/*                                                                         */
+	/* LGE_SJIT 2011-11-02 [choongryeol.lee@lge.com] TEMP : dsi1, dsi2 support */
 	if (strcmp(dsidev->name, "omapdss_dsi2") == 0)
 		return 1;
 	else
@@ -453,8 +460,11 @@ static void dsi_completion_handler(void *data, u32 mask)
 static inline int wait_for_bit_change(struct platform_device *dsidev,
 		const struct dsi_reg idx, int bitnum, int value)
 {
+#if defined(CONFIG_PANEL_LH430WV5_SD01)
+	int t = 100000 * 4;
+#else
 	int t = 100000;
-
+#endif //##
 	while (REG_GET(dsidev, idx, bitnum, bitnum) != value) {
 		if (--t == 0)
 			return !value;
@@ -685,9 +695,9 @@ static void dsi_handle_irq_errors(struct platform_device *dsidev, u32 irqstatus,
 	if (ciostatus & DSI_CIO_IRQ_ERROR_MASK) {
 		DSSERR("DSI CIO error, cio irqstatus %x\n", ciostatus);
 		print_irq_status_cio(ciostatus);
-		/*                                        
-                                                    
-   */
+		/* LGE_SJIT 2011-12-20 [dojip.kim@lge.com]
+		 * FIXME: sometimes repeatedly errors on rebooting
+		 */
 #if defined(CONFIG_MACH_LGE)
 		if (system_state == SYSTEM_RESTART ||
 		    system_state == SYSTEM_POWER_OFF) {
@@ -807,7 +817,7 @@ static irqreturn_t omap_dsi_irq_handler(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-/*                                                               */
+/* LGE_SJIT_S 2011-11-02 [choongryeol.lee@lge.com] support DSI2l */
 static irqreturn_t omap_dsi2_irq_handler(int irq, void *arg)
 {
 	struct platform_device *dsidev;
@@ -878,7 +888,7 @@ static irqreturn_t omap_dsi2_irq_handler(int irq, void *arg)
 
 	return IRQ_HANDLED;
 }
-/*                                                              */
+/* LGE_SJIT_E 2011-11-02 [choongryeol.lee@lge.com] support DSI2 */
 
 
 /* dsi->irq_lock has to be locked by the caller */
@@ -1691,13 +1701,25 @@ int dsi_pll_set_clock_div(struct platform_device *dsidev,
 	l = FLD_MOD(l, 1, 0, 0);		/* DSI_PLL_STOPMODE */
 #if defined (CONFIG_MACH_LGE)	
 	/* DSI_PLL_REGN */
+#ifdef CONFIG_MACH_LGE_CX2
+	l = FLD_MOD(l, cinfo->regn - 1 /* diff gb cinfo->regn - 1 <- cinfo->regn */, regn_start, regn_end); //for DSI_PLL_CONFIGURATION1
+#else
 	l = FLD_MOD(l, cinfo->regn, regn_start, regn_end);
+#endif
 	/* DSI_PLL_REGM */
 	l = FLD_MOD(l, cinfo->regm, regm_start, regm_end);
 	/* DSI_CLOCK_DIV */
+#ifdef CONFIG_MACH_LGE_CX2
+	l = FLD_MOD(l, cinfo->regm_dispc > 0 ? cinfo->regm_dispc - 1 : 0 /* diff gb cinfo->regm_dispc > 0 ? cinfo->regm_dispc - 1 : 0 <- cinfo->regm_dispc */, regm_dispc_start, regm_dispc_end); //for DSI_PLL_CONFIGURATION1
+#else
 	l = FLD_MOD(l, cinfo->regm_dispc, regm_dispc_start, regm_dispc_end);
+#endif
 	/* DSIPROTO_CLOCK_DIV */
+#ifdef CONFIG_MACH_LGE_CX2
+	l = FLD_MOD(l, cinfo->regm_dsi > 0 ? cinfo->regm_dsi - 1 : 0 /* diff gb cinfo->regm_dsi > 0 ? cinfo->regm_dsi - 1 : 0 <- cinfo->regm_dsi */, regm_dsi_start, regm_dsi_end); //for DSI_PLL_CONFIGURATION1
+#else
 	l = FLD_MOD(l, cinfo->regm_dsi, regm_dsi_start, regm_dsi_end);
+#endif
 #else /*original */
 	/* DSI_PLL_REGN */
 	l = FLD_MOD(l, cinfo->regn - 1, regn_start, regn_end);
@@ -1744,7 +1766,7 @@ if(ssc_enable)
 #if defined(CONFIG_PANEL_TX11D108VM_0BAA)
 			l = 0x17e00ccd;//212.2MHz fm:1000
 #elif defined(CONFIG_PANEL_HX8389)
-			l = 0x17e00d2a; // 216.9MHz fm:1000
+			l = 0x17800e77; // 216.9MHz fm:1000
 #endif
 			dsi_write_reg(dsidev, DSI_PLL_SSC_CONFIGURATION2, l);
 			l = 1;	//down spread off
@@ -2355,14 +2377,13 @@ static inline unsigned ddr2ns(struct platform_device *dsidev, unsigned ddr)
 	return ddr * 1000 * 1000 / (ddr_clk / 1000);
 }
 
-static void dsi_cio_timings(struct omap_dss_device *dssdev)
+static void dsi_cio_timings(struct platform_device *dsidev)
 {
 	u32 r;
 	u32 ths_prepare, ths_prepare_ths_zero, ths_trail, ths_exit;
 	u32 tlpx_half, tclk_trail, tclk_zero;
 	u32 tclk_prepare;
-	struct platform_device *dsidev = dsi_get_dsidev_from_dssdev(dssdev);
-#if defined (CONFIG_MACH_LGE)
+
 	/* calculate timings */
 
 	/* 1 * DDR_CLK = 2 * UI */
@@ -2389,17 +2410,10 @@ static void dsi_cio_timings(struct omap_dss_device *dssdev)
 	tclk_prepare = ns2ddr(dsidev, 65);
 
 	/* min tclk-prepare + tclk-zero = 300ns */
+#if defined(CONFIG_PANEL_LH430WV2_SD01)
+	tclk_zero = ns2ddr(dsidev, 265 /* diff gb 265 <- 260 */); //for DSI_DSIPHY_CFG0
+#else
 	tclk_zero = ns2ddr(dsidev, 260);
-
-#else //original  FIXME: this code would be alive.
-	ths_prepare		= dssdev->clocks.dsi.ths.prepare;
-	ths_prepare_ths_zero	= ths_prepare + dssdev->clocks.dsi.ths.zero;
-	ths_trail		= dssdev->clocks.dsi.ths.trail;
-	ths_exit		= dssdev->clocks.dsi.ths.exit;
-	tlpx_half		= dssdev->clocks.dsi.tlpx / 2;
-	tclk_trail		= dssdev->clocks.dsi.tclk.trail;
-	tclk_prepare		= dssdev->clocks.dsi.tclk.prepare;
-	tclk_zero		= dssdev->clocks.dsi.tclk.zero;
 #endif
 
 	DSSDBG("ths_prepare %u (%uns), ths_prepare_ths_zero %u (%uns)\n",
@@ -2669,7 +2683,7 @@ static int dsi_cio_init(struct omap_dss_device *dssdev)
 	/* FORCE_TX_STOP_MODE_IO */
 	REG_FLD_MOD(dsidev, DSI_TIMING1, 0, 15, 15);
 
-	dsi_cio_timings(dssdev);
+	dsi_cio_timings(dsidev);
 
 	dsi->ulps_enabled = false;
 
@@ -2939,7 +2953,7 @@ static void dsi_vc_initial_config(struct platform_device *dsidev, int channel)
 	if (dss_has_feature(FEAT_DSI_VC_OCP_WIDTH))
 		r = FLD_MOD(r, 3, 11, 10); /* OCP_WIDTH = 32 bit */
 
-/*                                                                                 */
+/* LGE_SJIT_S 2011-10-07 [choongryeol.lee@lge.com] OCP_WIDTH should be 32bit (0x3) */
 #if !defined (CONFIG_MACH_LGE)
 	/* TO DO: This is a HACK as performing this command on blaze
 	 * causes DSI errors and does not allow blaze to display anything
@@ -2950,7 +2964,7 @@ static void dsi_vc_initial_config(struct platform_device *dsidev, int channel)
 			r = FLD_MOD(r, 1, 11, 10); /* OCP_WIDTH = 32 bit */
 	}
 #endif
-/*                                                                                 */
+/* LGE_SJIT_E 2011-10-07 [choongryeol.lee@lge.com] OCP_WIDTH should be 32bit (0x3) */
 
 	r = FLD_MOD(r, 4, 29, 27); /* DMA_RX_REQ_NB = no dma */
 	r = FLD_MOD(r, 4, 23, 21); /* DMA_TX_REQ_NB = no dma */
@@ -2965,8 +2979,6 @@ static int dsi_vc_config_l4(struct platform_device *dsidev, int channel)
 	if (dsi->vc[channel].mode == DSI_VC_MODE_L4)
 		return 0;
 
-	DSSDBGF("%d", channel);
-
 	dsi_sync_vc(dsidev, channel);
 
 	dsi_vc_enable(dsidev, channel, 0);
@@ -2977,12 +2989,18 @@ static int dsi_vc_config_l4(struct platform_device *dsidev, int channel)
 		return -EIO;
 	}
 
+#if defined(CONFIG_PANEL_LH430WV5_SD01)	//##hwcho)20120514
+	dsi_vc_initial_config(dsidev, channel);
+#else
 	REG_FLD_MOD(dsidev, DSI_VC_CTRL(channel), 0, 1, 1); /* SOURCE, 0 = L4 */
 
 	/* DCS_CMD_ENABLE */
 	if (dss_has_feature(FEAT_DSI_DCS_CMD_CONFIG_VC))
+	{
+		printk(KERN_ERR "[HYUN]%s, DCS_CMD_ENABLE\n", __func__);
 		REG_FLD_MOD(dsidev, DSI_VC_CTRL(channel), 0, 30, 30);
-
+	}
+#endif //##
 	dsi_vc_enable(dsidev, channel, 1);
 
 	dsi->vc[channel].mode = DSI_VC_MODE_L4;
@@ -2990,14 +3008,36 @@ static int dsi_vc_config_l4(struct platform_device *dsidev, int channel)
 	return 0;
 }
 
+#if defined(CONFIG_PANEL_LH430WV5_SD01)	//##hwcho_20120514
+static void dsi_vc_initial_config_vp(struct platform_device *dsidev, int channel,enum omap_dsi_mode dsi_mode)
+{
+	u32 r;
+
+	DSSDBGF("%d", channel);
+
+	r = dsi_read_reg(dsidev, DSI_VC_CTRL(channel));
+	r = FLD_MOD(r, 1, 1, 1); /* SOURCE, 1 = video port */
+	r = FLD_MOD(r, 0, 2, 2); /* BTA_SHORT_EN */
+	r = FLD_MOD(r, 0, 3, 3); /* BTA_LONG_EN */
+	r = FLD_MOD(r, (OMAP_DSI_MODE_CMD == dsi_mode) ? 0 : 1, 4, 4); /* MODE, 0 = command, 1 = video*/
+	r = FLD_MOD(r, 1, 7, 7); /* CS_TX_EN */
+	r = FLD_MOD(r, 1, 8, 8); /* ECC_TX_EN */
+	r = FLD_MOD(r, 1, 9, 9); /* MODE_SPEED, high speed on/off */
+	r = FLD_MOD(r, 1, 12, 12);	/*RGB565_ORDER*/
+	r = FLD_MOD(r, 4, 29, 27); /* DMA_RX_REQ_NB = no dma */
+	r = FLD_MOD(r, 4, 23, 21); /* DMA_TX_REQ_NB = no dma */
+	r = FLD_MOD(r, (OMAP_DSI_MODE_CMD == dsi_mode) ? 1: 0, 30, 30);	/* DCS_CMD_ENABLE*/
+	r = FLD_MOD(r, 0, 31, 31);	/* DCS_CMD_CODE*/
+	dsi_write_reg(dsidev, DSI_VC_CTRL(channel), r);
+}
+#endif //##
+
 static int dsi_vc_config_vp(struct platform_device *dsidev, int channel)
 {
 	struct dsi_data *dsi = dsi_get_dsidrv_data(dsidev);
 
 	if (dsi->vc[channel].mode == DSI_VC_MODE_VP)
 		return 0;
-
-	DSSDBGF("%d", channel);
 
 	dsi_sync_vc(dsidev, channel);
 
@@ -3009,13 +3049,16 @@ static int dsi_vc_config_vp(struct platform_device *dsidev, int channel)
 		return -EIO;
 	}
 
+#if defined(CONFIG_PANEL_LH430WV5_SD01)
+	dsi_vc_initial_config_vp(dsidev, channel, OMAP_DSI_MODE_VIDEO);
+#else
 	/* SOURCE, 1 = video port */
 	REG_FLD_MOD(dsidev, DSI_VC_CTRL(channel), 1, 1, 1);
 
 	/* DCS_CMD_ENABLE */
 	if (dss_has_feature(FEAT_DSI_DCS_CMD_CONFIG_VC))
 		REG_FLD_MOD(dsidev, DSI_VC_CTRL(channel), 1, 30, 30);
-
+#endif //##
 	dsi_vc_enable(dsidev, channel, 1);
 
 	dsi->vc[channel].mode = DSI_VC_MODE_VP;
@@ -3243,6 +3286,10 @@ static int dsi_vc_send_long(struct platform_device *dsidev, int channel,
 
 	dsi_vc_config_l4(dsidev, channel);
 
+#if defined (CONFIG_PANEL_LH430WV5_SD01) /*kyungyoon.kim@lge.com*/
+	udelay(1);
+#endif
+
 	dsi_vc_write_long_header(dsidev, channel, data_type, len, ecc);
 
 	p = data;
@@ -3314,10 +3361,12 @@ static int dsi_vc_send_short(struct platform_device *dsidev, int channel,
 
 	dsi_vc_config_l4(dsidev, channel);
 
+#if !defined(CONFIG_PANEL_LH430WV5_SD01)
 	if (FLD_GET(dsi_read_reg(dsidev, DSI_VC_CTRL(channel)), 16, 16)) {
 		DSSERR("ERROR FIFO FULL, aborting transfer\n");
 		return -EINVAL;
 	}
+#endif //##
 
 	data_id = data_type | dsi->vc[channel].vc_id << 6;
 
@@ -3372,9 +3421,9 @@ int dsi_vc_dcs_write(struct omap_dss_device *dssdev, int channel, u8 *data,
 	if (r)
 		goto err;
 
-/*                                               
-                                                               
-                               */
+/* LGE_SJIT 2012-01-26 [choongryeol.lee@lge.com] 
+  * When we use video mode or CMOS TE trigger in commnad mode, 
+  * BTA sending is not needed. */
 #if !defined (CONFIG_DSI_VIDEO_MODE) && !defined(CONFIG_OMAP_USE_CMOS_TE_TRIGGER) 
 	r = dsi_vc_send_bta_sync(dssdev, channel);
 	if (r)
@@ -3994,7 +4043,7 @@ static int dsi_cmd_proto_config(struct omap_dss_device *dssdev)
 
 static int dispc_to_dsi_clock(int val, int pixel_size, int lanes)
 {
-/*                                                                            */
+/* LGE_SJIT 2011-10-07 [choongryeol.lee@lge.com] change equation as TRM doc.  */
 #if defined(CONFIG_MACH_LGE)
 	int hfp_dsi;
 
@@ -4010,7 +4059,7 @@ static int dispc_to_dsi_clock(int val, int pixel_size, int lanes)
 #endif
 }
 
-/*                                                                                                          */
+/* LGE_SJIT_S 2011-11-02 [choongryeol.lee@lge.com] equation to get HBP in dsi clock from HBP in dispc clock */
 static int dispc_to_dsi_clock_for_hbp(struct omap_video_timings *timings, int bytes_per_pixel, int lanes, uint hfp)
 {
 	int hbp;
@@ -4027,13 +4076,12 @@ static int dispc_to_dsi_clock_for_hbp(struct omap_video_timings *timings, int by
 
 	return  hbp;
 }
-/*                                                                                                          */
+/* LGE_SJIT_E 2011-11-02 [choongryeol.lee@lge.com] equation to get HBP in dsi clock from HBP in dispc clock */
 
 static int dsi_video_proto_config(struct omap_dss_device *dssdev)
 {
 	struct platform_device *dsidev = dsi_get_dsidev_from_dssdev(dssdev);
 	struct omap_video_timings *timings = &dssdev->panel.timings;
-	struct omap_dsi_timings t;
 	int buswidth = 0;
 	u32 r;
 	int bytes_per_pixel;
@@ -4098,7 +4146,7 @@ static int dsi_video_proto_config(struct omap_dss_device *dssdev)
 	r = FLD_MOD(r, 1, 9, 9);	/* VP_DE_POL */
 	r = FLD_MOD(r, 0, 10, 10);	/* VP_HSYNC_POL */
 	r = FLD_MOD(r, 1, 11, 11);	/* VP_VSYNC_POL */
-	r = FLD_MOD(r, dssdev->phy.dsi.line_bufs, 13, 12);/* LINE_BUFFER */
+	r = FLD_MOD(r, 2, 13, 12);	/* LINE_BUFFER */
 	r = FLD_MOD(r, 1, 14, 14);	/* TRIGGER_RESET_MODE */
 	r = FLD_MOD(r, 1, 15, 15);	/* VP_VSYNC_START */
 	r = FLD_MOD(r, 1, 17, 17);	/* VP_HSYNC_START */
@@ -4118,7 +4166,7 @@ static int dsi_video_proto_config(struct omap_dss_device *dssdev)
 		dsi_vc_initial_config(dsidev, 3);
 	}
 
-/*                                                */
+/* LGE_SJIT 2011-11-02 [choongryeol.lee@lge.com]  */
  #if defined (CONFIG_MACH_LGE)
 
  /* 1. Change method of DSI timing calculation as OMAP4430/60 TRM Doc. */
@@ -4131,8 +4179,13 @@ static int dsi_video_proto_config(struct omap_dss_device *dssdev)
 	/* HSA does not have to be programmed when DSI_CTRL[18] VP_HSYNC_END=0 */
 	hsa = 0;
 	
+#ifdef CONFIG_HRZ_II
+	tl = DIV_ROUND_UP((480 +  timings->hsw + timings->hbp + timings->hfp) 
+			*bytes_per_pixel,lanes);
+#else
 	tl = DIV_ROUND_UP((timings->x_res + timings->hsw + timings->hbp + timings->hfp) 
 			*bytes_per_pixel,lanes);
+#endif
 
 	r = dsi_read_reg(dsidev, DSI_VM_TIMING1);
 	r = FLD_MOD(r, hbp, 11, 0);   /* HBP */
@@ -4148,7 +4201,11 @@ static int dsi_video_proto_config(struct omap_dss_device *dssdev)
 	dsi_write_reg(dsidev, DSI_VM_TIMING2, r);
 
 	r = dsi_read_reg(dsidev, DSI_VM_TIMING3);
+#ifdef CONFIG_HRZ_II 
+	r = FLD_MOD(r, 800, 15, 0);
+#else
 	r = FLD_MOD(r, timings->y_res, 15, 0);
+#endif
 	r = FLD_MOD(r, tl, 31, 16);
 	dsi_write_reg(dsidev, DSI_VM_TIMING3, r);
 
@@ -4168,39 +4225,40 @@ static int dsi_video_proto_config(struct omap_dss_device *dssdev)
 	tl =  dispc_to_dsi_clock(line, dssdev->ctrl.pixel_size, lanes);
 
 	r = dsi_read_reg(dsidev, DSI_VM_TIMING1);
-	r = FLD_MOD(r, t.hbp, 11, 0);		/* HBP */
-	r = FLD_MOD(r, t.hfp, 23, 12);		/* HFP */
-	r = FLD_MOD(r, t.hsa, 31, 24);		/* HSA */
+	r = FLD_MOD(r, hbp, 11, 0);   /* HBP */
+	r = FLD_MOD(r, hfp, 23, 12);  /* HFP */
+	r = FLD_MOD(r, hsa, 31, 24);  /* HSA */
 	dsi_write_reg(dsidev, DSI_VM_TIMING1, r);
 
 	r = dsi_read_reg(dsidev, DSI_VM_TIMING2);
-	r = FLD_MOD(r, t.vbp, 7, 0);		/* VBP */
-	r = FLD_MOD(r, t.vfp, 15, 8);		/* VFP */
-	r = FLD_MOD(r, t.vsa, 23, 16);		/* VSA */
-	r = FLD_MOD(r, 4, 27, 24);		/* WINDOW_SYNC */
+	r = FLD_MOD(r, timings->vbp, 7, 0);    /* VBP */
+	r = FLD_MOD(r, timings->vfp, 15, 8);   /* VFP */
+	r = FLD_MOD(r, timings->vsw, 23, 16);  /* VSA */
+	r = FLD_MOD(r, 4, 27, 24);	/* WINDOW_SYNC */
 	dsi_write_reg(dsidev, DSI_VM_TIMING2, r);
 
 	r = dsi_read_reg(dsidev, DSI_VM_TIMING3);
-	r = FLD_MOD(r, t.vact, 14, 0);		/* Active lines */
-	r = FLD_MOD(r, t.tl, 31, 16);		/* Total line length */
+	r = FLD_MOD(r, timings->y_res, 14, 0);
+	r = FLD_MOD(r, tl, 31, 16);
 	dsi_write_reg(dsidev, DSI_VM_TIMING3, r);
 
-	r = FLD_VAL(t.hsa_hs_int, 23, 16) |      /* HSA_HS_INTERLEAVING */
-		FLD_VAL(t.hfp_hs_int, 15, 8) |   /* HFP_HS_INTERLEAVING */
-		FLD_VAL(t.hbp_hs_int, 7, 0);     /* HBP_HS_INTERLEAVING */
+	/* TODO: either calculate these values or make them configurable */
+	r = FLD_VAL(72, 23, 16) |       /* HSA_HS_INTERLEAVING */
+		FLD_VAL(114, 15, 8) |   /* HFB_HS_INTERLEAVING */
+		FLD_VAL(150, 7, 0);     /* HbB_HS_INTERLEAVING */
 	dsi_write_reg(dsidev, DSI_VM_TIMING4, r);
 
-	r = FLD_VAL(t.hsa_lp_int, 23, 16) |	/* HSA_LP_INTERLEAVING */
-		FLD_VAL(t.hfp_lp_int, 15, 8) |	/* HFP_LP_INTERLEAVING */
-		FLD_VAL(t.hbp_lp_int, 7, 0);	/* HBP_LP_INTERLEAVING */
+	r = FLD_VAL(130, 23, 16) |      /* HSA_LP_INTERLEAVING */
+		FLD_VAL(223, 15, 8) |   /* HFB_LP_INTERLEAVING */
+		FLD_VAL(59, 7, 0);      /* HBB_LP_INTERLEAVING */
 	dsi_write_reg(dsidev, DSI_VM_TIMING5, r);
 
-	r = FLD_VAL(t.bl_hs_int, 31, 16) |	/* BL_HS_INTERLEAVING */
-		FLD_VAL(t.bl_lp_int, 15, 0);	/* BL_LP_INTERLEAVING */
+	r = FLD_VAL(0x7A67, 31, 16) |   /* BL_HS_INTERLEAVING */
+		FLD_VAL(0x31D1, 15, 0); /* BL_LP_INTERLEAVING */
 	dsi_write_reg(dsidev, DSI_VM_TIMING6, r);
 
-	r = FLD_VAL(t.enter_lat, 31, 16) |	/* ENTER_HS_MODE_LATENCY */
-		FLD_VAL(t.exit_lat, 15, 0);	/* EXIT_HS_MODE_LATENCY */
+	r = FLD_VAL(18, 31, 16) |       /* ENTER_HS_MODE_LATENCY */
+		FLD_VAL(15, 15, 0);	/* EXIT_HS_MODE_LATENCY */
 	dsi_write_reg(dsidev, DSI_VM_TIMING7, r);
 #endif
 
@@ -4211,12 +4269,63 @@ static int dsi_video_proto_config(struct omap_dss_device *dssdev)
 	return 0;
 }
 
+#if defined (CONFIG_PANEL_LH430WV5_SD01)
 int dsi_video_mode_enable(struct omap_dss_device *dssdev, u8 data_type)
 {
 	struct platform_device *dsidev = dsi_get_dsidev_from_dssdev(dssdev);
-/*                                                                        */
 	struct dsi_data *dsi = dsi_get_dsidrv_data(dsidev);
-/*                                                                        */
+	u16 word_count;
+	u32 r;
+	u32 header;
+	u8 data_id;	
+	enum omap_dsi_index lcd_ix;
+	
+	printk(KERN_ERR "[HYUN]%s channel=%d\n", __func__, dssdev->channel);
+	lcd_ix = (dssdev->channel == OMAP_DSS_CHANNEL_LCD2) ? DSI1 : DSI2;
+
+	dsi_if_enable(dsidev, false);
+	dsi_vc_enable(dsidev, lcd_ix, false);
+
+	/* FORCE_TX_STOP_MODE_IO */
+	/* REG_FLD_MOD(dsidev, DSI_TIMING1, 1, 15, 15); */
+
+	if (wait_for_bit_change(dsidev, DSI_PLL_STATUS, 15, 0) != 0)
+		BUG();
+
+	r = dsi_read_reg(dsidev, DSI_VC_CTRL(lcd_ix));  //FIXME - VC(0) hardcord 
+
+	dsi_vc_initial_config_vp(dsidev, lcd_ix, OMAP_DSI_MODE_VIDEO);
+	dsi->vc[lcd_ix].mode = DSI_VC_MODE_VP;  //FIXME - VC(0) hardcord
+
+#ifdef CONFIG_HRZ_II
+	word_count = 480 * 3;
+#else
+	word_count = dssdev->panel.timings.x_res * 3;
+#endif
+	data_id = data_type | dsi->vc[lcd_ix].vc_id << 6;
+	header = FLD_VAL(data_id, 7, 0) /*DATA ID: Virtual channel + data type*/
+				| FLD_VAL(word_count, 23, 8) /* word count*/
+				| FLD_VAL(0, 31, 24); /* ECC */
+	dsi_write_reg(dsidev, DSI_VC_LONG_PACKET_HEADER(lcd_ix), header);
+
+	dsi_vc_enable(dsidev, lcd_ix, true);
+	dsi_if_enable(dsidev, true);
+	msleep(2);
+
+	dssdev->manager->enable(dssdev->manager);
+	msleep(2);
+
+	return 0;
+}
+EXPORT_SYMBOL(dsi_video_mode_enable);
+
+#else
+int dsi_video_mode_enable(struct omap_dss_device *dssdev, u8 data_type)
+{
+	struct platform_device *dsidev = dsi_get_dsidev_from_dssdev(dssdev);
+/* LGE_SJIT_S 2011-11-09 [choongryeol.lee@lge.com] To set  DSI_VC_MODE_VP */
+	struct dsi_data *dsi = dsi_get_dsidrv_data(dsidev);
+/* LGE_SJIT_E 2011-11-09 [choongryeol.lee@lge.com] To set  DSI_VC_MODE_VP */
 	u16 word_count;
 	u32 r;
 	u32 header;
@@ -4233,7 +4342,7 @@ int dsi_video_mode_enable(struct omap_dss_device *dssdev, u8 data_type)
 
 	r = dsi_read_reg(dsidev, DSI_VC_CTRL(0));  //FIXME - VC(0) hardcord 
 	
-#if defined(CONFIG_MACH_LGE) //                                               
+#if defined(CONFIG_MACH_LGE) // LGE_SJIT 2011-10-07 [choongryeol.lee@lge.com] 
 	r = FLD_MOD(r, 1, 1, 1); /* SOURCE, 1 = video port */
 	r = FLD_MOD(r, 0, 2, 2); /* BTA_SHORT_EN */
 	r = FLD_MOD(r, 0, 3, 3); /* BTA_LONG_EN */
@@ -4279,6 +4388,7 @@ int dsi_video_mode_enable(struct omap_dss_device *dssdev, u8 data_type)
 	return 0;
 }
 EXPORT_SYMBOL(dsi_video_mode_enable);
+#endif //##
 
 void dsi_video_mode_disable(struct omap_dss_device *dssdev)
 {
@@ -4668,7 +4778,6 @@ int omap_dsi_prepare_update(struct omap_dss_device *dssdev,
 {
 	struct platform_device *dsidev = dsi_get_dsidev_from_dssdev(dssdev);
 	u16 dw, dh;
-	int r = 0;
 
 	dssdev->driver->get_resolution(dssdev, &dw, &dh);
 
@@ -4690,13 +4799,12 @@ int omap_dsi_prepare_update(struct omap_dss_device *dssdev,
 	dsi_perf_mark_setup(dsidev);
 
 	if (dssdev->manager->caps & OMAP_DSS_OVL_MGR_CAP_DISPC) {
-		r = dss_setup_partial_planes(dssdev, x, y, w, h,
+		dss_setup_partial_planes(dssdev, x, y, w, h,
 				enlarge_update_area);
-		if (0 == r)
-			dispc_set_lcd_size(dssdev->manager->id, *w, *h);
+		dispc_set_lcd_size(dssdev->manager->id, *w, *h);
 	}
 
-	return r;
+	return 0;
 }
 EXPORT_SYMBOL(omap_dsi_prepare_update);
 
@@ -4787,13 +4895,8 @@ static int dsi_display_init_dispc(struct omap_dss_device *dssdev)
 
 		dispc_set_lcd_timings(dssdev->manager->id, &timings);
 	} else {
-		if (dssdev->dispc_timings) {
-			dispc_set_lcd_timings(dssdev->manager->id,
-				dssdev->dispc_timings);
-		} else {
-			dispc_set_lcd_timings(dssdev->manager->id,
-				&dssdev->panel.timings);
-		}
+		dispc_set_lcd_timings(dssdev->manager->id,
+				       &dssdev->panel.timings);
 	}
 
 #if defined (CONFIG_MACH_LGE)
@@ -5013,8 +5116,8 @@ int omapdss_dsi_display_enable(struct omap_dss_device *dssdev)
 	if(!dssdev->skip_init)
 		dsi_enable_pll_clock(dsidev, 1);
 
-       /*                                               
-                                                                           */
+       /* LGE_SJIT 2011-12-14 [choongryeol.lee@lge.com] 
+         * Add "if(!dssdev->skip_init)" condition to keep boot logo image  */
 	if(!dssdev->skip_init)  
 	{
 		/* Soft reset */
@@ -5052,7 +5155,7 @@ err_start_dev:
 }
 EXPORT_SYMBOL(omapdss_dsi_display_enable);
 
-/*                                                                */
+/* LGE_SJIT_S 2011-12-14 [choongryeol.lee@lge.com] VC mode update */
 void omapdss_dsi_update_vc_mode(struct omap_dss_device *dssdev, int channel, bool is_l4)
 {
 	struct platform_device *dsidev = dsi_get_dsidev_from_dssdev(dssdev);
@@ -5065,7 +5168,7 @@ void omapdss_dsi_update_vc_mode(struct omap_dss_device *dssdev, int channel, boo
 	
 }
 EXPORT_SYMBOL(omapdss_dsi_update_vc_mode);
-/*                                                                */
+/* LGE_SJIT_E 2011-12-14 [choongryeol.lee@lge.com] VC mode update */
 
 void omapdss_dsi_display_disable(struct omap_dss_device *dssdev,
 		bool disconnect_lanes, bool enter_ulps)
@@ -5090,11 +5193,11 @@ void omapdss_dsi_display_disable(struct omap_dss_device *dssdev,
 	omap_dss_stop_device(dssdev);
 
 #ifdef CONFIG_DSI_VIDEO_CMD_TRANSITION
-	/*                                               
-                                                                                
-                                                                                
-                                                                                   
-  */
+	/* LGE_SJIT 2012-01-31 [choongryeol.lee@lge.com] 
+	 * Since bootloader is using video mode, we keep this mode until first suspend.
+	 * After first suspend, dsi mode is changed to command mode to improve graphic 
+	 * performance. If we can use command mode in bootloader, this code is not needed.
+	 */
 	if(first_run_after_boot)
 	{
 		first_run_after_boot = 0; //this code run only once.
@@ -5433,7 +5536,7 @@ static int omap_dsi1hw_remove(struct platform_device *dsidev)
 	return 0;
 }
 
-/*                                                              */
+/* LGE_SJIT_S 2011-11-02 [choongryeol.lee@lge.com] support DSI2 */
 /* DSI2 HW IP initialisation */
 static int omap_dsi2hw_probe(struct platform_device *dsidev)
 {
@@ -5583,7 +5686,7 @@ static struct platform_driver omap_dsi2hw_driver = {
 		.owner  = THIS_MODULE,
 	},
 };
-/*                                                              */
+/* LGE_SJIT_E 2011-11-02 [choongryeol.lee@lge.com] support DSI2 */
 
 static struct platform_driver omap_dsi1hw_driver = {
 	.probe          = omap_dsi1hw_probe,

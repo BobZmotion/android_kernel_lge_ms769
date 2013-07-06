@@ -31,11 +31,20 @@
 #include "xmd-hsi-ll-if.h"
 #include "xmd-hsi-ll-cfg.h"
 #include "xmd-hsi-ll-internal.h"
-//                                                  
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 #if defined(CONFIG_MACH_LGE_COSMOPOLITAN)
 #include "xmd-ch.h"
 #endif
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
+
+// mo2haewoon.you@lge.com [START]
+#if defined(HSI_LL_WAKE_LOCK)
+#include <linux/wakelock.h>
+ 
+static struct wake_lock hsi_acwake_lock;
+static struct wake_lock hsi_cawake_lock;
+#endif
+// mo2haewoon.you@lge.com [END]
 
 #if !defined(HSI_LL_DATA_MUL_OF_16)
 
@@ -75,9 +84,9 @@ DEFINE_MUTEX(hsi_ll_open_mutex);
 DEFINE_MUTEX(hsi_ll_close_mutex);
 DEFINE_MUTEX(hsi_ll_psv);
 
-//                                             
+// LGE_ADD_START 20120605 seunghwan.jin@lge.com
 extern char simple_hsi_log_debug_enable;
-//                                           
+// LGE_ADD_END 20120605 seunghwan.jin@lge.com
 
 static struct hsi_ll_data_struct hsi_ll_data;
 static struct hsi_ll_if_struct   hsi_ll_if;
@@ -227,7 +236,7 @@ static int hsi_ll_command_decode(
 		break;
 	case HSI_LL_MSG_OPEN_CONN_OCTET:
 		*channel = ((msg & 0x0F000000) >> 24);
-		*param   = (msg & 0x00FFFFFF);
+		*param   = ((msg & 0x00F00000) >> 20) ? (msg & 0x000FFFFF) : (msg & 0x00FFFFFF);
 #if defined (HSI_LL_ENABLE_CRITICAL_LOG)
 		if (*channel == 0) {
 			printk("\nHSI_LL: Unexpected case. Received CMD = 0x%x. %s %d\n",
@@ -425,7 +434,9 @@ static void hsi_ll_read_complete_cb(struct hsi_device *dev, unsigned int size)
 {
 	int ret;
 	unsigned int channel = 0, param = 0, ll_msg_type = 0;
-    unsigned int ipc_temp = 0; // ipc temp.
+#ifdef CONFIG_MACH_LGE_U2
+	unsigned int ipc_temp = 0; // ipc temp.
+#endif
 
 	spin_lock_bh(&hsi_ll_if.rd_cmd_cb_lock);
 
@@ -437,23 +448,30 @@ static void hsi_ll_read_complete_cb(struct hsi_device *dev, unsigned int size)
 								&channel,
 								&param);
 
-//                                                
-#if 0 /* ORIGINAL CODE */
+// LGE_UPDATE_START 20120605 seunghwan.jin@lge.com
+    if(simple_hsi_log_debug_enable == '1')
+        printk("HSI_LL: channel %d CP => AP CMD = 0x%x.\n", channel, hsi_ll_data.rx_cmd);
+#ifdef CONFIG_MACH_LGE_U2
+    // start ipc temp.
+    else
+    {
+        ipc_temp = hsi_ll_data.rx_cmd;
+        ipc_temp = ipc_temp >> 28;
+        /*if(ipc_temp == 9 && channel < 11)
+            printk("HSI_LL: CP closed ch[%d] successfully.\n", channel);*/
+    }
+    // end ipc start
+#endif
+#if defined (HSI_LL_ENABLE_CRITICAL_LOG)
+    if(simple_hsi_log_debug_enable != '1')
+        printk("\nHSI_LL: channel %d CP => AP CMD = 0x%x.\n", channel, hsi_ll_data.rx_cmd);
+#endif
+/* Original code is blocked. Maintain and unblock this code when you remove updated area.
 #if defined (HSI_LL_ENABLE_CRITICAL_LOG)
 	printk("\nHSI_LL: channel %d CP => AP CMD = 0x%x.\n", channel, hsi_ll_data.rx_cmd);
 #endif
-#else /* DYNAMIC LOG CONFIG */
-
-    if(simple_hsi_log_debug_enable == '1')
-        printk("HSI_LL: channel %d CP => AP CMD = 0x%x.\n", channel, hsi_ll_data.rx_cmd);
-    else {
-        ipc_temp = hsi_ll_data.rx_cmd;
-        ipc_temp = ipc_temp >> 28;
-        if(ipc_temp == 9 && channel < 11)
-            printk("HSI_LL: CP closed ch[%d] successfully.\n", channel);
-    }
-#endif /* DYNAMIC LOG CONFIG */
-//                                              
+*/
+// LGE_UPDATE_END 20120605 seunghwan.jin@lge.com
 
 	if (hsi_ll_if.rd_complete_flag != 1) {
 		/* Raise an event */
@@ -476,12 +494,12 @@ static void hsi_ll_read_complete_cb(struct hsi_device *dev, unsigned int size)
 		printk("\nHSI_LL:Break received.%s %d\n", __func__, __LINE__);
 #endif
 
-//                                                  
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 #if 0
 		/* Start RIL recovery */
 		ifx_schedule_cp_dump_or_reset();
 #endif
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
 #if 0 /*TODO: Enable this after glitch issue is identified/resolved. */
 		unsigned int i;
@@ -715,7 +733,7 @@ static void hsi_ll_read_complete_cb(struct hsi_device *dev, unsigned int size)
 			}
 			break;
 		case HSI_LL_RX_STATE_BLOCKED: {
-//                                                  
+// IMC_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 /* P2 issue : CP Open Conn Retry Workaround  : Sending NAK stops retry open conn timer */
 #if defined (HSI_LL_ENABLE_RX_BUF_RETRY_WQ)
 #if defined (HSI_LL_ENABLE_ERROR_LOG)
@@ -726,10 +744,10 @@ static void hsi_ll_read_complete_cb(struct hsi_device *dev, unsigned int size)
 			hsi_ll_start_rx_timer(channel, HSI_LL_RX_T_ACK_NACK_MS);
 			//hsi_ll_data.ch[channel].rx.state = HSI_LL_RX_STATE_BLOCKED; /* HSI_LL_RX_STATE_SEND_NACK; */
 #endif
-//                                                
+// IMC_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 			}
 			break;
-//                                                  
+// IMC_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 /* P2 issue : CP Open Conn Retry Workaround  : Sending NAK stops retry open conn timer */
 #if defined (HSI_LL_ENABLE_RX_BUF_RETRY_WQ)
 		case HSI_LL_RX_STATE_RX:
@@ -742,7 +760,7 @@ static void hsi_ll_read_complete_cb(struct hsi_device *dev, unsigned int size)
 			//hsi_ll_data.ch[channel].rx.state = HSI_LL_RX_STATE_RX;
 			break;			
 #endif
-//                                                
+// IMC_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
          default:
 #if defined (HSI_LL_ENABLE_ERROR_LOG)
@@ -915,7 +933,9 @@ static int hsi_ll_wr_ctrl_ch_th(void *data)
 	int ret, i;
 	unsigned int command, channel;
 	unsigned int phy_id;
-    unsigned int ipc_temp = 0; // ipc temp.
+#ifdef CONFIG_MACH_LGE_U2
+	unsigned int ipc_temp = 0; // ipc temp.
+#endif
 
 	wait_event_interruptible(hsi_ll_if.reg_complete,
 							 hsi_ll_if.reg_complete_flag == 1);
@@ -994,13 +1014,13 @@ static int hsi_ll_wr_ctrl_ch_th(void *data)
 		return -1;
 	}
 
-	/*                                        
-                                                              
-                                                               
-                                                 
-   
-                                                   
-  */
+	/* LGE_SJIT 2012-01-04 [dojip.kim@lge.com]
+	 * OMAP could not enter sleep mode until RIL is initializeda.
+	 * So change the HSI wake line status to resolve this problem.
+	 * HSI_LL_WAKE_LINE_HIGH -> HSI_LL_WAKE_LINE_LOW
+	 *
+	 * This method is suggested by jaesung.woo@lge.com
+	 */
 	hsi_ll_wakeup_cp(HSI_LL_WAKE_LINE_LOW);
 
 	ret = hsi_ll_create_rx_thread();
@@ -1025,6 +1045,15 @@ static int hsi_ll_wr_ctrl_ch_th(void *data)
 																 &channel,
 																 &phy_id)) {
 #if defined (HSI_LL_ENABLE_PM)
+// mo2haewoon.you@lge.com [START]
+/* Wait for some time(3HZ) and starts to suspend */
+#if defined (HSI_LL_WAKE_LOCK)
+				if(wake_lock_active(&hsi_acwake_lock))
+					wake_unlock(&hsi_acwake_lock);
+				wake_lock_timeout(&hsi_acwake_lock, HSI_LL_AC_WAKE_TIMEOUT);
+#endif
+// mo2haewoon.you@lge.com [END]
+
 			wait_event_interruptible_timeout(hsi_ll_if.msg_avaliable,
 											 hsi_ll_if.msg_avaliable_flag == 1,
 											 HSI_LL_PV_READ_CMD_Q_TIMEOUT);
@@ -1060,24 +1089,40 @@ static int hsi_ll_wr_ctrl_ch_th(void *data)
 #if defined (HSI_LL_ENABLE_DEBUG_LOG)
 			printk("\nHSI_LL: Requesting AC wake line High.\n");
 #endif
+
+// mo2haewoon.you@lge.com [START]
+#if defined (HSI_LL_WAKE_LOCK)
+			if(wake_lock_active(&hsi_acwake_lock))
+				wake_unlock(&hsi_acwake_lock);
+			wake_lock(&hsi_acwake_lock);
+#endif
+// mo2haewoon.you@lge.com [END]
 			hsi_ll_wakeup_cp(HSI_LL_WAKE_LINE_HIGH);
 		}
-//                                                
-#if 0 /* ORIGINAL CODE */
+// LGE_UPDATE_START 20120605 seunghwan.jin@lge.com
+        if (simple_hsi_log_debug_enable == '1')
+            printk("HSI_LL: channel %d : AP => CP CMD = 0x%x \n", channel, command);
+#ifdef CONFIG_MACH_LGE_U2
+        // start ipc temp.
+        else
+        {
+            ipc_temp = command;
+            ipc_temp = ipc_temp >> 28;
+            /*if(ipc_temp == 9 && channel < 11)
+                printk("HSI_LL: AP closed ch[%d] successfully.\n", channel);*/
+        }
+        // end ipc temp
+#endif
+#if defined (HSI_LL_ENABLE_CRITICAL_LOG)
+        if (simple_hsi_log_debug_enable != '1')
+            printk("\nHSI_LL: channel %d : AP => CP CMD = 0x%x \n", channel, command);
+#endif
+/* Original code is blocked. Maintain and unblock this code when you remove updated area.
 #if defined (HSI_LL_ENABLE_CRITICAL_LOG)
 		printk("\nHSI_LL: channel %d : AP => CP CMD = 0x%x \n", channel, command);
 #endif
-#else /* DYNAMIC LOG CONFIG */
-    if (simple_hsi_log_debug_enable == '1')
-        printk("HSI_LL: channel %d : AP => CP CMD = 0x%x \n", channel, command);
-    else {
-        ipc_temp = command;
-        ipc_temp = ipc_temp >> 28;
-        if(ipc_temp == 9 && channel < 11)
-            printk("HSI_LL: AP closed ch[%d] successfully.\n", channel);
-    }
-#endif /* DYNAMIC LOG CONFIG */
-//                                              
+*/
+// LGE_UPDATE_END 20120605 seunghwan.jin@lge.com
 		hsi_ll_data.tx_cmd.channel = channel;
 		hsi_ll_data.tx_cmd.phy_id  = phy_id;
 
@@ -1410,7 +1455,7 @@ static int hsi_ll_psv_th(void *data)
 				break;
 			}
 
-//                                                  
+// IMC_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 #if 0 /* Check TX state only */
 			for(channel = 0; channel < HSI_LL_MAX_CHANNELS; channel++) {
 				if (hsi_ll_data.ch[channel].tx.state != HSI_LL_TX_STATE_IDLE) {
@@ -1445,7 +1490,7 @@ static int hsi_ll_psv_th(void *data)
 				}
 			}
 #endif
-//                                                
+// IMC_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
 			if (channel >= HSI_LL_MAX_CHANNELS) {
 				/* All are idle. Check if PSV can be Enabled */
@@ -1984,12 +2029,32 @@ static void hsi_ll_port_event_cb(
 		printk("\nHSI_LL:CA wakeup line UP detected.%s %d\n",
 				  __func__, __LINE__);
 #endif
+// mo2haewoon.you@lge.com [START]
+#if defined (HSI_LL_WAKE_LOCK)
+		if(dev->n_ch == 0) {
+                        printk("[%s]UP:CA wakeup line UP detected. all channel\n",  __func__);
+			if(wake_lock_active(&hsi_cawake_lock))
+				wake_unlock(&hsi_cawake_lock);
+			wake_lock(&hsi_cawake_lock);
+		}
+#endif
+// mo2haewoon.you@lge.com [END]
 		break;
 	case HSI_EVENT_CAWAKE_DOWN:
 #if defined (HSI_LL_ENABLE_DEBUG_LOG)
 		printk("\nHSI_LL:CA wakeup line DOWN detected.%s %d\n",
 				  __func__, __LINE__);
 #endif
+// mo2haewoon.you@lge.com [START]
+/* Wait for some time(3HZ) and starts to suspend */
+#if defined (HSI_LL_WAKE_LOCK)
+		if(dev->n_ch == 0) {
+                        printk("[%s]DOWN:CA wakeup line DOWN detected. all channel\n\n",  __func__); 
+			wake_unlock(&hsi_cawake_lock);
+			wake_lock_timeout(&hsi_cawake_lock, HSI_LL_CA_WAKE_TIMEOUT);
+		}
+#endif
+// mo2haewoon.you@lge.com [END]
 		break;
 	case HSI_EVENT_HSR_DATAAVAILABLE:
 #if defined (HSI_LL_ENABLE_DEBUG_LOG)
@@ -2029,7 +2094,7 @@ int hsi_ll_init(int port, const hsi_ll_notify cb)
 			goto quit_init;
 		}
 
-//                                                  
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 /* TI HSI driver (from HSI_DRIVER_VERSION 0.4.2) can suppport port 1 and 2, 
 	but IMC XMD currently supports port 1 only */
 #if 1
@@ -2046,7 +2111,7 @@ int hsi_ll_init(int port, const hsi_ll_notify cb)
 			hsi_ll_iface.ch_mask[i] = (0xFFFFFFFF ^ (0xFFFFFFFF << HSI_LL_MAX_CHANNELS));
 		}
 #endif
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
 		if (HSI_LL_RESULT_SUCCESS != hsi_ll_events_init()) {
 #if defined (HSI_LL_ENABLE_ERROR_LOG)
@@ -2117,6 +2182,14 @@ int hsi_ll_init(int port, const hsi_ll_notify cb)
 			hsi_ll_data.state = HSI_LL_IF_STATE_UN_INIT;
 			goto quit_init;
 		}
+
+// mo2haewoon.you@lge.com [START]
+#if defined (HSI_LL_WAKE_LOCK)
+		wake_lock_init(&hsi_acwake_lock, WAKE_LOCK_SUSPEND, "hsi-acwake-lock");
+		wake_lock_init(&hsi_cawake_lock, WAKE_LOCK_SUSPEND, "hsi-cawake-lock");
+#endif
+// mo2haewoon.you@lge.com [END]
+
 #endif
 #if defined (HSI_LL_ENABLE_TX_RETRY_WQ)
 		hsi_ll_if.hsi_tx_retry_wq = create_workqueue("hsi_tx_retry_wq");
@@ -2148,6 +2221,14 @@ int hsi_ll_shutdown(void)
 		kthread_stop(hsi_ll_if.rd_th);
 		kthread_stop(hsi_ll_if.wr_th);
 #if defined (HSI_LL_ENABLE_PM)
+
+// mo2haewoon.you@lge.com [START]
+#if defined (HSI_LL_WAKE_LOCK)
+		wake_lock_destroy(&hsi_acwake_lock);
+		wake_lock_destroy(&hsi_cawake_lock);
+#endif
+// mo2haewoon.you@lge.com [END]
+
 		kthread_stop(hsi_ll_if.psv_th);
 #endif
 #if defined (HSI_LL_ENABLE_TIMERS)
@@ -2217,11 +2298,11 @@ int hsi_ll_reset(void)
 		}
 		hsi_ll_data.ch[ch_i].tx.state = HSI_LL_TX_STATE_IDLE;
 		hsi_ll_data.ch[ch_i].rx.state = HSI_LL_RX_STATE_IDLE;
-//                                                  
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 #if 0
 		hsi_ll_data.ch[ch_i].open = TRUE;
 #endif
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 	}
 
 #if defined (HSI_LL_ENABLE_DEBUG_LOG)
@@ -2238,11 +2319,18 @@ int hsi_ll_reset(void)
 #endif
 
 #if defined (HSI_LL_ENABLE_PM)
+// mo2haewoon.you@lge.com [START]
+#if defined (HSI_LL_WAKE_LOCK)
+	wake_unlock(&hsi_acwake_lock);
+	wake_unlock(&hsi_cawake_lock);
+#endif
+// mo2haewoon.you@lge.com [END]
+
 	hsi_ll_if.psv_event_flag = HSI_LL_PSV_EVENT_PSV_DISABLE;
 
-	//                                                  
+	// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 	hsi_ll_data.tx_cfg.ac_wake = HSI_LL_WAKE_LINE_LOW;
-	//                                                
+	// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 #endif
 
 	hsi_ll_data.tx_cmd.count	   = 0;
@@ -2251,7 +2339,7 @@ int hsi_ll_reset(void)
 	hsi_ll_if.msg_avaliable_flag   = 0;
 
 	for(ch_i=0; ch_i < HSI_LL_MAX_CHANNELS; ch_i++) {
-//                                                  
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 #if 1
 		if (0 > hsi_open(hsi_ll_data.dev[ch_i])) {
 #if defined (HSI_LL_ENABLE_ERROR_LOG)
@@ -2263,7 +2351,7 @@ int hsi_ll_reset(void)
 			hsi_ll_data.ch[ch_i].open = TRUE;
 		}
 #endif
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 	}
 
 #if defined (HSI_LL_ENABLE_DEBUG_LOG)

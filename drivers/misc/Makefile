@@ -65,7 +65,6 @@ obj-$(CONFIG_MPU_SENSORS_MPU3050)   += mpu3050/
 # LGE_CHANGE [younglae.kim@lge.com] 2012-04-18 BMC050 will be used for U2
 obj-$(CONFIG_SENSORS_BMC050)        += bmc050/
 obj-$(CONFIG_TWL6040_VIB)	+= twl6040-vib.o
-obj-$(CONFIG_CDC_TCXO)		+= cdc_tcxo.o
 obj-$(CONFIG_GCCORE)		+= gcx/gccore/
 obj-$(CONFIG_GCBV)		+= gcx/gcbv/
 obj-$(CONFIG_GCIOCTL)		+= gcx/gcioctl/
@@ -76,4 +75,3 @@ obj-$(CONFIG_TSPDRV)		+= tspdrv/
 # RIP-12331 : handling CP Crash of RIL Recovery
 obj-$(CONFIG_LGE_MODEM_WATCHER)	+= modem_watcher.o
 obj-$(CONFIG_TS0710_MUX)	+= ts0710mux/
-obj-$(CONFIG_CACHE2DMANAGER)	+= cache-2dmanager/

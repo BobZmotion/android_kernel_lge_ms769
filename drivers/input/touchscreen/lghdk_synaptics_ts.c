@@ -67,11 +67,11 @@ struct synaptics_ts_data {
 	int reported_finger_count;
 	int8_t sensitivity_adjust;
 	int (*power)(int on);
-//                                                                
+// 20100504 jh.koo@lge.com, correction of finger space [START_LGE]
 	unsigned int count;
 	int x_lastpt;
 	int y_lastpt;
-//                                                               
+// 20100504 jh.koo@lge.com, correction of finger space [END_LGE]	
 	struct early_suspend early_suspend;
 	uint32_t	button_state;
 
@@ -462,7 +462,7 @@ static int ts_cmer_tscrn = 0;
 static int ts_cmec_tscrn = 0;
 //static BOOL ts_touchable_reporting_to_ds = FALSE;
 static BOOL ts_cind_inputstatus_in_sleep = FALSE;
-#endif //                                       
+#endif // FEATURE_LGE_DSAT_TOUCHSCREEN_EMULATION
 
 
 //ended by jykim
@@ -666,10 +666,10 @@ static irqreturn_t synaptics_ts_irq_handler(int irq, void *dev_id)
 {
 	struct synaptics_ts_data *ts = dev_id;
 
-//                                              
-//                                                                                                   
+//	DEBUG_MSG("LGE: synaptics_ts_irq_handler\n");
+//	printk("LGE: synaptics_Ts_irq_handler>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>..%d\n",ts->client->irq);
 	disable_irq_nosync(gpio_to_irq(ts->client->irq));
-//                                                       
+//	printk("LGE1: synaptics_Ts_irq_handler>>>>>>>>>..\n");
 	queue_work(synaptics_wq, &ts->work);
 	return IRQ_HANDLED;
 }
@@ -1020,12 +1020,12 @@ static int synaptics_ts_resume(struct i2c_client *client)
 			printk(KERN_ERR "synaptics_ts_resume power on failed\n");
 	}
 	
-//                                                        
+// 20100525 jh.koo@lge.com Turn off touch LDOs [START_LGE]
 	i2c_smbus_read_i2c_block_data(ts->client, START_ADDR, sizeof(ts_reg_data), &ts_reg_data);
    	i2c_smbus_write_byte_data(ts->client, SYNAPTICS_CONTROL_REG, SYNAPTICS_CONTROL_NOSLEEP); /* wake up */
 	ret = i2c_smbus_write_byte_data(ts->client, 0x53, 0x03);
 	ret = i2c_smbus_write_byte_data(ts->client, 0x54, 0x03);
-//                                                      
+// 20100525 jh.koo@lge.com Turn off touch LDOs [END_LGE]
 
 	if (ts->use_irq)
 		enable_irq(gpio_to_irq(client->irq));
@@ -1056,10 +1056,10 @@ static void synaptics_ts_late_resume(struct early_suspend *h)
 
 static const struct i2c_device_id synaptics_ts_id[] = {
 	{ "heaven_synaptics_ts", 0 },
-//                                           
+// 20100525 sookyoung.kim@lge.com [START_LGE]
 	{ },
 	//{ }
-//                                         
+// 20100525 sookyoung.kim@lge.com [END_LGE]
 };
 
 static struct i2c_driver synaptics_ts_driver = {
@@ -1071,10 +1071,10 @@ static struct i2c_driver synaptics_ts_driver = {
 #endif
 	.id_table	= synaptics_ts_id,
 	.driver = {
-//                                           
+// 20100525 sookyoung.kim@lge.com [START_LGE]
 		//.name	= "heaven_i2c_ts",
 		.name	= "heaven_synaptics_ts",
-//                                         
+// 20100525 sookyoung.kim@lge.com [END_LGE]
 		.owner = THIS_MODULE,
 	},
 };

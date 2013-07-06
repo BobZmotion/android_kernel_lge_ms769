@@ -40,9 +40,6 @@
 #include <dngl_stats.h>
 #include <dhd.h>
 
-/* Redefine LINUX_VERSION_CODE (KERNEL_VERSION(3, 4, 0)) CSC_ */
-#define LINUX_VERSION_CODE      KERNEL_VERSION(3, 4, 0)
-
 typedef enum monitor_states
 {
 	MONITOR_STATE_DEINIT = 0x0,
@@ -236,7 +233,7 @@ static int dhd_mon_if_subif_start_xmit(struct sk_buff *skb, struct net_device *n
 		memcpy(pdata + sizeof(dst_mac_addr), src_mac_addr, sizeof(src_mac_addr));
 		PKTSETPRIO(skb, 0);
 
-		MON_PRINT("if name: %s, matched if name %s\n", ndev->name, mon_if->real_ndev->name);
+		//MON_PRINT("if name: %s, matched if name %s\n", ndev->name, mon_if->real_ndev->name); // CONFIG_COMMON_PATCH
 
 		/* Use the real net device to transmit the packet */
 		ret = dhd_start_xmit(skb, mon_if->real_ndev);
@@ -256,8 +253,10 @@ static void dhd_mon_if_set_multicast_list(struct net_device *ndev)
 	if (mon_if == NULL || mon_if->real_ndev == NULL) {
 		MON_PRINT(" cannot find matched net dev, skip the packet\n");
 	} else {
+#ifndef CONFIG_COMMON_PATCH
 		MON_PRINT("enter, if name: %s, matched if name %s\n",
 		ndev->name, mon_if->real_ndev->name);
+#endif /* CONFIG_COMMON_PATCH */
 	}
 }
 
@@ -270,8 +269,10 @@ static int dhd_mon_if_change_mac(struct net_device *ndev, void *addr)
 	if (mon_if == NULL || mon_if->real_ndev == NULL) {
 		MON_PRINT(" cannot find matched net dev, skip the packet\n");
 	} else {
+#ifndef CONFIG_COMMON_PATCH
 		MON_PRINT("enter, if name: %s, matched if name %s\n",
 		ndev->name, mon_if->real_ndev->name);
+#endif /* CONFIG_COMMON_PATCH */
 	}
 	return ret;
 }

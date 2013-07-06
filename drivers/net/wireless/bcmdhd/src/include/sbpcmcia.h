@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: sbpcmcia.h 326494 2012-04-09 13:29:57Z $
+ * $Id: sbpcmcia.h 307736 2012-01-12 10:57:05Z $
  */
 
 #ifndef	_SBPCMCIA_H

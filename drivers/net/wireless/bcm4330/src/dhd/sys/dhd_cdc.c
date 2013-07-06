@@ -482,7 +482,7 @@ dhd_prot_dstats(dhd_pub_t *dhd)
 
 int dhd_set_suspend(int value, dhd_pub_t *dhd)
 {
-	//                                                    
+	//bill.jung@lge.com - Don't use legacy power save mode
 	//int power_mode = PM_MAX;
 	int power_mode = PM_FAST;	
 	wl_pkt_filter_enable_t	enable_parm;
@@ -498,7 +498,7 @@ int dhd_set_suspend(int value, dhd_pub_t *dhd)
 			/* Enable packet filter, only allow unicast packet to send up */
 			enable_parm.id = htod32(100);
 			enable_parm.enable = htod32(1);
-			//                                    
+			//bill.jung@lge.com - Don't use filter
 			/*
 			bcm_mkiovar("pkt_filter_enable", (char *)&enable_parm,
 				sizeof(wl_pkt_filter_enable_t), iovbuf, sizeof(iovbuf));
@@ -515,7 +515,7 @@ int dhd_set_suspend(int value, dhd_pub_t *dhd)
 			/* disable pkt filter */
 			enable_parm.id = htod32(100);
 			enable_parm.enable = htod32(0);
-			//                                    
+			//bill.jung@lge.com - Don't use filter
 			/*
 			bcm_mkiovar("pkt_filter_enable", (char *)&enable_parm,
 				sizeof(wl_pkt_filter_enable_t), iovbuf, sizeof(iovbuf));
@@ -559,7 +559,7 @@ wl_pattern_atoh(char *src, char *dst)
 	return i;
 }
 
-/*                                                   */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-04-03, configs */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 #include <linux/fs.h>
 #include <linux/ctype.h>
@@ -644,7 +644,7 @@ assoc_listen=1
 #endif
 
 #if defined (CONFIG_LGE_BCM432X_PATCH)
-/*              */
+/* LGE Specific */
 bool PM_control = TRUE;
 #endif
 
@@ -753,10 +753,10 @@ static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 		}
 		/* Setup timeout bcm_timeout from dhd driver 4.217.48 */
 
-#ifdef BCMCCX								/*                                  */	//by sjpark 11-03-15
+#ifdef BCMCCX								/* LGE_CHANGE_S, 2011-0226, add CCX */	//by sjpark 11-03-15
 		if(var_int)
 			printk(" roam_off =%d BCMCCX roam_off should be 0\n",var_int);
-#endif											/*                                  */
+#endif											/* LGE_CHANGE_E, 2011-0226, add CCX */
 		iovlen = bcm_mkiovar(name, (char *)&var_int, sizeof(var_int),
 				iovbuf, sizeof(iovbuf));
 		return dhdcdc_set_ioctl(dhd, ifidx, WLC_SET_VAR,
@@ -827,8 +827,8 @@ err:
 	ret = -1;
 	goto out;
 }
-#endif /*                          */
-/*                                                   */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-04-03, configs */
 
 int
 dhd_preinit_ioctls(dhd_pub_t *dhd)
@@ -838,26 +838,26 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	char iovbuf[WL_EVENTING_MASK_LEN + 12];	/*  Room for "event_msgs" + '\0' + bitvec  */
 
 	uint up = 0;
-/*                                                        */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-08-27, roam_off, PM */
 #if !defined(CONFIG_LGE_BCM432X_PATCH)
-#ifdef BCMCCX								/*                                  */	//by sjpark 11-03-15
+#ifdef BCMCCX								/* LGE_CHANGE_S, 2011-0226, add CCX */	//by sjpark 11-03-15
 	uint roamvar = 0;
-#else									/*                                  */
+#else									/* LGE_CHANGE_E, 2011-0226, add CCX */
 #ifdef CUSTOMER_HW2
 	uint roamvar = 0;
 #else
 	uint roamvar = 1;
-#endif							/*                                            */
+#endif							/* LGE_CHANGE, 2011-0226, just add BRCM patch */
 #endif
 	uint power_mode = PM_FAST;
-#endif /*                          */
-/*                                                        */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-08-27, roam_off, PM */
 	uint32 dongle_align = DHD_SDALIGN;
 	uint32 glom = 0;
 	int arpoe = 1;
 	//int arp_ol = 0xf;
 	int arp_ol = 0xc;	// WLBTAMP 20110405 yhcha
-#ifndef BCMCCX								/*                                  */	//by sjpark 11-03-15
+#ifndef BCMCCX								/* LGE_CHANGE_S, 2011-0226, add CCX */	//by sjpark 11-03-15
 	int scan_assoc_time = 40;
 	int scan_unassoc_time = 80;
 #endif
@@ -873,7 +873,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	uint filter_mode = 0;
 #else
 	uint filter_mode = 1;
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 #ifdef AP
 	uint32 mpc = 0; /* Turn MPC off for AP/APSTA mode */
 	uint32 apsta = 1; /* Enable APSTA mode */
@@ -886,11 +886,11 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		return BCME_NOTUP;
 	}
 	memcpy(dhd->mac.octet, iovbuf, ETHER_ADDR_LEN);
-/*                                                   */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-04-03, configs */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 	dhd_preinit_config(dhd, 0);
-#endif /*                          */
-/*                                                   */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-04-03, configs */
 
 	/* Set Country code */
 	if (dhd->country_code[0] != 0) {
@@ -900,12 +900,12 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		}
 	}
 
-/*                                                                          */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-08-27, already PM setup is configured */
 #if !defined(CONFIG_LGE_BCM432X_PATCH)
 	/* Set PowerSave mode */
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode, sizeof(power_mode), TRUE, 0);
-#endif /*                          */
-/*                                                                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-08-27, already PM setup is configured */
 
 	/* Match Host and Dongle rx alignment */
 	bcm_mkiovar("bus:txglomalign", (char *)&dongle_align, 4, iovbuf, sizeof(iovbuf));
@@ -960,19 +960,19 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	setbit(eventmask, WLC_E_HTSFSYNC);
 #endif
 
-#if defined(BCMCCX) && defined(BCMDBG_EVENT) /* junlim */								/*                                  */		//by sjpark 11-03-15
+#if defined(BCMCCX) && defined(BCMDBG_EVENT) /* junlim */								/* LGE_CHANGE_S, 2011-0226, add CCX */		//by sjpark 11-03-15
 	setbit(eventmask, WLC_E_ADDTS_IND);
 	setbit(eventmask, WLC_E_DELTS_IND);
 #endif /* defined(BCMCCX) && (BCMDBG_EVENT) */ /* junlim */	
 
 	bcm_mkiovar("event_msgs", eventmask, WL_EVENTING_MASK_LEN, iovbuf, sizeof(iovbuf));
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-#ifndef BCMCCX								/*                                  */	//by sjpark 11-03-15
+#ifndef BCMCCX								/* LGE_CHANGE_S, 2011-0226, add CCX */	//by sjpark 11-03-15
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_SCAN_CHANNEL_TIME, (char *)&scan_assoc_time,
 		sizeof(scan_assoc_time), TRUE, 0);
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_SCAN_UNASSOC_TIME, (char *)&scan_unassoc_time,
 		sizeof(scan_unassoc_time), TRUE, 0);
-#endif									/*                                  */
+#endif									/* LGE_CHANGE_E, 2011-0226, add CCX */
 
 	/* Set ARP offload */
 	bcm_mkiovar("arpoe", (char *)&arpoe, 4, iovbuf, sizeof(iovbuf));
@@ -1030,7 +1030,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	/* Parse pattern filter pattern. */
 	pattern_size = htod32(wl_pattern_atoh("0x00",
 		(char *) &pkt_filterp->u.pattern.mask_and_pattern[mask_size]));
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 
 	if (mask_size != pattern_size) {
 		DHD_ERROR(("Mask and pattern not the same size\n"));
@@ -1091,7 +1091,7 @@ dhd_prot_stop(dhd_pub_t *dhd)
 	/* Nothing to do for CDC */
 }
 
-/*                                                                                                              */
+/* LGE_CHANGE_S, [yoohoo@lge.com], 2009-11-19, Use deepsleep instead of dhd_dev_reset when driver start or stop */
 #if defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_BRCM_USE_DEEPSLEEP)
 extern dhd_pub_t * get_dhd_pub_from_dev(struct net_device *dev);
 int dhd_deep_sleep(struct net_device *dev, int flag)
@@ -1141,5 +1141,5 @@ int dhd_deep_sleep(struct net_device *dev, int flag)
     return 0;
 
 }
-#endif /*                                                       */
-/*                                                                                                              */
+#endif /* CONFIG_LGE_BCM432X_PATCH && CONFIG_BRCM_USE_DEEPSLEEP */
+/* LGE_CHANGE_E, [yoohoo@lge.com], 2009-11-19, Use deepsleep instead of dhd_dev_reset when driver start or stop */

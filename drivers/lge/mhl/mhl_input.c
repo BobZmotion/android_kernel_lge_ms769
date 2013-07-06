@@ -37,12 +37,12 @@
  * This function will be invoked from input driver
  * eg. drivers/input/keyboard/omap4-keypad.c
  */
-/*                                                    */
+/* LGE_CHANGE_S [donghyuk79.park@lge.com] 2012-03-08, */
 #define I_CANVAS_X          1124
 #define I_CANVAS_Y          1873
 
 extern int get_mhl_orientation();
-/*                                                    */
+/* LGE_CHANGE_E [donghyuk79.park@lge.com] 2012-03-08, */
 
 void hdmi_common_register_keys(void *dev)
 {
@@ -249,7 +249,7 @@ EXPORT_SYMBOL(hdmi_common_send_keyevent);
 
 
 
-/*                                                    */
+/* LGE_CHANGE_S [donghyuk79.park@lge.com] 2012-03-08, */
 void hdmi_common_send_uevent(int x, int y, int action, int tvCtl_x, int tvCtl_y)
 {
 #if defined(MAGIC_MOTION_REMOCON_ON)
@@ -376,4 +376,4 @@ if(touchble){
 #endif
 }
 EXPORT_SYMBOL(hdmi_common_send_uevent);
-/*                                                    */
+/* LGE_CHANGE_E [donghyuk79.park@lge.com] 2012-03-08, */

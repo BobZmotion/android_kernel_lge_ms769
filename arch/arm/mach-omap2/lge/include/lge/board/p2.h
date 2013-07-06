@@ -26,7 +26,7 @@
 #define GPIO_MUIC_INT_A 	2 	/* for HW A */
 #define GPIO_MUIC_INT 		7
 
-/*                                                              */
+/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] max17043 (fuelgauge) */
 #define GPIO_GAUGE_INT_EVB	42 	/* for EVB */
 #define GPIO_GAUGE_INT		21
 #define RCOMP_BL44JN		(0xB8)
@@ -58,14 +58,14 @@
 #define GPIO_HALL_INT		42
 #endif
 
-/*                                                                     */
+/* LGE_SJIT 2011-12-09 [choongryeol.lee@lge.com] gpios for MHL SiI9244 */
 #define GPIO_MHL_INT		161
 #define GPIO_MHL_SEL		41
 #define GPIO_MHL_EN		157
 #define GPIO_MHL_RST		162
 #define GPIO_MHL_WAKE_UP	163
 
-/*                                                                            */
+/* LGE_SJIT 2011-12-23 [jongrak.kwon@lge.com] gpios for reconfigure in kernel */
 #define GPIO_FRONT_KEY_LED_EN	82
 #define GPIO_CHG_STATUS_N	51
 #define GPIO_CAM_SUBPM_EN	60
@@ -83,7 +83,8 @@
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
 #if defined(CONFIG_LGE_HANDLE_PANIC)
-#define LGE_RAM_CONSOLE_START_DEFAULT (PLAT_PHYS_OFFSET + (455 * SZ_1M))
+//#define LGE_RAM_CONSOLE_START_DEFAULT (PLAT_PHYS_OFFSET + (455 * SZ_1M)) // 1G Dynamic alloc
+#define LGE_RAM_CONSOLE_START_DEFAULT (0xB8700000) // 1G Dynamic alloc
 #define LGE_RAM_CONSOLE_SIZE_DEFAULT  (SZ_1M - (4 * SZ_1K))
 
 #define LGE_CRASH_LOG_START (LGE_RAM_CONSOLE_START_DEFAULT + LGE_RAM_CONSOLE_SIZE_DEFAULT)
@@ -91,22 +92,23 @@
 
 void lge_set_reboot_reason(unsigned int reason);
 #else
-#define LGE_RAM_CONSOLE_START_DEFAULT (PLAT_PHYS_OFFSET + (455 * SZ_1M))
+//#define LGE_RAM_CONSOLE_START_DEFAULT (PLAT_PHYS_OFFSET + (455 * SZ_1M)) // 1G Dynamic alloc
+#define LGE_RAM_CONSOLE_START_DEFAULT (0xB8700000) // 1G Dynamic alloc
 #define LGE_RAM_CONSOLE_SIZE_DEFAULT  (SZ_1M)
-#endif /*                         */
+#endif /* CONFIG_LGE_HANDLE_PANIC */
 #endif /* CONFIG_ANDROID_RAM_CONSOLE */
 
-/*                                                                      */
-#ifdef CONFIG_LGE_NFC_PN544
+/* LGE_SJIT_S 2011-12-14 [mohamed.khadri@lge.com] gpios for NFC - PN544 */
+#ifdef CONFIG_LGE_NFC_PN544_C3
 //#define NFC_GPIO_IRQ		4
 //#define NFC_GPIO_VEN		62
 //#define NFC_GPIO_FRIM		49
 #define NFC_GPIO_FRIM_HW_1_X	42
 //#define NFC_I2C_SLAVE_ADDR 	0x28
-#endif //                    
-/*                                                                      */
+#endif //CONFIG_LGE_NFC_PN544_C3
+/* LGE_SJIT_E 2011-12-14 [mohamed.khadri@lge.com] gpios for NFC - PN544 */
 
-/*                                                              */
+/* LGE_SJIT_S 2011-12-19 [mohamed.khadri@lge.com] gpios for GPS */
 #if defined(CONFIG_GPS)
 #define GPS_PWR_ON_GPIO		0
 #define GPS_RESET_N_GPIO	1
@@ -114,7 +116,7 @@ void lge_set_reboot_reason(unsigned int reason);
 #define GPS_LNA_SD_GPIO		140
 #endif
 #endif
-/*                                                              */
+/* LGE_SJIT_E 2011-12-19 [mohamed.khadri@lge.com] gpios for GPS */
 
 #if defined(CONFIG_MHL_TX_SII9244) || defined(CONFIG_MHL_TX_SII9244_LEGACY)
  /* To support rev.b and after rev.c hardware in one binary,
@@ -124,4 +126,4 @@ void lge_set_reboot_reason(unsigned int reason);
 extern struct sii9244_platform_data sii9244_pdata;
 #endif
 
-#endif /*                  */
+#endif /* __LGE_BOARD_P2_H */

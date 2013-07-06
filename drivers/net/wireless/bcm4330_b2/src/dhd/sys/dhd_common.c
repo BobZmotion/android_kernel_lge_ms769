@@ -68,11 +68,11 @@ int dhd_msg_level = DHD_ERROR_VAL;
 char fw_path[MOD_PARAM_PATHLEN];
 char nv_path[MOD_PARAM_PATHLEN];
 
-/*                                                   */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-04-03, configs */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 char config_path[MOD_PARAM_PATHLEN] = "";
-#endif /*                          */
-/*                                                   */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-04-03, configs */
 
 #ifdef SOFTAP
 char fw_path2[MOD_PARAM_PATHLEN];
@@ -1109,7 +1109,7 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 		       sizeof(pvt_data->event.event_type));
 	}
 		/* These are what external supplicant/authenticator wants */
-/*                                  */		//by sjpark 11-03-15
+/* LGE_CHANGE_S, 2011-0226, add CCX */		//by sjpark 11-03-15
 #if defined(BCMCCX) && defined(BCMDBG_EVENT) /* junlim */
 		case WLC_E_PRUNE:
 			{
@@ -1185,7 +1185,7 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 			}
 			break;
 #endif /* defined(BCMCCX) && defined(BCMDBG_EVENT) */ /* junlim */
-/*                                  */
+/* LGE_CHANGE_E, 2011-0226, add CCX */
 		/* fall through */
 	case WLC_E_LINK:
 	case WLC_E_DEAUTH:
@@ -1619,7 +1619,7 @@ int dhd_arp_get_arp_hostip_table(dhd_pub_t *dhd, void *buf, int buflen)
 	return 0;
 }
 #endif /* ARP_OFFLOAD_SUPPORT  */
-/*                                                   */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-04-03, configs */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 #include <linux/fs.h>
 #include <linux/ctype.h>
@@ -1704,7 +1704,7 @@ assoc_listen=1
 #endif
 
 #if defined (CONFIG_LGE_BCM432X_PATCH)
-/*              */
+/* LGE Specific */
 bool PM_control = TRUE;
 #endif
 
@@ -1712,19 +1712,19 @@ static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 {
 	int var_int;
 
-//                                                               
+//20110627 sangjun.bae@lge.com wifi 5GHz update & tunning [START]
 	/* For specific country style. ex) AU/2 */
 	wl_country_t cspec = {{0}, -1, {0}};
 	char *revstr;
 	char *endptr = NULL;
 	int iolen;
 	char smbuf[WLC_IOCTL_SMLEN*2];
-//                                                             
+//20110627 sangjun.bae@lge.com wifi 5GHz update & tunning [END]
 
 
 	if (!strcmp(name, "country")) {
 
-//                                                               
+//20110627 sangjun.bae@lge.com wifi 5GHz update & tunning [START]
 		/* For specific country style. ex) AU/2 */
 		revstr = strchr(value, '/');
 		if (revstr) {
@@ -1739,7 +1739,7 @@ static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 			return dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR,
 					smbuf, iolen, TRUE, 0);
 		}
-//                                                             
+//20110627 sangjun.bae@lge.com wifi 5GHz update & tunning [END]
 
 		return dhd_wl_ioctl_cmd(dhd, WLC_SET_COUNTRY,
 				value, WLC_CNTRY_BUF_SZ, TRUE, 0);
@@ -1781,7 +1781,7 @@ static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 
 		bcm_ether_atoe(value, &ea);
 
-/*                                                                                      */
+/* LGE_CHANGE_S, [jongpil.yoon@lge.com], 2011-04-13, <sync macaddrd: firmware & driver> */
 #if !defined (CONFIG_LGE_BCM432X_PATCH)
 		ret = memcmp( &ea.octet, dhd->mac.octet, ETHER_ADDR_LEN);
 		if(ret == 0){
@@ -1789,7 +1789,7 @@ static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 			return 0;
 		}
 #endif
-/*                                                                                      */
+/* LGE_CHANGE_E, [jongpil.yoon@lge.com], 2011-04-13, <sync macaddrd: firmware & driver> */
 
 		DHD_ERROR(("%s: Change Macaddr = %02X:%02X:%02X:%02X:%02X:%02X\n",__FUNCTION__,
 					ea.octet[0], ea.octet[1], ea.octet[2],
@@ -1824,10 +1824,10 @@ static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 		}
 		/* Setup timeout bcm_timeout from dhd driver 4.217.48 */
 
-#ifdef BCMCCX								/*                                  */	//by sjpark 11-03-15
+#ifdef BCMCCX								/* LGE_CHANGE_S, 2011-0226, add CCX */	//by sjpark 11-03-15
 		if(var_int)
 			printk(" roam_off =%d BCMCCX roam_off should be 0\n",var_int);
-#endif											/*                                  */
+#endif											/* LGE_CHANGE_E, 2011-0226, add CCX */
 		iovlen = bcm_mkiovar(name, (char *)&var_int, sizeof(var_int),
 				iovbuf, sizeof(iovbuf));
 		return dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR,
@@ -1898,8 +1898,8 @@ err:
 	ret = -1;
 	goto out;
 }
-#endif /*                          */
-/*                                                   */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-04-03, configs */
 
 int
 dhd_preinit_ioctls(dhd_pub_t *dhd)
@@ -1911,7 +1911,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	uint up = 0;
 #if !defined(CONFIG_LGE_BCM432X_PATCH)
 	uint power_mode = PM_FAST;
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 	uint32 dongle_align = DHD_SDALIGN;
 	uint32 glom = 0;
 	uint bcn_timeout = 4;
@@ -1919,7 +1919,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #if defined(ARP_OFFLOAD_SUPPORT)
 	int arpoe = 1;
 #endif
-#ifndef BCMCCX								/*                                  */	//by sjpark 11-03-15
+#ifndef BCMCCX								/* LGE_CHANGE_S, 2011-0226, add CCX */	//by sjpark 11-03-15
 	int scan_assoc_time = 40;
 	int scan_unassoc_time = 40;
 #endif
@@ -1936,7 +1936,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	uint filter_mode = 0;
 #else
 	uint filter_mode = 1;
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 	uint32 listen_interval = LISTEN_INTERVAL; /* Default Listen Interval in Beacons */
 #if defined(SOFTAP)
 	uint dtim = 1;
@@ -1979,11 +1979,11 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	}
 #endif /* GET_CUSTOM_MAC_ENABLE */
 
-/*                                                   */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-04-03, configs */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 	dhd_preinit_config(dhd, 0);
-#endif /*                          */
-/*                                                   */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-04-03, configs */
 
 #ifdef SET_RANDOM_MAC_SOFTAP
 	if (strstr(fw_path, "_apsta") != NULL) {
@@ -2081,12 +2081,12 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		DHD_ERROR(("Firmware version = %s\n", buf));
 	}
 
-/*                                                                          */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-08-27, already PM setup is configured */
 #if !defined(CONFIG_LGE_BCM432X_PATCH)
 	/* Set PowerSave mode */
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode, sizeof(power_mode), TRUE, 0);
-#endif /*                          */
-/*                                                                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-08-27, already PM setup is configured */
 
 	/* Match Host and Dongle rx alignment */
 	bcm_mkiovar("bus:txglomalign", (char *)&dongle_align, 4, iovbuf, sizeof(iovbuf));
@@ -2173,19 +2173,19 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	//setbit(eventmask, WLC_E_PFN_SCAN_COMPLETE);
 #endif /* PNO_SUPPORT */
 
-#if defined(BCMCCX) && defined(BCMDBG_EVENT) /* junlim */								/*                                  */		//by sjpark 11-03-15
+#if defined(BCMCCX) && defined(BCMDBG_EVENT) /* junlim */								/* LGE_CHANGE_S, 2011-0226, add CCX */		//by sjpark 11-03-15
 	setbit(eventmask, WLC_E_ADDTS_IND);
 	setbit(eventmask, WLC_E_DELTS_IND);
 #endif /* defined(BCMCCX) && (BCMDBG_EVENT) */ /* junlim */	
 
 	bcm_mkiovar("event_msgs", eventmask, WL_EVENTING_MASK_LEN, iovbuf, sizeof(iovbuf));
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-#ifndef BCMCCX								/*                                  */	//by sjpark 11-03-15
+#ifndef BCMCCX								/* LGE_CHANGE_S, 2011-0226, add CCX */	//by sjpark 11-03-15
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_SCAN_CHANNEL_TIME, (char *)&scan_assoc_time,
 		sizeof(scan_assoc_time), TRUE, 0);
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_SCAN_UNASSOC_TIME, (char *)&scan_unassoc_time,
 		sizeof(scan_unassoc_time), TRUE, 0);
-#endif									/*                                  */
+#endif									/* LGE_CHANGE_E, 2011-0226, add CCX */
 
 
 	/* add a default packet filter pattern */
@@ -2233,7 +2233,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	/* Parse pattern filter pattern. */
 	pattern_size = htod32(wl_pattern_atoh("0x00",
 		(char *) &pkt_filterp->u.pattern.mask_and_pattern[mask_size]));
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 
 	if (mask_size != pattern_size) {
 		DHD_ERROR(("Mask and pattern not the same size\n"));

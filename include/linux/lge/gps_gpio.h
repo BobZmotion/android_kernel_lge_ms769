@@ -19,12 +19,12 @@ struct gps_gpio_platform_data {
 #if defined(CONFIG_P940_GPS_LNA_SD_USE)
 	unsigned lna_sd;	/* LNA_SD GPIO */
 #endif
-//                                                                       
+// LGE_SJIT_S 12/21/2011 [mohamed.khadri@lge.com] GPS UART Enable/Disable
 #define UART_DEV_NAME_LEN 32
         unsigned char uart_dev_name[UART_DEV_NAME_LEN]; /* gps uart name */
         int (*uart_enable) (void);
         int (*uart_disable) (void);
-//                                                                       
+// LGE_SJIT_E 12/21/2011 [mohamed.khadri@lge.com] GPS UART Enable/Disable
 };
 
 #endif /* __GPS_GPIO_H */

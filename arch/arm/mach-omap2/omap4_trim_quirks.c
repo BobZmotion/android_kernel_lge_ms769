@@ -150,9 +150,9 @@ static __init int omap4_ldo_trim_init(void)
 	if (!bgap_trimmed)
 		bgap_trim_sw_overide = true;
 
-	/*                                        
-                                                    
-  */
+	/* LGE_SJIT 2012-01-13 [dojip.kim@lge.com]
+	 * wrong works on iFF rev_b, so temporarily blocked
+	 */
 #ifdef CONFIG_MACH_LGE_IFF
 	/* If not already trimmed, use s/w override */
 	if (system_rev > 2 && cpu_is_omap446x())

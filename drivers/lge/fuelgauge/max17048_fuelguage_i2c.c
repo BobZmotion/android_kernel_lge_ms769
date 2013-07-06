@@ -31,7 +31,7 @@
 //#define D printk
 static DEFINE_MUTEX(fuel_update_lock);
 
-/*                                                        */
+/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] add gpio_alert */
 struct max17043_chip {
 	struct i2c_client *client;
 	struct delayed_work gauge_work;
@@ -130,9 +130,9 @@ static int max17043_reference_graph(int __x,
 
 	__y = (__x * slope + const_term);
 
-	/*                                                       
-                                           
-  */
+	/* [jongho3.lee@lge.com] Soc error range should be allowd
+	 * as much as fuel gauge volt error range.
+	 */
 	if (error_range) {
 		*error_range =
 		    slope * (FUEL_GAUGE_VOLT_ERROR_RANGE) / (*error_range);
@@ -185,14 +185,14 @@ static int max17043_validate_gauge_value(int voltage, int capacity)
 	if ((capacity < calculated_soc + error_range)
 	    && (capacity > calculated_soc - error_range)) {
 		D(" ##### SOC & CALCULATED SOC is met  ##########");
-		/*                                                    
-                         
-   */
+		/* [jongho3.lee@lge.com] capacity validation should be
+		 * performed just once.
+		 */
 		return 1;
 	}
 
 	D(" ##### SOC & CALCULATED SOC is NOT met 1!!!  ##########");
-	/*                                                                          */
+	/* [jongho3.lee@lge.com] capacity validation should be performed just once. */
 	return 0;
 }
 
@@ -238,7 +238,7 @@ static int max17043_write_reg(struct i2c_client *client, int reg, u16 value)
 				dev_err(&client->dev, "%s: err %d\n", __func__,
 					ret);
 				D("MAX17043 I2C WRITE ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-				/*                                             */
+				/* <jongho3.lee@lge.com> sleep before next try */
 				msleep(1);
 			} else
 				break;
@@ -255,7 +255,7 @@ static int max17043_read_reg(struct i2c_client *client, int reg)
 	int retry = 1;
 
 	mutex_lock(&fuel_update_lock);
-	/*                                                                     */
+	/* LGE_CHANGE [bk.shin@lge.com] 2012-02-01, LGE_P940, add from P940 GB */
 	if (!get_fg_enable()) {
 		D("MAX17043 CAMERAIS ON! DONt try to use I2C....., %d,",
 		  !get_fg_enable());
@@ -269,7 +269,7 @@ static int max17043_read_reg(struct i2c_client *client, int reg)
 				dev_err(&client->dev, "%s: err %d\n", __func__,
 					ret);
 				D("MAX17043 I2C READ ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-				//                                           
+				//<jongho3.lee@lge.com> sleep before next try
 				msleep(1);
 			} else
 				break;
@@ -419,7 +419,7 @@ static int max17043_write_config(struct i2c_client *client)
 	return 0;
 }
 
-/*                                                         */
+/* LGE_SJIT 2012-02-08 [dojip.kim@lge.com] fix the warning */
 #if 0
 static int max17043_need_quickstart(int charging)
 {
@@ -505,9 +505,9 @@ static int max17043_need_quickstart(int charging)
 static int max17043_next_alert_level(int level)
 {
 	int next_level;
-	/*                                              
-                                                          
-  */
+	/* LGE_CHANGE [euiseop.shin@lge.com] 2011-04-13,
+	 * LGE_P940, add a definition of Battery Alert Threshold.
+	 */
 	if (level > ATHD_LEVEL)
 		next_level = max17043_reverse_get_ui_capacity(ATHD_LEVEL);
 	else if (level < 5)
@@ -578,7 +578,7 @@ static int max17043_update(struct max17043_chip *chip)
 	if (ret < 0)
 		return ret;
 
-	/*                                             */
+	/* <jongho3.lee@lge.com> sleep before next try */
 	ret = max17043_read_vcell(client);
 	if (ret < 0)
 		return ret;
@@ -586,9 +586,9 @@ static int max17043_update(struct max17043_chip *chip)
 	/* convert raw data to usable data */
 	/* vcell * 1.25 mV */
 	chip->voltage = (chip->vcell * 5) >> 2;
-	/*                                                     
-                                                        
-   */
+	/*jongho3.lee@lge.com soc value should be shifted 9 bit
+	  after module dataloaded (max17048 custom fuel gauge).
+	  */
 	//chip->capacity = chip->soc >> 8;
 	chip->capacity = chip->soc >> 9;
 
@@ -704,11 +704,11 @@ ssize_t max17043_store_status(struct device * dev,
 	return count;
 }
 
-/*                                                                                        */
+/* LGE_CHANGE [euiseop.shin@lge.com] 2011-07-25,[P940] restore max17043 'state' attribute */
 DEVICE_ATTR(state, 0666, max17043_show_status, max17043_store_status);
 /* sysfs interface : for AT Commands [END] */
 
-/*                                      */
+/* <jongho3.lee@lge.com> get capacity.. */
 int max17043_get_ui_capacity(void)
 {
 	int ui_cap;
@@ -718,19 +718,19 @@ int max17043_get_ui_capacity(void)
 
 	ui_cap = reference->soc - (1 << 8);
 	ui_cap = (ui_cap * 100) / RECHARGING_BAT_SOC_CON;
-	/*                                                                     */
-	/*                                                                         */
+	/* LGE_CHANGE [bk.shin@lge.com] 2012-02-01, LGE_P940, add from P940 GB */
+	/* LGE_CHANGE [wonhui.lee@lge.com] 2011-10-27, apply new half up algorithm */
 #if 1
 	ui_cap += 128;		// half up
-	/*                                                     
-                                                        
-   */
+	/*jongho3.lee@lge.com soc value should be shifted 9 bit
+	  after module dataloaded (max17048 custom fuel gauge).
+	  */
 	//ui_cap >>= 8;
 	ui_cap >>= 9;
 #else
-	/*                                                     
-                                                        
-   */
+	/*jongho3.lee@lge.com soc value should be shifted 9 bit
+	  after module dataloaded (max17048 custom fuel gauge).
+	  */
 	//ui_cap >>= 8;
 	ui_cap >>= 9;
 	if (reference->soc & 0x80)	// half up
@@ -759,9 +759,9 @@ int max17043_reverse_get_ui_capacity(int ui_cap)
 
 	real_cap = ui_cap + (1 << 8);
 
-	/*                                              
-                                     
-  */
+	/* LGE_CHANGE [euiseop.shin@lge.com] 2011-07-06,
+	 * [P940] Imported from Cosmopolitan
+	 */
 	if (real_cap & 0x80)	// half up
 		real_cap += (1 << 8);
 
@@ -841,12 +841,12 @@ static int __devinit max17043_probe(struct i2c_client *client,
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	struct max17043_chip *chip;
 	int ret = 0;
-	/*                                                           */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] add platform_data */
 	struct max17043_platform_data *pdata = client->dev.platform_data;
 
 	D("max17043_probe I2C...............................................");
   printk("[juya]max17048_probe!!!");
-	/*                                                         */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] check the pdata */
 	if (pdata == NULL)
 		return -EINVAL;
 
@@ -860,7 +860,7 @@ static int __devinit max17043_probe(struct i2c_client *client,
 	reference = chip;
 	chip->client = client;
 
-	/*                                                                   */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] get the values from pdata */
 	chip->default_rcomp = pdata->rcomp;
 	chip->gpio_alert = pdata->gpio_alert;
 
@@ -872,8 +872,8 @@ static int __devinit max17043_probe(struct i2c_client *client,
 	}
 	gpio_direction_input(chip->gpio_alert);
 
-	/*                                                         */
-	/*                                                            */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] pass the client */
+	/* LGE_CHANGE [euiseop.shin@lge.com] 2011-06-20,[P940] modify */
 	ret = request_irq(gpio_to_irq(chip->gpio_alert),
 			  max17043_interrupt_handler,
 			  IRQF_TRIGGER_FALLING, MAX17043_I2C_NAME, client);
@@ -907,9 +907,9 @@ static int __devinit max17043_probe(struct i2c_client *client,
 	chip->vcell = 3360;
 	chip->soc = 100 << 8;
 	chip->voltage = 4200;
-	/*                                              
-                                               
-  */
+	/* LGE_CHANGE [euiseop.shin@lge.com] 2011-07-06,
+	 *  [P940] Imported from Cosmopolitan : 0->100
+	 */
 	chip->capacity = 100;
 	chip->config = 0x971C;
 	chip->fg_enable = 1;
@@ -919,7 +919,7 @@ static int __devinit max17043_probe(struct i2c_client *client,
 
 	max17043_read_version(client);
 	max17043_read_config(client);
-	/*                                                          */
+	/* <jongho3.lee@lge.com> rcom value should be set with temp */
 #if 0
 	max17043_set_rcomp(chip->default_rcomp);
 	if (need_to_quickstart == -1) {
@@ -958,7 +958,7 @@ static int __devexit max17043_remove(struct i2c_client *client)
 	device_remove_file(&client->dev, &dev_attr_state);
 	device_remove_file(&client->dev, &dev_attr_soc);
 
-	/*                                                           */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] free irq and gpio */
 	free_irq(gpio_to_irq(chip->gpio_alert), client);
 	gpio_free(chip->gpio_alert);
 
@@ -978,12 +978,12 @@ static int max17043_suspend(struct i2c_client *client, pm_message_t state)
 	struct max17043_chip *chip = i2c_get_clientdata(client);
 
 	max17043_read_config(client);
-	/*                                              
-                                  
-  */
-	/*                                                                    
-                           
-  */
+	/* LGE_CHANGE [euiseop.shin@lge.com] 2011-06-20,
+	 * [P940] Alert Threshold bug fix
+	 */
+	/* LGE_CHANGE [bk.shin@lge.com] 2012-02-01, LGE_P940, add from P940 GB
+	 * euiseop.shin 2011-12-22
+	 */
 	alert_level = max17043_next_alert_level(max17043_get_ui_capacity());
 	max17043_set_alert_level(alert_level);
 

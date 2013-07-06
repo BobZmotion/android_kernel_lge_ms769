@@ -115,15 +115,6 @@ typedef BWL_PRE_PACKED_STRUCT struct
 #define WPA_CIPHER_WEP_104	5	
 #define WPA_CIPHER_BIP		6	
 #define WPA_CIPHER_TPK		7	
-#ifdef BCMCCX
-#define WPA_CIPHER_CKIP		8	
-#define WPA_CIPHER_CKIP_MMH	9	
-#define WPA_CIPHER_WEP_MMH	10	
-
-#define IS_CCX_CIPHER(cipher)	((cipher) == WPA_CIPHER_CKIP || \
-				 (cipher) == WPA_CIPHER_CKIP_MMH || \
-				 (cipher) == WPA_CIPHER_WEP_MMH)
-#endif
 
 #ifdef BCMWAPI_WAI
 #define WAPI_CIPHER_NONE	WPA_CIPHER_NONE

@@ -203,6 +203,26 @@ static ssize_t overlay_output_size_store(struct omap_overlay *ovl,
 	return size;
 }
 
+#ifdef CONFIG_HRZ_II
+int hrz_res_conv_mode = 0;
+//LGE_CHANGE_S [taekeun1.kim] P720 : resolution converter
+static ssize_t res_conv_show(struct omap_overlay *ovl, char *buf)
+{
+	return 0;
+	
+}
+
+static ssize_t res_conv_store(struct omap_overlay *ovl,
+	const char *buf, size_t size)
+{
+	int mode = simple_strtoul(buf, NULL, 10);
+	
+	hrz_res_conv_mode = mode;
+	
+	return size;
+}
+#endif
+
 static ssize_t overlay_enabled_show(struct omap_overlay *ovl, char *buf)
 {
 	return snprintf(buf, PAGE_SIZE, "%d\n", ovl->info.enabled);
@@ -452,6 +472,11 @@ static OVERLAY_ATTR(position, S_IRUGO|S_IWUSR,
 		overlay_position_show, overlay_position_store);
 static OVERLAY_ATTR(output_size, S_IRUGO|S_IWUSR,
 		overlay_output_size_show, overlay_output_size_store);
+#ifdef CONFIG_HRZ_II
+//LGE_CHANGE_S [taekeun1.kim@lge.com] 2012-02-27, P720 : resolution converting
+static OVERLAY_ATTR(res_convert,  S_IRUGO|S_IWUSR, res_conv_show, res_conv_store);
+//LGE_CHANGE_E [taekeun1.kim@lge.com] 2012-02-27
+#endif
 static OVERLAY_ATTR(enabled, S_IRUGO|S_IWUSR,
 		overlay_enabled_show, overlay_enabled_store);
 static OVERLAY_ATTR(global_alpha, S_IRUGO|S_IWUSR,
@@ -473,6 +498,11 @@ static struct attribute *overlay_sysfs_attrs[] = {
 	&overlay_attr_screen_width.attr,
 	&overlay_attr_position.attr,
 	&overlay_attr_output_size.attr,
+#ifdef CONFIG_HRZ_II
+//LGE_CHANGE_S [taekeun1.kim@lge.com] 2012-2-27, P720 : resolution converting.
+	&overlay_attr_res_convert.attr,
+//LGE_CHANGE_E [taekeun1.kim@lge.com]
+	#endif
 	&overlay_attr_enabled.attr,
 	&overlay_attr_global_alpha.attr,
 	&overlay_attr_pre_mult_alpha.attr,
@@ -526,8 +556,6 @@ static struct kobj_type overlay_ktype = {
 int dss_check_overlay(struct omap_overlay *ovl, struct omap_dss_device *dssdev)
 {
 	struct omap_overlay_info *info;
-	struct omap_writeback_info wb_info;
-	struct omap_writeback *wb;
 	u16 outw, outh;
 	u16 dw, dh;
 
@@ -544,16 +572,7 @@ int dss_check_overlay(struct omap_overlay *ovl, struct omap_dss_device *dssdev)
 		return -EINVAL;
 	}
 
-	wb = omap_dss_get_wb(0);
-
-	wb->get_wb_info(wb, &wb_info);
-
-	if (wb && wb_info.enabled && wb_info.mode == OMAP_WB_MEM2MEM_MODE &&
-					ovl->manager->id == wb_info.source) {
-		dw = wb_info.width;
-		dh = wb_info.height;
-	} else
-		dssdev->driver->get_resolution(dssdev, &dw, &dh);
+	dssdev->driver->get_resolution(dssdev, &dw, &dh);
 
 	DSSDBG("check_overlay %d: (%d,%d %dx%d -> %dx%d) disp (%dx%d)\n",
 			ovl->id,
@@ -577,18 +596,16 @@ int dss_check_overlay(struct omap_overlay *ovl, struct omap_dss_device *dssdev)
 			outh = info->out_height;
 	}
 
-	if (!info->wb_source) {
-		if (dw < info->pos_x + outw) {
-			DSSDBG("check_overlay failed 1: %d < %d + %d\n",
-					dw, info->pos_x, outw);
-			return -EINVAL;
-		}
+	if (dw < info->pos_x + outw) {
+		DSSDBG("check_overlay failed 1: %d < %d + %d\n",
+				dw, info->pos_x, outw);
+		return -EINVAL;
+	}
 
-		if (dh < info->pos_y + outh) {
-			DSSDBG("check_overlay failed 2: %d < %d + %d\n",
-					dh, info->pos_y, outh);
-			return -EINVAL;
-		}
+	if (dh < info->pos_y + outh) {
+		DSSDBG("check_overlay failed 2: %d < %d + %d\n",
+				dh, info->pos_y, outh);
+		return -EINVAL;
 	}
 
 	if ((ovl->supported_modes & info->color_mode) == 0) {
@@ -602,21 +619,6 @@ int dss_check_overlay(struct omap_overlay *ovl, struct omap_dss_device *dssdev)
 		return -EINVAL;
 	}
 
-	/* OMAP44xx limitation: in Stallmode, when the frame pixel size
-	 * is less than output SyncFifo depth(16) DISPC hangs without
-	 * sending any data. Observation is: when width/height less than 4/5
-	 * no FRAMEDONE INQ ever received for such frame
-	 */
-	if ((info->width < 4 || info->height < 5) &&
-		info->color_mode == OMAP_DSS_COLOR_NV12 ||
-		info->color_mode == OMAP_DSS_COLOR_YUV2 ||
-		info->color_mode == OMAP_DSS_COLOR_UYVY)
-		if (dssdev->type == OMAP_DISPLAY_TYPE_DSI &&
-			dssdev->phy.dsi.type == OMAP_DSS_DSI_TYPE_CMD_MODE &&
-			cpu_is_omap44xx())  {
-			DSSWARN("too small frame on VID%d dropped\n", ovl->id);
-			return -EINVAL;
-		}
 	return 0;
 }
 

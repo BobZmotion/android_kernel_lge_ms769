@@ -1050,7 +1050,7 @@ int snd_interval_list(struct snd_interval *i, unsigned int count, unsigned int *
 
 EXPORT_SYMBOL(snd_interval_list);
 
-int snd_interval_step(struct snd_interval *i, unsigned int min, unsigned int step)
+static int snd_interval_step(struct snd_interval *i, unsigned int min, unsigned int step)
 {
 	unsigned int n;
 	int changed = 0;
@@ -1070,7 +1070,6 @@ int snd_interval_step(struct snd_interval *i, unsigned int min, unsigned int ste
 	}
 	return changed;
 }
-EXPORT_SYMBOL(snd_interval_step);
 
 /* Info constraints helpers */
 

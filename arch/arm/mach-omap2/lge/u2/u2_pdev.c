@@ -21,10 +21,10 @@
 #include <linux/lge/pwm-vibrator.h>
 #include <linux/lge/leds_keypad.h>
 #include <linux/lge/lge_input.h>
-//                                          
+//LGE_TELECA_RIL_RECOVERY_CP_RESET_6  -START
 //Description: Modem watcher functionality header file
 #include <linux/lge/mdm_watcher.h>
-//                                        
+//LGE_TELECA_RIL_RECOVERY_CP_RESET_6  -END
 #include <linux/switch_dp3t.h>
 #include <linux/switch_usif.h>
 // Enabled GPS Related configuration
@@ -283,7 +283,7 @@ static struct platform_device charger_device= {
 	.id	  = -1,
 };
 
-//                                  
+//LGE_TELECA_RIL_RECOVERY_CP_RESET_6
 //RIL RECOVERY
 //Description: Describes the GPIO configuration for Modem reset feature
 static struct mdm_watcher_event mdm_watcher_event_data[] __initdata  = {
@@ -327,7 +327,7 @@ static struct platform_device u2_mdm_watcher_device __refdata = {
 		.platform_data = &u2_mdm_watcher_pdata,
 	},
 };
-//                                        
+//LGE_TELECA_RIL_RECOVERY_CP_RESET_6  -END
 
 #if defined(CONFIG_LGE_HANDLE_PANIC)
 static struct resource crash_log_resource[] = {
@@ -440,7 +440,7 @@ int __init u2_pdevs_init(void)
 	/*
 	 * change MHL from I2C to GPIO
 	 */
-#if ! defined(CONFIG_MACH_LGE_U2) //                                        
+#if ! defined(CONFIG_MACH_LGE_U2) //kyungyoon.kim@lge.com don't use I2C-GPIO
 	lge_add_i2c_gpio_device();
 #endif
 

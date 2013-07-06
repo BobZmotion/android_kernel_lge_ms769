@@ -25,7 +25,7 @@
 
 #include "hdcp.h"
 
-//                                
+// wooho47.jung@lge.com 2011.11.02
 // ADD : for HDCP Debug
 #if 0
 #define HDCP_LOG_FUNCTION_NAME_ENTRY             printk(KERN_INFO "[HDCP]## %s() ++ ##\n",  __func__);
@@ -67,13 +67,13 @@ long hdcp_ioctl(struct file *fd, unsigned int cmd, unsigned long arg);
 static int __init hdcp_init(void);
 static void __exit hdcp_exit(void);
 
-//                                                                                   
+// LGE_CHANGE_S [jh.koo kibum.lee] 2011-09-08, hdmi and hdcp lockup issue WA for P940
 static int hdcp_mainclk_state=false;
 static int backup_retry_count=3;
-//                                                                                   
-//                                                                              
+// LGE_CHANGE_E [jh.koo kibum.lee] 2011-09-08, hdmi and hdcp lockup issue WA for P940
+// LGE_CHANGE_S [jh.koo kibum.lee] 2011-11-01, uevent for HDCP completion timing
 extern void hdcp_send_uevent(u8 on);
-//                                                                              
+// LGE_CHANGE_E [jh.koo kibum.lee] 2011-11-01, uevent for HDCP completion timing
 #endif
 
 struct completion hdcp_comp;
@@ -187,7 +187,7 @@ static void hdcp_wq_start_authentication(void)
 	}
 	else {
 		// by Joshua
-		//                                                                       
+		//hdcp.retry_cnt = hdcp.en_ctrl->nb_retry;	// kibum.lee@lge.com //comment
 		DBG("retry_cnt=%d\n", hdcp.retry_cnt);
 
 		hdcp.hdcp_state = HDCP_WAIT_R0_DELAY;
@@ -218,18 +218,18 @@ static void hdcp_wq_restart_hdmi(void)
 		printk("authentication failed - restarting HDMI, attempts=%d\n", hdcp.retry_cnt);
         printk("====================================================\n");
         /*
-                                          
-                                    
-                   
-                                        
-                                                                           
-                          
+        // wooho47.jung@lge.com 2011.11.02
+        // ADD : for HDCP Auth retry
+		//hdmi_restart();
+		hdcp.hdcp_state = HDCP_ENABLE_PENDING;
+		hdcp.auth_state = HDCP_STATE_DISABLED; //HDCP_STATE_AUTH_FAIL_RESTARTING;
+		hdcp_start_frame_cb();		
         */		
 		//hdcp.hdmi_restart = 1;
         //hdmi_restart();
 		//hdcp.hdmi_restart = 0;
 		hdcp_start_frame_cb();		
-        //                                
+        // wooho47.jung@lge.com 2011.11.04
         // MOD : for HDCP Auth Retry
 		hdcp.hdcp_state = HDCP_ENABLE_PENDING;
 		hdcp.auth_state = HDCP_STATE_AUTH_FAIL_RESTARTING;
@@ -240,7 +240,7 @@ static void hdcp_wq_restart_hdmi(void)
 		printk("=== authentication failed !!!\n");
         printk("=============================\n");
 		//hdcp.hdcp_state = HDCP_DISABLED;	// HDCP_DISABLE ?? 
-		hdcp.hdcp_state = HDCP_ENABLE_PENDING;	//                  
+		hdcp.hdcp_state = HDCP_ENABLE_PENDING;	// kibum.lee@lge.com
 		hdcp.auth_state = HDCP_STATE_AUTH_FAILURE;
 	}
     HDCP_LOG_FUNCTION_NAME_EXIT
@@ -372,9 +372,9 @@ static void hdcp_work_queue(struct work_struct *work)
 
 	mutex_lock(&hdcp.lock);
 
-//                                                                                   
+// LGE_CHANGE_S [jh.koo kibum.lee] 2011-09-08, hdmi and hdcp lockup issue WA for P940
 	hdcp_request_dss();
-//                                                                                   
+// LGE_CHANGE_E [jh.koo kibum.lee] 2011-09-08, hdmi and hdcp lockup issue WA for P940
 
 	DBG("%u hdmi=%d hdcp=%d auth=%d evt= %02x %04x\n",
 		jiffies_to_msecs(jiffies),
@@ -412,13 +412,13 @@ static void hdcp_work_queue(struct work_struct *work)
 	    (event == HDCP_STOP_FRAME_EVENT) ||
 	    (event == HDCP_HPD_LOW_EVENT)) {
 		if (hdcp.hdcp_state != HDCP_DISABLED) {
-			//                                                            
+			//hdcp_request_dss();		// kibum.lee@lge.com 2011.09.08 comment
 			hdcp_wq_disable();
-			//                                                            
+			//hdcp_release_dss();		// kibum.lee@lge.com 2011.09.08 comment
 
 			if (event == HDCP_DISABLE_CTL) {
 				if (hdcp.en_ctrl) {
-					backup_retry_count = hdcp.en_ctrl->nb_retry;	//                  
+					backup_retry_count = hdcp.en_ctrl->nb_retry;	// kibum.lee@lge.com
 					kfree(hdcp.en_ctrl);
 					hdcp.en_ctrl = 0;
 				}
@@ -448,9 +448,9 @@ static void hdcp_work_queue(struct work_struct *work)
 			hdcp.retry_cnt = hdcp.en_ctrl->nb_retry;
 			DBG("-2army hdcp.retry_cnt =%d\n", hdcp.retry_cnt);
 			if (hdcp.hdmi_state == HDMI_STARTED) {
-			//                                                             
+			//	hdcp_request_dss();		// kibum.lee@lge.com 2011.09.08 comment
 				hdcp_wq_start_authentication();
-			//                                                             
+			//	hdcp_release_dss();		// kibum.lee@lge.com 2011.09.08 comment
 			}
 			else
 				hdcp.hdcp_state = HDCP_ENABLE_PENDING;
@@ -464,9 +464,9 @@ static void hdcp_work_queue(struct work_struct *work)
         DBG("HDCP_ENABLE_PENDING\n");
 		/* HDMI start frame event */
 		if (event == HDCP_START_FRAME_EVENT) {
-		//                                                             
+		//	hdcp_request_dss();		// kibum.lee@lge.com 2011.09.08 comment
 			hdcp_wq_start_authentication();
-		//                                                             
+		//	hdcp_release_dss();		// kibum.lee@lge.com 2011.09.08 comment
 		}
 
 		break;
@@ -478,9 +478,9 @@ static void hdcp_work_queue(struct work_struct *work)
 		/* Re-authentication */
 		if (event == HDCP_AUTH_REATT_EVENT)
         {
-			//                                                            
+			//hdcp_request_dss();		// kibum.lee@lge.com 2011.09.08 comment
 			hdcp_wq_start_authentication();
-			//                                                            
+			//hdcp_release_dss();		// kibum.lee@lge.com 2011.09.08 comment
 		}
 		break;
 		
@@ -490,9 +490,9 @@ static void hdcp_work_queue(struct work_struct *work)
         DBG("HDCP_WAIT_R0_DELAY\n");
 		/* R0 timer elapsed */
 		if (event == HDCP_R0_EXP_EVENT) {
-			//                                                            
+			//hdcp_request_dss();		// kibum.lee@lge.com 2011.09.08 comment
 			hdcp_wq_check_r0();
-			//                                                            
+			//hdcp_release_dss();		// kibum.lee@lge.com 2011.09.08 comment
 		}
 		break;
 
@@ -503,26 +503,26 @@ static void hdcp_work_queue(struct work_struct *work)
 		/* Ri failure */
 		if (event == HDCP_RI_FAIL_EVENT) {
 			/* KSV list timeout is running and should be canceled */
-            //                                
+            // wooho47.jung@lge.com 2011.11.05
             // DEL : no need 
 			//hdcp_cancel_work(&hdcp.pending_wq_event);
 
-			//                                                            
+			//hdcp_request_dss();		// kibum.lee@lge.com 2011.09.08 comment
 			hdcp_wq_authentication_failure();
-			//                                                            
+			//hdcp_release_dss();		// kibum.lee@lge.com 2011.09.08 comment
 		}
 		/* KSV list ready event */
 		else if (event == HDCP_KSV_LIST_RDY_EVENT) {
-			//                                                            
+			//hdcp_request_dss();		// kibum.lee@lge.com 2011.09.08 comment
 			hdcp_wq_step2_authentication();
-			//                                                            
+			//hdcp_release_dss();		// kibum.lee@lge.com 2011.09.08 comment
 		}
 		/* Timeout */
 		else if (event == HDCP_KSV_TIMEOUT_EVENT) {
-			//                                                            
+			//hdcp_request_dss();		// kibum.lee@lge.com 2011.09.08 comment
 			DBG("event == HDCP_KSV_TIMEOUT_EVENT\n");
 			hdcp_wq_authentication_failure();
-			//                                                            
+			//hdcp_release_dss();		// kibum.lee@lge.com 2011.09.08 comment
 		}
 		break;
 
@@ -533,9 +533,9 @@ static void hdcp_work_queue(struct work_struct *work)
 		/* Ri failure */
 		if (event == HDCP_RI_FAIL_EVENT) {
             DBG("event == HDCP_RI_FAIL_EVENT\n");
-			//                                                            
+			//hdcp_request_dss();		// kibum.lee@lge.com 2011.09.08 comment
 			hdcp_wq_authentication_failure();
-			//                                                            
+			//hdcp_release_dss();		// kibum.lee@lge.com 2011.09.08 comment
 		}
 		break;
 
@@ -547,7 +547,7 @@ static void hdcp_work_queue(struct work_struct *work)
 
 	kfree(hdcp_w);
 
-	hdcp_w = NULL;						//                             
+	hdcp_w = NULL;						// kibum.lee@lge.com 2011.09.08
 	DBG("%u hdmi=%d hdcp=%d auth=%d evt=%x %d\n",
 		jiffies_to_msecs(jiffies),
 		hdcp.hdmi_state,
@@ -569,7 +569,7 @@ static void hdcp_work_queue(struct work_struct *work)
 	}
     #endif
 
-    //                                
+    // wooho47.jung@lge.com 2011.11.02
     // ADD : for HDCP Uevent
 	hdcp_release_dss();
     
@@ -631,7 +631,7 @@ static struct delayed_work *hdcp_submit_work(int event, int delay, int irq_conte
  */
 static void hdcp_cancel_work(struct delayed_work **work)
 {
-//                                                                                   
+// LGE_CHANGE_S [jh.koo kibum.lee] 2011-09-08, hdmi and hdcp lockup issue WA for P940
 /*
 	if (*work) {
 		cancel_delayed_work(*work);
@@ -642,7 +642,7 @@ static void hdcp_cancel_work(struct delayed_work **work)
 	int ret = 0;
     HDCP_LOG_FUNCTION_NAME_ENTRY
     
-    //                                
+    // wooho47.jung@lge.com 2011.11.05
     // ADD : cancel work queue backtrace patch for HDCP    
     mutex_lock(&hdcp.event_lock);
 
@@ -656,18 +656,18 @@ static void hdcp_cancel_work(struct delayed_work **work)
 		}
 		else {
 			ret = cancel_delayed_work_sync(*work);
-            //                                
+            // wooho47.jung@lge.com 2011.11.05
             // ADD : cancel work queue backtrace patch for HDCP
 			kfree(*work);
 			*work = NULL;
 			DBG("result of the hdcp_cancel_work %d\n", ret);
 		}
 	}
-    //                                
+    // wooho47.jung@lge.com 2011.11.05
     // ADD : cancel work queue backtrace patch for HDCP
     mutex_unlock(&hdcp.event_lock);        
     HDCP_LOG_FUNCTION_NAME_EXIT
-//                                                                                   
+// LGE_CHANGE_E [jh.koo kibum.lee] 2011-09-08, hdmi and hdcp lockup issue WA for P940
 }
 
 
@@ -697,7 +697,7 @@ static void hdcp_start_frame_cb(void)
 
 
 	if(hdcp.en_ctrl != NULL && hdcp.retry_cnt > 0)
-		hdcp.hdcp_state = HDCP_ENABLE_PENDING;	//                                                       
+		hdcp.hdcp_state = HDCP_ENABLE_PENDING;	// kibum.lee@lge.com	// kibum.lee@lge.com force settings 
 		
 	hdcp.pending_start = hdcp_submit_work(HDCP_START_FRAME_EVENT,
 					      HDCP_ENABLE_DELAY,
@@ -730,7 +730,7 @@ static void hdcp_stop_frame_cb(void)
 	while(hdcp.hdcp_state == HDCP_KEY_ENCRYPTION_ONGOING && i--)
 		mdelay(5);
 
-//                      
+// kibum.lee@lge.com ...
 	if ((hdcp.hdcp_state != HDCP_DISABLED) && (hdcp.hdmi_restart == 0))
 		INIT_COMPLETION(hdcp_comp);
 	hdcp_submit_work(HDCP_STOP_FRAME_EVENT, 0, 0);
@@ -750,7 +750,7 @@ static void hdcp_stop_frame_cb(void)
 					"timeout %u\n",
 						jiffies_to_msecs(jiffies));
 	}
-//                      
+// kibum.lee@lge.com ...
 
 //	mutex_unlock(&hdcp.lock);
     HDCP_LOG_FUNCTION_NAME_EXIT
@@ -790,7 +790,7 @@ static void hdcp_irq_cb(int status)
 
 			hdcp_ddc_abort();
 
-            //                                
+            // wooho47.jung@lge.com 2011.11.09
             // ADD : for HDMI Certificate (Case HDMI)
             if(&hdcp.pending_start && hdcp.pending_start )
                 hdcp_cancel_work(&hdcp.pending_start);
@@ -811,7 +811,7 @@ static void hdcp_irq_cb(int status)
 		}
 	}
 
-	//                  
+	// kibum.lee@lge.com
 	if(status & HDMI_DISCONNECT)
 	{
 	    DBG("status=hdcp HDMI_DISCONNECT\n");
@@ -1064,7 +1064,7 @@ static int __init hdcp_init(void)
 	}
 
 	mutex_init(&hdcp.lock);
-    //                                
+    // wooho47.jung@lge.com 2011.11.05
     // ADD : cancel work queue backtrace patch for HDCP
     mutex_init(&hdcp.event_lock);
 
@@ -1123,7 +1123,7 @@ err_add_driver:
 err_register:
 	mutex_destroy(&hdcp.lock);
     
-    //                                
+    // wooho47.jung@lge.com 2011.11.05
     // ADD : cancel work queue backtrace patch for HDCP
     mutex_destroy(&hdcp.event_lock);
 
@@ -1169,7 +1169,7 @@ static void __exit hdcp_exit(void)
 
 	mutex_destroy(&hdcp.lock);
     
-    //                                
+    // wooho47.jung@lge.com 2011.11.05
     // ADD : cancel work queue backtrace patch for HDCP
     mutex_destroy(&hdcp.event_lock);
     

@@ -456,11 +456,11 @@ extern uint dhd_pktgen_len;
 #define MOD_PARAM_PATHLEN	2048
 extern char fw_path[MOD_PARAM_PATHLEN];
 extern char nv_path[MOD_PARAM_PATHLEN];
-/*                                                   */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-04-03, configs */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 extern char config_path[MOD_PARAM_PATHLEN];
-#endif /*                          */
-/*                                                   */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-04-03, configs */
 
 /* For supporting multiple interfaces */
 #define DHD_MAX_IFS	16

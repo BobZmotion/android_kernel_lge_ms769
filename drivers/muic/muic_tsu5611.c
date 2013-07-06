@@ -61,8 +61,8 @@ typedef enum int_{
 
 static int Int_Status = FIRST_INT;
 
-/*                                        
-                            
+/* LGE_SJIT 2012-01-27 [dojip.kim@lge.com]
+ * Add private device handle
  */
 struct ts5usb_device {
 	struct i2c_client *client;
@@ -86,13 +86,13 @@ void muic_init_tsu5611(struct i2c_client *client, TYPE_RESET reset)
 	muic_i2c_write_byte(client, SW_CONTROL, OPEN);
 	muic_i2c_write_byte(client, CONTROL_1, ID_200 | SEMREN);
 
-	/*                                                         
-                                
-                             
-                                                       
-                                                         
-                            
-  */
+	/* When boot up timing, CHG_TYP must be set within TSU5611.
+	 * This is chip bug of TSU5611.
+	 * Eg: SU540, KU5400, LU5400
+	 * TODO: boot up init and reset init may be seperated,
+	 *       cause those function implementation is ambigous
+	 *       hunsoo.lee@lge.com
+	 */
 	if (BOOTUP == reset) { /* TSU5611 BUG fix */
 		dev_info(&client->dev, "%s by BOOTUP\n", __func__);
 
@@ -480,7 +480,7 @@ static void muic_detect_device_set_mode(struct i2c_client *client, u8 int_status
 }
 
 #if defined(CONFIG_MACH_LGE)
-extern void android_disconnect_from_muic(void);
+extern void android_USB_disconnect(void);
 #endif
 
 static void muic_tsu5611_set_mode(struct i2c_client *client, u8 int_status1_val)
@@ -520,7 +520,7 @@ static void muic_tsu5611_set_mode(struct i2c_client *client, u8 int_status1_val)
 		 */
 		case MUIC_AP_UART :
 		case MUIC_CP_UART :
-			 if((int_status1_val & VBUS) == 0) {
+			if((int_status1_val & VBUS) == 0) {
 				dev_info(&client->dev, "%s: UART is removed\n", __func__);
 
 				/* TODO: Why set OPEN???? */
@@ -530,8 +530,18 @@ static void muic_tsu5611_set_mode(struct i2c_client *client, u8 int_status1_val)
 #endif
 				muic_set_mode(MUIC_NONE);
 			}
-			 else {
-			 	dev_err(&client->dev, "%s: UART is not removed\n", __func__);
+			else {
+/* TODO: Need to check if this case really happens???? */
+#if 1
+				dev_err(&client->dev, "%s: UART is not removed\n", __func__);
+#else
+				if((int_status1_val & IDNO) == IDNO_0010) { /* VBUS + 56K */
+					muic_set_mode(MUIC_CP_USB);
+				}
+				else {
+					dev_err(&client->dev, "%s: UART is not removed\n", __func__);
+				}
+#endif
 			}
 			break;
 
@@ -560,7 +570,7 @@ static void muic_tsu5611_set_mode(struct i2c_client *client, u8 int_status1_val)
 				 * USB mode change: Internal USB disconnect & connect operation.
 				 * Send USB disconnect event from MUIC.
 				 */
-				android_disconnect_from_muic();
+				android_USB_disconnect();
 #endif
 				dev_info(&client->dev, "%s: USB is removed\n", __func__);
 #if defined(CONFIG_MAX8971_CHARGER)
@@ -569,28 +579,7 @@ static void muic_tsu5611_set_mode(struct i2c_client *client, u8 int_status1_val)
 				muic_set_mode(MUIC_NONE);
 			}
 			else {
-#if !defined(CONFIG_MHL_TX_MUIC_BUG_FIX)
-				/* 
-				 * Exceptional case sometimes happens in U2 TMUS (P769)
-				 * Two interrupts (No CHGDET and then CHGDET in INT_STATUS1) happen even if TA is plugged
-				 */
-				if((pre_mode == MUIC_AP_USB)&&(int_status1_val & CHGDET)) {
-#if defined(CONFIG_MACH_LGE)
-					android_disconnect_from_muic();
-#endif
-					dev_info(&client->dev, "%s: USB is removed and TA is plugged\n", __func__);
-#if defined(CONFIG_MAX8971_CHARGER)
-					muic_set_mode_in_retain(MUIC_NONE);
-#endif
-					muic_set_mode(MUIC_NONE);
-
-					muic_set_charger_mode(client);
-				}
-				else
-#endif
-				{
-					dev_err(&client->dev, "%s: USB is not removed\n", __func__);
-				}
+				dev_err(&client->dev, "%s: USB is not removed\n", __func__);
 			}
 			break;
 
@@ -625,9 +614,9 @@ static void muic_init_for_none_mode(struct i2c_client *client)
 
 	if (cur_mode == MUIC_UNKNOWN || cur_mode == MUIC_NONE) {
 #if defined(CONFIG_MHL_TX_MUIC_BUG_FIX)
-		/*                                            
-                                                        
-   */
+		/* SJIT 2012-01-27 [dojip.kim@lge.com] P940 GB
+		 * tsu5611 300ms delay side effect bug fixed test code
+		 */
 		if (Int_Status == SECONT_INT) {
 			if (!gpio_get_value(dev->gpio_mhl)) {
 				dev_info(&client->dev, "%s: wait for mhl switch completed\n", __func__);
@@ -707,6 +696,8 @@ static void muic_tsu5611_wq_func(struct work_struct *work)
 
 	muic_tsu5611_detect_accessory(client);
 
+	wake_unlock(&dev->muic_wake_lock);
+
 	/* App needs some time to display charger disconnect notification */
 	wake_lock_timeout(&dev->muic_wake_lock, HZ / 2);
 }
@@ -761,7 +752,7 @@ static int muic_int_stat_read(struct muic_device *mdev, char *buf)
 	return len;
 }
 
-/*                                                            */
+/* LGE_SJIT 2012-01-27 [dojip.kim@lge.com] define muic_device */
 static struct muic_device muic_dev = {
 	.name = "tsu5611",
 	.read_int_state	= muic_int_stat_read,

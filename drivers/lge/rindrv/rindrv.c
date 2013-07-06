@@ -39,17 +39,17 @@
 #include <linux/tcp.h>
 #include <net/slhc_vj.h>
 #endif
-//                                       
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -START
 //20110510, Ravi.Holal@teleca.com, data throughput
 //Description: data throughput
 #include <linux/workqueue.h>
-//                                     
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -END
 static struct net_device **rin_devs;
 
 static int rin_maxdev = RIN_NRUNIT;
 module_param(rin_maxdev, int, 0);
 MODULE_PARM_DESC(rin_maxdev, "Maximum number of rin devices");
-//                                       
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -START
 //20110510, Ravi.Holal@teleca.com, data throughput
 //Description: data throughput
 static struct workqueue_struct *rin_tx_wq = NULL;
@@ -59,7 +59,7 @@ struct rin_work
   struct net_device*   dev;
   struct sk_buff*      skb;
 };
-//                                     
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -END
 
 /********************************
 *  Buffer administration routines:
@@ -231,9 +231,9 @@ static inline void rin_unlock(struct rin_st *sl)
 static void rin_encaps(struct rin_st *sl, unsigned char *icp, int len)
 {
 	unsigned char *p;
-//                                        
-	int actual, count = len; //                                                         
-//                                     
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -START	
+	int actual, count = len; // LGE_CHANGES darren.kang@lge.com 20110112 add initializer
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -END
 	if (len > sl->mtu) {		/* Sigh, shouldn't occur BUT ... */
 		printk(KERN_WARNING "%s: truncating oversized transmit packet!\n", sl->dev->name);
 		sl->tx_dropped++;
@@ -358,7 +358,7 @@ static void rin_nd_tx_timeout(struct net_device *dev)
 out:
 	spin_unlock(&sl->lock);
 }
-//                                       
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -START
 //20110510, Ravi.Holal@teleca.com, data throughput
 //Description: data throughput
 static void rin_tx_task(struct work_struct *pwork)
@@ -375,15 +375,15 @@ static void rin_tx_task(struct work_struct *pwork)
   dev_kfree_skb(skb);
   rin_unlock(sl);
 }
-//                                     
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -END
 /* Encapsulate an IP datagram and kick it into a TTY queue. */
 static int
 rin_nd_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct rin_st *sl = netdev_priv(dev);
-//                                        
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -START	
 	struct rin_work* work;
-//                                     
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -END
 	spin_lock(&sl->lock);
 	if (!netif_running(dev)) {
 		spin_unlock(&sl->lock);
@@ -400,7 +400,7 @@ rin_nd_xmit(struct sk_buff *skb, struct net_device *dev)
 	rin_lock(sl);
 	sl->tx_bytes += skb->len;
     sl->tx_packets++; //DEINSALA UNLOCKING workaround
-//                                        
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -START	
 	work = (struct rin_work*)kmalloc(sizeof(struct rin_work),GFP_ATOMIC);
 	if (work) {
 		work->dev = dev;
@@ -412,7 +412,7 @@ rin_nd_xmit(struct sk_buff *skb, struct net_device *dev)
 		dev_kfree_skb_irq(skb);
     rin_unlock(sl); //DEINSALA UNLOCKING workaround
 	}
-//                                      
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -END	
 	spin_unlock(&sl->lock);
 
 	return 0;
@@ -578,15 +578,15 @@ static void rin_receive_buf(struct tty_struct *tty, const unsigned char *cp,
 	memcpy(skb_put(skb, count), cp, count);
 	skb_reset_mac_header(skb);
 	skb->protocol = htons(ETH_P_IP);
-//                                        
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -START	
     spin_lock_bh(&sl->lock);
 	sl->rx_bytes += count;
-//                                      
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -END	
 	netif_rx(skb);
 	sl->rx_packets++;
-//                                        
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -START	
     spin_unlock_bh(&sl->lock);
-//                                      
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -END	
 #ifdef RIN_DEINSALA_DEBUG
     printk(KERN_INFO "%s: rin_receive_buf: netif_rx(skb) received packet of %d bytes from TTY\n", sl->dev->name, count);
     printk(KERN_INFO "%s: rin_receive_buf: tty_chars_in_buffer(sl->tty): %d\n", sl->dev->name, tty_chars_in_buffer(sl->tty));
@@ -898,7 +898,7 @@ static int __init rin_init(void)
 		printk(KERN_ERR "RIN: can't register line discipline (err = %d)\n", status);
 		kfree(rin_devs);
 	}
-//                                        
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -START	
 	if (status == 0) {
 		rin_tx_wq = create_singlethread_workqueue("rintx");
 		if (!rin_tx_wq) {
@@ -908,7 +908,7 @@ static int __init rin_init(void)
 			status = -ENOMEM;
 		}
 	}
-//                                      
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -END	
 	return status;
 }
 
@@ -968,13 +968,13 @@ static void __exit rin_exit(void)
 	i = tty_unregister_ldisc(N_RIN);
 	if (i != 0)
 		printk(KERN_ERR "RIN: can't unregister line discipline (err = %d)\n", i);
-//                                       
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -START
 	if (rin_tx_wq){
 		flush_workqueue(rin_tx_wq);
 		destroy_workqueue(rin_tx_wq);
 		rin_tx_wq = NULL;
 	}
-//                                      
+//LGE_TELECA_DATA_THROGHPUT_CR_90  -END	
 }
 
 module_init(rin_init);

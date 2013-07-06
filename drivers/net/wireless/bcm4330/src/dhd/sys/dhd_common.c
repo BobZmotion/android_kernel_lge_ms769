@@ -59,11 +59,11 @@ int dhd_msg_level= 0x00;
 
 char fw_path[MOD_PARAM_PATHLEN];
 char nv_path[MOD_PARAM_PATHLEN];
-/*                                                   */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-04-03, configs */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 char config_path[MOD_PARAM_PATHLEN] = "";
-#endif /*                          */
-/*                                                   */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-04-03, configs */
 
 /* Last connection success/failure status */
 uint32 dhd_conn_event;
@@ -987,7 +987,7 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 		       sizeof(pvt_data->event.event_type));
 	}
 		/* These are what external supplicant/authenticator wants */
-/*                                  */		//by sjpark 11-03-15
+/* LGE_CHANGE_S, 2011-0226, add CCX */		//by sjpark 11-03-15
 #if defined(BCMCCX) && defined(BCMDBG_EVENT) /* junlim */
 		case WLC_E_PRUNE:
 			{
@@ -1063,7 +1063,7 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 			}
 			break;
 #endif /* defined(BCMCCX) && defined(BCMDBG_EVENT) */ /* junlim */
-/*                                  */
+/* LGE_CHANGE_E, 2011-0226, add CCX */
 		/* fall through */
 	case WLC_E_LINK:
 	case WLC_E_DEAUTH:

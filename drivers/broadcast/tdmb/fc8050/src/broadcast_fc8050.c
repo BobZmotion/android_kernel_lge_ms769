@@ -37,12 +37,12 @@ static int broadcast_tdmb_fc8050_resume(struct spi_device *spi);
 //#define DMB_ANT_SEL_P	11 //GPIO 11
 //#define DMB_ANT_SEL_N	12 //GPIO 12
 //I-pjt for ANT. swtiching
-#define PM8058_GPIO_BASE			NR_MSM_GPIOS
+#define PM8058_GPIO_BASE NR_MSM_GPIOS
 #define PM8058_GPIO_PM_TO_SYS(pm_gpio)		(pm_gpio + PM8058_GPIO_BASE)
 
 #define DMB_USE_WORKQUEUE
 /************************************************************************/
-/* LINUX Driver Setting                                                 */
+/* LINUX Driver Setting                                                                                          */
 /************************************************************************/
 static uint32 user_stop_flg = 0;
 static uint32 mdelay_in_flg = 0;
@@ -136,7 +136,7 @@ int tdmb_fc8050_power_on(void)
 
 //		gpio_set_value(PM8058_GPIO_PM_TO_SYS(DMB_ANT_SEL_P-1), 0);
 //		gpio_set_value(PM8058_GPIO_PM_TO_SYS(DMB_ANT_SEL_N-1), 1);
-		
+
 		gpio_direction_input(DMB_INT_N);
 		gpio_direction_output(DMB_RESET_N, false);
 		gpio_direction_output(DMB_EN, true);
@@ -160,7 +160,7 @@ int tdmb_fc8050_power_on(void)
 	}
 
 	printk("tdmb_fc8050_power_on completed \n");
-	
+
 	return TRUE;
 }
 
@@ -185,7 +185,7 @@ int tdmb_fc8050_power_off(void)
 	}	
 
 	printk("tdmb_fc8050_power_off completed \n");
-
+	
 	return TRUE;
 }
 
@@ -204,12 +204,12 @@ int tdmb_fc8050_select_antenna(unsigned int sel)
 //		gpio_set_value(PM8058_GPIO_PM_TO_SYS(DMB_ANT_SEL_P-1), 1);
 //		gpio_set_value(PM8058_GPIO_PM_TO_SYS(DMB_ANT_SEL_N-1), 0);
 //		printk("ANT is %d ",sel);
-	}
-	else
+	}    
+      else
 	{
 		return FALSE;
 	}
-	return TRUE;
+      return TRUE;
 }
 
 static struct spi_driver broadcast_tdmb_driver = {
@@ -291,7 +291,7 @@ static irqreturn_t broadcast_tdmb_spi_isr(int irq, void *handle)
 //			printk("######### spi read function is so late skip #########\n");			
 			return IRQ_HANDLED;
 		}		
-//                                                                                  
+//		printk("***** broadcast_tdmb_spi_isr coming *******\n"); 	//LGE_BROADCAST_TEST_I
 		queue_work(pTdmbInfo->spi_wq, &pTdmbInfo->spi_work);    
 	}
 	else
@@ -321,26 +321,26 @@ static irqreturn_t broadcast_tdmb_spi_isr(int irq, void *handle)
 #endif
 
 static void broacast_tdmb_spi_work(struct work_struct *tdmb_work)
-{
+{	
 	struct TDMB_FC8050_CTRL *pTdmbWorkData;
 
 	pTdmbWorkData = container_of(tdmb_work, struct TDMB_FC8050_CTRL, spi_work);
 	if ( pTdmbWorkData )
-	{
-//                                                                   
+		{			
+//		printk("broadcast_tdmb_spi_work START\n");	//LGE_BROADCAST_TEST_I
 		fc8050_isr_control(0);
 		pTdmbWorkData->spi_irq_status = TRUE;
 		broadcast_drv_if_isr();
 		pTdmbWorkData->spi_irq_status = FALSE;
 		fc8050_isr_control(1);
-//                                                                 
-//                                                                                                               
+//		printk("broadcast_tdmb_spi_work END\n");	//LGE_BROADCAST_TEST_I
+//		printk("broacast_tdmb_spi_work is called handle=0x%x\n", (unsigned int)pTdmbWorkData);	//LGE_BROADCAST_TEST_I
 	}
 	else
 	{
 		printk("~~~~~~~broadcast_tdmb_spi_work call but pTdmbworkData is NULL ~~~~~~~\n");
 	}
-}
+} 
 
 static int broadcast_tdmb_fc8050_probe(struct spi_device *spi)
 {
@@ -351,7 +351,7 @@ static int broadcast_tdmb_fc8050_probe(struct spi_device *spi)
 				.pull           = PM_GPIO_PULL_NO,
 				.out_strength   = PM_GPIO_STRENGTH_HIGH,
 				.function       = PM_GPIO_FUNC_NORMAL,
-				.inv_int_pol    = 0,
+				.inv_int_pol    = 0,	
 				.vin_sel        = 6,// for ESD TEST
 				.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
 				.output_value   = 0,
@@ -362,14 +362,14 @@ static int broadcast_tdmb_fc8050_probe(struct spi_device *spi)
 				.pull           = PM_GPIO_PULL_NO,
 				.out_strength   = PM_GPIO_STRENGTH_HIGH,
 				.function       = PM_GPIO_FUNC_NORMAL,
-				.inv_int_pol    = 0,
+				.inv_int_pol    = 0,			
 				.vin_sel        = 6,// for ESD TEST
 				.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
 				.output_value   = 0,
 				};	
 */	
 	TdmbCtrlInfo.TdmbPowerOnState = FALSE;
-	
+
 	TdmbCtrlInfo.pSpiDevice 				= spi;
 	TdmbCtrlInfo.pSpiDevice->mode 			= SPI_MODE_0;
 	TdmbCtrlInfo.pSpiDevice->bits_per_word 	= 8;
@@ -385,7 +385,7 @@ static int broadcast_tdmb_fc8050_probe(struct spi_device *spi)
 	uint32 ldata = 0; 
 	uint32 data = 0;
 	uint32 temp = 0;
-	
+
 	for(i=0;i<5000;i++)
 	{
 //		dog_kick();
@@ -447,7 +447,7 @@ static int broadcast_tdmb_fc8050_probe(struct spi_device *spi)
 //	pm8058_gpio_config(DMB_ANT_SEL_N-1, &GPIO12_CFG);
 //	gpio_set_value(PM8058_GPIO_PM_TO_SYS(DMB_ANT_SEL_P-1), 1);	// for ESD TEST
 //	gpio_set_value(PM8058_GPIO_PM_TO_SYS(DMB_ANT_SEL_N-1), 0);	// for ESD TEST
-	
+
 	tdmb_fc8050_interrupt_lock();
 
 #if defined(DMB_USE_WORKQUEUE)
@@ -505,8 +505,6 @@ static void __exit broadcast_tdmb_drv_exit(void)
 {
 	spi_unregister_driver(&broadcast_tdmb_driver);
 }
-
-
 
 module_init(broadcast_tdmb_drv_init);
 module_exit(broadcast_tdmb_drv_exit);

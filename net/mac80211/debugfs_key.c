@@ -30,7 +30,7 @@ static ssize_t key_##name##_read(struct file *file,			\
 #define KEY_OPS(name)							\
 static const struct file_operations key_ ##name## _ops = {		\
 	.read = key_##name##_read,					\
-	.open = simple_open,						\
+	.open = mac80211_open_file_generic,				\
 	.llseek = generic_file_llseek,					\
 }
 
@@ -45,7 +45,7 @@ static const struct file_operations key_ ##name## _ops = {		\
 #define KEY_CONF_OPS(name)						\
 static const struct file_operations key_ ##name## _ops = {		\
 	.read = key_conf_##name##_read,					\
-	.open = simple_open,						\
+	.open = mac80211_open_file_generic,				\
 	.llseek = generic_file_llseek,					\
 }
 
@@ -78,7 +78,7 @@ KEY_OPS(algorithm);
 static ssize_t key_tx_spec_read(struct file *file, char __user *userbuf,
 				size_t count, loff_t *ppos)
 {
-	u64 pn;
+	const u8 *tpn;
 	char buf[20];
 	int len;
 	struct ieee80211_key *key = file->private_data;
@@ -94,16 +94,15 @@ static ssize_t key_tx_spec_read(struct file *file, char __user *userbuf,
 				key->u.tkip.tx.iv16);
 		break;
 	case WLAN_CIPHER_SUITE_CCMP:
-		pn = atomic64_read(&key->u.ccmp.tx_pn);
+		tpn = key->u.ccmp.tx_pn;
 		len = scnprintf(buf, sizeof(buf), "%02x%02x%02x%02x%02x%02x\n",
-				(u8)(pn >> 40), (u8)(pn >> 32), (u8)(pn >> 24),
-				(u8)(pn >> 16), (u8)(pn >> 8), (u8)pn);
+				tpn[0], tpn[1], tpn[2], tpn[3], tpn[4], tpn[5]);
 		break;
 	case WLAN_CIPHER_SUITE_AES_CMAC:
-		pn = atomic64_read(&key->u.aes_cmac.tx_pn);
+		tpn = key->u.aes_cmac.tx_pn;
 		len = scnprintf(buf, sizeof(buf), "%02x%02x%02x%02x%02x%02x\n",
-				(u8)(pn >> 40), (u8)(pn >> 32), (u8)(pn >> 24),
-				(u8)(pn >> 16), (u8)(pn >> 8), (u8)pn);
+				tpn[0], tpn[1], tpn[2], tpn[3], tpn[4],
+				tpn[5]);
 		break;
 	default:
 		return 0;
@@ -225,9 +224,9 @@ KEY_OPS(key);
 			    key, &key_##name##_ops);
 
 void ieee80211_debugfs_key_add(struct ieee80211_key *key)
-{
+  {
 	static int keycount;
-	char buf[100];
+	char buf[50];
 	struct sta_info *sta;
 
 	if (!key->local->debugfs.keys)
@@ -244,8 +243,7 @@ void ieee80211_debugfs_key_add(struct ieee80211_key *key)
 
 	sta = key->sta;
 	if (sta) {
-		sprintf(buf, "../../netdev:%s/stations/%pM",
-			sta->sdata->name, sta->sta.addr);
+		sprintf(buf, "../../stations/%pM", sta->sta.addr);
 		key->debugfs.stalink =
 			debugfs_create_symlink("station", key->debugfs.dir, buf);
 	}

@@ -112,7 +112,7 @@ typedef const struct si_pub  si_t;
 
 #define IW_WSEC_ENABLED(wsec)	((wsec) & (WEP_ENABLED | TKIP_ENABLED | AES_ENABLED))
 
-/*                                  */		//by sjpark 11-03-15
+/* LGE_CHANGE_S, 2011-0226, add CCX */		//by sjpark 11-03-15
 #ifdef BCMCCX
 #ifndef IW_AUTH_KEY_MGMT_CCKM
 #define IW_AUTH_KEY_MGMT_CCKM	0x10
@@ -120,7 +120,7 @@ typedef const struct si_pub  si_t;
 
 #define DOT11_LEAP_AUTH		0x80	/* LEAP authentication frame payload constants */
 #endif /* BCMCCX */
-/*                                  */
+/* LGE_CHANGE_E, 2011-0226, add CCX */
 #include <linux/rtnetlink.h>
 
 #define WL_IW_USE_ISCAN  1
@@ -217,21 +217,21 @@ static wl_iw_ss_cache_ctrl_t g_ss_cache_ctrl;
 #if defined(CONFIG_FIRST_SCAN)
 static volatile uint g_first_broadcast_scan;	
 static volatile uint g_first_counter_scans;
-//                 
-//                                                                    
+//bill.jung@lge.com
+//[LGU]20110627 sangjun.bae@lge.com wifi 5GHz update & tunning [START]
 #if !defined(CONFIG_LGE_BCM432X_PATCH) 
 #define MAX_ALLOWED_BLOCK_SCAN_FROM_FIRST_SCAN 3
 #else
 #define MAX_ALLOWED_BLOCK_SCAN_FROM_FIRST_SCAN 1
 static volatile uint g_modify_scan_time = 0;
 #endif
-//                                                                  
+//[LGU]20110627 sangjun.bae@lge.com wifi 5GHz update & tunning [END]
 #endif 
-/*                                                          */	
+/* LGE_CHANGE_S, Disable setting power save mode if PM is 0 */	
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 extern bool PM_control;
-#endif /*                          */
-/*                                                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E, Disable setting power save mode if PM is 0 */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
 #define DAEMONIZE(a) daemonize(a); \
@@ -307,7 +307,7 @@ static int wl_iw_set_btcoex_dhcp(
 	union iwreq_data *wrqu,
 	char *extra
 );
-#endif	/*                                    */
+#endif	/* !defined(CONFIG_LGE_BCM432X_PATCH) */
 
 static void wl_iw_bt_flag_set(struct net_device *dev, bool set);
 static void wl_iw_bt_release(void);
@@ -802,7 +802,7 @@ static int wl_keep_alive_set(struct net_device *dev, char* extra)
 	return res;
 }
 /* BRCM_UPDATE_E for KEEP_ALIVE */
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 
 static int
 wl_iw_set_country(
@@ -930,7 +930,7 @@ wl_iw_set_power_mode(
 
 	return error;
 }
-#endif	/*                                    */
+#endif	/* !defined(CONFIG_LGE_BCM432X_PATCH) */
 
 bool btcoex_is_sco_active(struct net_device *dev)
 {
@@ -1223,7 +1223,7 @@ wl_iw_set_btcoex_dhcp(
 
 	return error;
 }
-#endif	/*                                    */
+#endif	/* !defined(CONFIG_LGE_BCM432X_PATCH) */
 
 static int
 wl_iw_set_suspend(
@@ -1280,7 +1280,7 @@ wl_format_ssid(char* ssid_buf, uint8* ssid, int ssid_len)
 
 	return p - ssid_buf;
 }
-#endif	/*                                    */
+#endif	/* !defined(CONFIG_LGE_BCM432X_PATCH) */
 
 static int
 wl_iw_get_link_speed(
@@ -1683,15 +1683,15 @@ wl_iw_get_rssi(
 	static int rssi = 0;
 #if !defined(CONFIG_LGE_BCM432X_PATCH)	
 	static wlc_ssid_t ssid = {0};
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 	int error = 0;
 	char *p = extra;
-/*                                            
-                                                                       
-                                           */
+/* LGE_CHANGE_S, [yoohoo@lge.com], 2009-05-13,
+ * <some ssid use '<' character sometimes and it cause response discard
+ * in wpa_supplicant (wpa_ctrl_request())> */
 #if !defined(CONFIG_LGE_BCM432X_PATCH)	
 	static char ssidbuf[SSID_FMT_BUF_LEN];
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 	scb_val_t scb_val;
 
 	net_os_wake_lock(dev);
@@ -1713,14 +1713,14 @@ wl_iw_get_rssi(
 			ssid.SSID_len = dtoh32(ssid.SSID_len);
 			wl_format_ssid(ssidbuf, ssid.SSID, dtoh32(ssid.SSID_len));
 		}
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 	}
 
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 	p += snprintf(p, MAX_WX_STRING, "ssid rssi %d", rssi);
-#else /*                          */
+#else /* CONFIG_LGE_BCM432X_PATCH */
 	p += snprintf(p, MAX_WX_STRING, "%s rssi %d ", ssidbuf, rssi);
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 	wrqu->data.length = p - extra + 1;
 
 	net_os_wake_unlock(dev);
@@ -1900,7 +1900,7 @@ wl_iw_control_wl_on(
 	return ret;
 }
 
-#else	/*                                     */
+#else	/*  !defined(CONFIG_LGE_BCM432X_PATCH) */
 static int
 wl_iw_control_wl_off(
 	struct net_device *dev,
@@ -1996,7 +1996,7 @@ wl_iw_control_wl_on(
 
 	dhd_net_if_unlock(dev);
 
-	//                                                                                                         
+	// 20110413 mingi.sung@lge.com [Wi-Fi] Patch for BELKIN AP - to succeed DHCP procedure after wakeup [START]
 #if defined(CONFIG_BRCM_LGE_WL_ARPOFFLOAD)
 	do
 	{
@@ -2009,8 +2009,8 @@ wl_iw_control_wl_on(
 		dev_wlc_ioctl(dev, WLC_SET_VAR, buf, len);
 
 	} while(0);
-#endif //                             
-//                                                                                                       
+#endif //CONFIG_BRCM_LGE_WL_ARPOFFLOAD
+// 20110413 mingi.sung@lge.com [Wi-Fi] Patch for BELKIN AP - to succeed DHCP procedure after wakeup [END]
 
 	wl_iw_send_priv_event(dev, "START");
 
@@ -2027,7 +2027,7 @@ wl_iw_control_wl_on(
 	return ret;
 }
 
-#endif	/*                                    */
+#endif	/* !defined(CONFIG_LGE_BCM432X_PATCH) */
 
 #ifdef SOFTAP
 static struct ap_profile my_ap;
@@ -2046,7 +2046,7 @@ static int get_parameter_from_string(
 #ifdef CONFIG_LGE_BCM432X_PATCH
 static int get_SSID_from_string(
 	char **str_ptr, const char *token, int param_type, void  *dst, int ssid_len);
-#endif /*                        */
+#endif /*CONFIG_LGE_BCM432X_PATCH*/
 
 static int
 hex2num(char c)
@@ -2111,13 +2111,13 @@ init_ap_profile_from_string(char *param_str, struct ap_profile *ap_cfg)
 	/*  NOTE this function may alter the origibal string */
 #ifdef CONFIG_LGE_BCM432X_PATCH
 	ret = get_parameter_from_string(&str_ptr, "SSIDLEN=", PTYPE_INTDEC, &ssid_len, 5);
-#endif	/*                        */
+#endif	/*CONFIG_LGE_BCM432X_PATCH*/
 
 #ifdef CONFIG_LGE_BCM432X_PATCH
 	if(ret == 0)
 		ret = get_SSID_from_string(&str_ptr, "SSID=", PTYPE_STRING, ap_cfg->ssid, ssid_len);
 	else
-#endif /*                        */
+#endif /*CONFIG_LGE_BCM432X_PATCH*/
 	ret = get_parameter_from_string(&str_ptr, "SSID=", PTYPE_STRING, ap_cfg->ssid, SSID_LEN);
 
 	ret |= get_parameter_from_string(&str_ptr, "SEC=", PTYPE_STRING,  ap_cfg->sec, SEC_LEN);
@@ -4313,9 +4313,9 @@ wl_iw_get_scan(
 	int error;
 	uint buflen_from_user = dwrq->length;
 //ADD: 0013766: [Wi-Fi] due to kernel crash, speicific scan length is reduced as value less than 8 byte
-/*                                                                                                                             */
+/* LGE_CHANGE_S, [dongp.kim@lge.com], 2011-01-09, for kernel crash, specific scan length is reduced as value less than 8704Byte*/
 	uint len =  G_SCAN_RESULTS  - 1024;
-/*                                                                                                                             */
+/* LGE_CHANGE_E, [dongp.kim@lge.com], 2011-01-09, for kernel crash, specific scan length is reduced as value less than 8704Byte*/
 //END: 0013766: [Wi-Fi] due to kernel crash, speicific scan length is reduced as value less than 8 byte
 	__u16 len_ret = 0;
 #if  !defined(CSCAN)
@@ -4684,8 +4684,8 @@ wl_iw_iscan_get_scan(
 	g_first_broadcast_scan = BROADCAST_SCAN_FIRST_RESULT_CONSUMED;
 
 #if defined(CONFIG_LGE_BCM432X_PATCH)
-	//                                                                    
-	//                 
+	//[LGU]20110627 sangjun.bae@lge.com wifi 5GHz update & tunning [START]
+	//bill.jung@lge.com
 	if( g_modify_scan_time != 0 )
 	{
 		int band = 0; // b/a band
@@ -4701,8 +4701,8 @@ wl_iw_iscan_get_scan(
 			g_modify_scan_time = 0;
 		}
 	}
-	//                                                                  
-#endif	/*                                   */
+	//[LGU]20110627 sangjun.bae@lge.com wifi 5GHz update & tunning [END]
+#endif	/* defined(CONFIG_LGE_BCM432X_PATCH) */
 #endif 
 
 	WL_TRACE(("%s return to WE %d bytes APs=%d\n", __FUNCTION__, dwrq->length, counter));
@@ -5464,7 +5464,7 @@ wl_iw_set_power(
 
 	WL_TRACE(("%s: SIOCSIWPOWER\n", dev->name));
 
-	//                                                     
+	//bill.jung@lge.com - Don't use legacy power save mode.
 	//pm = vwrq->disabled ? PM_OFF : PM_MAX;
 	pm = vwrq->disabled ? PM_OFF : PM_FAST;
 
@@ -5958,12 +5958,12 @@ wl_iw_set_wpaauth(
 			val = 1;
 		else if (paramval == (IW_AUTH_ALG_OPEN_SYSTEM | IW_AUTH_ALG_SHARED_KEY))
 			val = 2;
-/*                                  */		//by sjpark 11-03-15
+/* LGE_CHANGE_S, 2011-0226, add CCX */		//by sjpark 11-03-15
 #ifdef BCMCCX
 		else if (paramval == IW_AUTH_ALG_LEAP)
 			val = DOT11_LEAP_AUTH;
 #endif /* BCMCCX */
-/*                                  */
+/* LGE_CHANGE_E, 2011-0226, add CCX */
 		else
 			error = 1;
 		if (!error && (error = dev_wlc_intvar_set(dev, "auth", val)))
@@ -6036,11 +6036,11 @@ wl_iw_set_wpaauth(
 	return 0;
 }
 #define VAL_PSK(_val) (((_val) & WPA_AUTH_PSK) || ((_val) & WPA2_AUTH_PSK))
-/*                                  */
+/* LGE_CHANGE_S, 2011-0226, add CCX */
 #ifdef BCMCCX
 #define VAL_CCKM(_val) (((_val) & WPA_AUTH_CCKM) || ((_val) & WPA2_AUTH_CCKM))
 #endif /* BCMCCX */
-/*                                  */
+/* LGE_CHANGE_E, 2011-0226, add CCX */
 
 static int
 wl_iw_get_wpaauth(
@@ -6077,13 +6077,13 @@ wl_iw_get_wpaauth(
 		
 		if ((error = dev_wlc_intvar_get(dev, "wpa_auth", &val)))
 			return error;
-/*                                  */
+/* LGE_CHANGE_S, 2011-0226, add CCX */
 #ifdef BCMCCX
 		if (VAL_CCKM(val))
 			paramval = IW_AUTH_KEY_MGMT_CCKM;
 		else
 #endif /* BCMCCX */
-/*                                  */
+/* LGE_CHANGE_E, 2011-0226, add CCX */
 		if (VAL_PSK(val))
 			paramval = IW_AUTH_KEY_MGMT_PSK;
 		else
@@ -6136,7 +6136,7 @@ wl_iw_get_wpaauth(
 }
 #endif 
 
-/*                                                                   */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-05-14, support private command */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 static int
 wl_iw_set_powermode(
@@ -6156,10 +6156,10 @@ wl_iw_set_powermode(
 	switch (mode) {
 	case 0: mode = 2; break; /* Fast PS mode */
 	case 1: mode = 0; break; /* No PS mode */
-/*                                                                               */
+/* LGE_CHANGE_S [jisung.yang@lge.com] 2010-11-30, <Honeycomb put 10 for PS mode> */
 	default: mode = 2; break; /* Fast PS mode */
 //	default: return -EINVAL;
-/*                                                                               */
+/* LGE_CHANGE_S [jisung.yang@lge.com] 2010-11-30, <Honeycomb put 10 for PS mode> */
 	}
 	error = dev_wlc_ioctl(dev, WLC_SET_PM, &mode, sizeof(mode));
 	p += snprintf(p, MAX_WX_STRING, error < 0 ? "FAIL\n" : "OK\n");
@@ -6189,7 +6189,7 @@ wl_iw_set_scan_channels(
 				chan_buf, sizeof(chan_buf))) < 0)
 			return error;
 
-		//                                                                       
+		// david.moon@lge.com, 2011-06-18, fix to get regulatory domain channels 
 		//Start
 			if( list->count >  14 )
 			{
@@ -6210,10 +6210,10 @@ wl_iw_set_scan_channels(
 	}
 
 	switch (nchan) {
-	//                                                                    
+	//[LGU]20110627 sangjun.bae@lge.com wifi 5GHz update & tunning [START]
 	case 11: strcpy(buf, "XW"); break;
 	case 13: strcpy(buf, "AU/2"); break;
-	//                                                                  
+	//[LGU]20110627 sangjun.bae@lge.com wifi 5GHz update & tunning [END]
 	case 14: strcpy(buf, "JP"); break;
 	default: return -EINVAL;
 	}
@@ -6328,8 +6328,8 @@ static int wl_iw_voip_stop(struct net_device *dev)
 	return error;
 }
 
-#endif /*                          */
-/*                                                                   */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-05-14, support private command */
 
 #ifdef SOFTAP
 
@@ -6756,8 +6756,8 @@ wl_iw_set_cscan(
 	net_os_wake_lock(dev);
 
 #if defined(CONFIG_FIRST_SCAN) && defined(CONFIG_LGE_BCM432X_PATCH)
-	//                                                                    
-	//                                                  
+	//[LGU]20110627 sangjun.bae@lge.com wifi 5GHz update & tunning [START]
+	//bill.jung@lge.com - Fast scan for supporting 5GHz.
 	if( g_first_broadcast_scan < BROADCAST_SCAN_FIRST_RESULT_CONSUMED )
 	{
 		int band = 2; //b band
@@ -6766,7 +6766,7 @@ wl_iw_set_cscan(
 		dev_wlc_ioctl(dev, WLC_SET_BAND, &band, sizeof(band));
 		dev_wlc_intvar_set(dev, "scan_unassoc_time", 10);
 	}
-	//                                                                  
+	//[LGU]20110627 sangjun.bae@lge.com wifi 5GHz update & tunning [END]
 #endif
 
 
@@ -7170,7 +7170,7 @@ set_ap_cfg(struct net_device *dev, struct ap_profile *ap)
 		}
 		res = dev_wlc_ioctl(dev, WLC_GET_AP, &apsta_var, sizeof(apsta_var));
 #else
-//                                                                  
+//real-wifi@lge.com by david.moon_S 110926 fix arpoe 0 during softap
 #if defined(CONFIG_LGE_BCM432X_PATCH)
          {
              int arpoe = 0;
@@ -7183,7 +7183,7 @@ set_ap_cfg(struct net_device *dev, struct ap_profile *ap)
              net_os_set_suspend_disable(dev, 1);
          }
 #endif
-//                                                                  
+//real-wifi@lge.com by david.moon_E 110926 fix arpoe 0 during softap
 		apsta_var = 1;
 		iolen = wl_bssiovar_mkbuf("apsta",
 			bsscfg_index,  &apsta_var, sizeof(apsta_var)+4,
@@ -7629,7 +7629,7 @@ get_SSID_from_string(
 	 return -1;
 	}
 }
-#endif /*                        */
+#endif /*CONFIG_LGE_BCM432X_PATCH*/
 
 static int wl_iw_softap_deassoc_stations(struct net_device *dev, u8 *mac)
 {
@@ -8062,7 +8062,7 @@ wl_iw_process_private_ascii_cmd(
 
 }
 #endif 
-/*                                  */		//by sjpark 11-03-15
+/* LGE_CHANGE_S, 2011-0226, add CCX */		//by sjpark 11-03-15
 #ifdef BCMCCX
 static int
 wl_iw_get_cckm_rn(
@@ -8151,7 +8151,7 @@ wl_iw_get_assoc_res_ies(
 	return 0;
 }
 #endif /* BCMCCX */
-/*                                  */
+/* LGE_CHANGE_E, 2011-0226, add CCX */
 
 static int
 wl_iw_set_priv(
@@ -8164,7 +8164,7 @@ wl_iw_set_priv(
 	int ret = 0;
 	char * extra;
 
-/*                                              */
+/* LGE_CHANGE_S, [dongp.kim@lge.com] 2010-04-02 */
 /* [WLAN] Fixing wl_iw_set_priv function */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 	wl_iw_t *iw;
@@ -8174,8 +8174,8 @@ wl_iw_set_priv(
 		return -EFAULT;
 	}
 	iw = *(wl_iw_t **)netdev_priv(dev);
-#endif /*                                   */
-/*                                              */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) */
+/* LGE_CHANGE_E, [dongp.kim@lge.com] 2010-04-02 */
 
 	if (!(extra = kmalloc(dwrq->length, GFP_KERNEL)))
 	    return -ENOMEM;
@@ -8211,7 +8211,7 @@ wl_iw_set_priv(
 			WL_TRACE(("wl_iw_send_priv_event response to START PRIVATE command\n"));
 		}
 
-#else /*                          */		
+#else /* CONFIG_LGE_BCM432X_PATCH */		
 		if (strnicmp(extra, "START", strlen("START")) == 0) {
 			wl_iw_control_wl_on(dev, info);
 			WL_TRACE(("%s, Received regular START command\n", __FUNCTION__));
@@ -8223,7 +8223,7 @@ wl_iw_set_priv(
 			net_os_wake_unlock(dev);
 			return -EFAULT;
 		}
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 
 	    if (strnicmp(extra, "SCAN-ACTIVE", strlen("SCAN-ACTIVE")) == 0) {
 #ifdef ENABLE_ACTIVE_PASSIVE_SCAN_SUPPRESS
@@ -8283,9 +8283,9 @@ wl_iw_set_priv(
 			ret = wl_iw_get_power_mode(dev, info, (union iwreq_data *)dwrq, extra);
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 		else if (strnicmp(extra, "POWERMODE", 9) == 0) {
-/*                                                          */	
+/* LGE_CHANGE_S, Disable setting power save mode if PM is 0 */	
 			if ( PM_control	== TRUE )
-/*                                                          */	
+/* LGE_CHANGE_E, Disable setting power save mode if PM is 0 */	
 			ret = wl_iw_set_powermode(dev, info,
 					(union iwreq_data *)dwrq, extra);
 		}
@@ -8336,7 +8336,7 @@ wl_iw_set_priv(
 		}else if (strnicmp(extra, "KEEP_ALIVE", strlen("KEEP_ALIVE")) == 0) {
 			ret = wl_keep_alive_set(dev, extra);
 		}
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 #ifdef SOFTAP
 	    else if (strnicmp(extra, "ASCII_CMD", strlen("ASCII_CMD")) == 0) {
 	        
@@ -8347,7 +8347,7 @@ wl_iw_set_priv(
 			set_ap_mac_list(dev, (extra + PROFILE_OFFSET));
 	    }
 #endif 
-/*                                     */
+/* LGE_CHANGE_S, 2011-0226, BRCM patch */
 #ifdef BCMCCX
 	    else if (strnicmp(extra, "get cckm_rn", strlen("get cckm_rn")) == 0)
 			ret = wl_iw_get_cckm_rn(dev, info, (union iwreq_data *)dwrq, extra);
@@ -8356,7 +8356,7 @@ wl_iw_set_priv(
 	    else if (strnicmp(extra, "get assoc_res_ies", strlen("get assoc_res_ies")) == 0)
 			ret = wl_iw_get_assoc_res_ies(dev, info, (union iwreq_data *)dwrq, extra);
 #endif /* BCMCCX */
-/*                                     */
+/* LGE_CHANGE_E, 2011-0226, BRCM patch */
 	    else {
 			WL_ERROR(("Unknown PRIVATE command %s - ignored\n", extra));
 			snprintf(extra, MAX_WX_STRING, "OK");
@@ -8883,12 +8883,12 @@ wl_iw_check_conn_fail(wl_event_msg_t *e, char* stringBuf, uint buflen)
 #ifndef IW_CUSTOM_MAX
 #define IW_CUSTOM_MAX 256 
 #endif 
-/*                                     */
+/* LGE_CHANGE_S, 2011-0226, BRCM patch */
 #ifdef BCMCCX
 /* to avoid disassoc after roaming by deauth frame from previous AP*/
 static char g_current_bssid[6] = {0, };
 #endif /* BCMCCX */
-/*                                     */
+/* LGE_CHANGE_E, 2011-0226, BRCM patch */
 
 void
 wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
@@ -8966,25 +8966,25 @@ wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 			goto wl_iw_event_end;
 		}
 #endif 
-/*                                     */	//by sjpark 11-03-15
+/* LGE_CHANGE_S, 2011-0226, BRCM patch */	//by sjpark 11-03-15
 #ifdef BCMCCX
 		/* save current bssid */
 		memcpy(g_current_bssid, &e->addr, ETHER_ADDR_LEN);
 #endif /* BCMCCX */
-/*                                     */
+/* LGE_CHANGE_E, 2011-0226, BRCM patch */
 		memcpy(wrqu.addr.sa_data, &e->addr, ETHER_ADDR_LEN);
 		wrqu.addr.sa_family = ARPHRD_ETHER;
 		cmd = IWEVREGISTERED;
 		break;
 
-/*                                     */
+/* LGE_CHANGE_S, 2011-0226, BRCM patch */
 #ifdef BCMCCX
 	case WLC_E_REASSOC:
 		/* save current bssid */
 		memcpy(g_current_bssid, &e->addr, ETHER_ADDR_LEN);
 		break;
 #endif /* BCMCCX */
-/*                                     */
+/* LGE_CHANGE_E, 2011-0226, BRCM patch */
 
 	case WLC_E_ROAM:
 		if (status != WLC_E_STATUS_SUCCESS) {
@@ -9016,7 +9016,7 @@ wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 			goto wl_iw_event_end;
 		}
 #endif 
-/*                                     */	//by sjpark 11-03-15
+/* LGE_CHANGE_S, 2011-0226, BRCM patch */	//by sjpark 11-03-15
 #ifdef BCMCCX
 		/* ignore deauth from previous AP after roaming */
 		if (memcmp(g_current_bssid, &e->addr, 6) != 0) {
@@ -9024,16 +9024,16 @@ wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 		} else {
 			bzero(g_current_bssid, ETHER_ADDR_LEN);
 #endif /* BCMCCX */
-/*                                     */
+/* LGE_CHANGE_E, 2011-0226, BRCM patch */
 		cmd = SIOCGIWAP;
 		bzero(wrqu.addr.sa_data, ETHER_ADDR_LEN);
 		wrqu.addr.sa_family = ARPHRD_ETHER;
 		bzero(&extra, ETHER_ADDR_LEN);
-/*                                     */		//by sjpark 11-03-15
+/* LGE_CHANGE_S, 2011-0226, BRCM patch */		//by sjpark 11-03-15
 #ifdef BCMCCX
 		}
 #endif /* BCMCCX */
-/*                                     */
+/* LGE_CHANGE_E, 2011-0226, BRCM patch */
 		break;
 	case WLC_E_LINK:
 	case WLC_E_NDIS_LINK:

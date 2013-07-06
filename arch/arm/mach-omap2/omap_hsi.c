@@ -130,15 +130,8 @@ static struct platform_device *hsi_get_hsi_platform_device(void)
 	struct platform_device *pdev;
 
 	/* HSI_TODO: handle platform device id (or port) (0/1) */
-
-/*                                                                                                  */
-#if 0 /* ORIGINAL CODE */
 	dev = bus_find_device_by_name(&platform_bus_type, NULL,
 					OMAP_HSI_PLATFORM_DEVICE_NAME);
-#else
-    dev = hsi_temp_ptr;
-#endif
-/*                                                                                                */
 	if (!dev) {
 		pr_debug("Could not find platform device %s\n",
 		       OMAP_HSI_PLATFORM_DEVICE_NAME);

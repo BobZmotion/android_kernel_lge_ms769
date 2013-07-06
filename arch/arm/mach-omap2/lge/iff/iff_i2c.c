@@ -18,11 +18,11 @@
 #include <plat/gpio.h>
 #include <lge/common.h>
 #include <lge/board.h>
-/*                                                 
-                        */
+/* LGE_CHANGE_S [sungchull.kim@lge.com] 2011-06-13,
+  added cdc_tcxo to i2c */
 #include <linux/cdc_tcxo.h>
-/*                                                 */
-/*                                                              */
+/* LGE_CHANGE_E [sungchull.kim@lge.com] 2011-06-13 */
+/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com] melfas touch mms-136 */
 #include <linux/i2c/melfas_ts.h>
 #include <linux/gpio.h>
 #include <linux/mpu.h>
@@ -31,11 +31,11 @@
 #include <linux/muic/muic.h>
 #include <lge/board_rev.h>
 
-//                                                                                         
-/*                                                           
-                                             
-                                      
-                            
+// LGE_CHANGE_S [seungmoon.lee@lge.com] 2011-07-19, general power control for device driver
+/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com] fix the sync error
+ * remove 'static' in definition of regulator
+ * [P940] regulator: remove sync error
+ * author: yehan.ahn@lge.com
  */
 int device_power_control(char* reg_id, int on){
 	struct regulator *device_regulator = NULL;
@@ -81,11 +81,11 @@ int device_power_control(char* reg_id, int on){
 int vibrator_power_control(bool on){
 	return device_power_control("vib_power", on);
 }
-//                                                
+// LGE_CHANGE_E [seungmoon.lee@lge.com] 2011-07-19
 
 /* PMIC(TWL6030) I2C platform_data */
 static struct regulator_consumer_supply iff_vmmc_supply[] = {
-	REGULATOR_SUPPLY("vmmc","omap_hsmmc.0"),	//                                                                 
+	REGULATOR_SUPPLY("vmmc","omap_hsmmc.0"),	// LGE_SJIT 2011-08-30 [jongrak.kwon@lge.com] Change for Kernel 3.0
 };
 
 static struct regulator_consumer_supply iff_vusim_supply[] = {
@@ -102,8 +102,8 @@ static struct regulator_consumer_supply iff_vdac_supply[] = {
 	REGULATOR_SUPPLY("hdmi_vref", NULL),
 };
 
-/*                                        
-                                            
+/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com]
+ * touch LDO is controlled by TWL6030 REGEN2
  */
 static struct regulator_consumer_supply iff_regen2_supply[] = {
 	REGULATOR_SUPPLY("touch_en", NULL),
@@ -113,7 +113,7 @@ static struct regulator_consumer_supply iff_regen2_supply[] = {
 static struct regulator_init_data iff_vmmc = {   /* VPMIC_VMMC_S */
 	.constraints = {
 		.min_uV			= 1200000,
-		.max_uV			= 3300000,	//                                                                 
+		.max_uV			= 3300000,	// LGE_SJIT 2011-08-30 [jongrak.kwon@lge.com] Match the constraint 
 		.apply_uV		= true,
 		.valid_modes_mask	= REGULATOR_MODE_NORMAL
 					| REGULATOR_MODE_STANDBY,
@@ -153,7 +153,7 @@ static struct regulator_init_data iff_vpp = {   /* VPMIC_OMAP_VPP_CUST_S */
 static struct regulator_init_data iff_vusim = {  /* TWL_LDO_3.0V_S */
 	.constraints = {
 		.min_uV			= 3000000,
-		.max_uV			= 3300000, //                                                                            
+		.max_uV			= 3300000, // LGE_SJIT 02/01/2012 [mohamed.khadri@lge.com] Based on MOTOR operating range
 		.apply_uV		= true,
 		.valid_modes_mask	= REGULATOR_MODE_NORMAL
 					| REGULATOR_MODE_STANDBY,
@@ -301,8 +301,8 @@ static struct regulator_init_data iff_clk32kg = {
 	},
 };
 
-/*                                        
-                                            
+/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com]
+ * touch LDO is controlled by TWL6030 REGEN2
  */
 static struct regulator_init_data iff_regen2 = {
 	.constraints = {
@@ -384,9 +384,9 @@ static struct twl4030_platform_data iff_twldata = {
 	.usb		= &omap4_usbphy_data,
 	.madc		= &iff_gpadc_data,
 	.bci		= &iff_bci_data,
-	/*                                        
-                                             
-  */
+	/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com]
+	 * touch LDO is controlled by TWL6030 REGEN2
+	 */
 	.regen2		= &iff_regen2,
 
 	/* children */
@@ -415,7 +415,7 @@ static struct cdc_tcxo_platform_data iff_cdc_data = {
 		0 },
 };
 
-/*                                                              */
+/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com] melfas touch mms-136 */
 static void __init touch_gpio_init(void)
 {
 	if (gpio_request_one(GPIO_TOUCH_INT, GPIOF_IN, "touch_int") < 0) {
@@ -426,7 +426,7 @@ static void __init touch_gpio_init(void)
 	}
 }
 
-/*                                                              */
+/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com] melfas touch mms-136 */
 static int touch_set_vreg(int on, bool log_en)
 {
 	int ret = 0;
@@ -441,7 +441,7 @@ static int touch_set_vreg(int on, bool log_en)
 	return ret;
 }
 
-/*                                                              */
+/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com] melfas touch mms-136 */
 static struct melfas_tsi_platform_data melfas_touch_pdata = {
 	/* FIXME: */
 #if 1
@@ -503,7 +503,7 @@ static struct lm3559_platform_data	lm3559_pdata = {
 };
 #endif
 
-/*                                                    */
+/* LGE_SJIT 2012-01-19 [dojip.kim@lge.com] add rotcpy */
 static void rotcpy(s8 dst[3*3], const s8 src[3*3])
 {
 	memcpy(dst, src, 3*3);
@@ -560,14 +560,14 @@ static struct mpu_platform_data mpu_data = {
 	},
 };
 
-/*                                                  */
+/* LGE_CHANGE_S [seungho1.park@lge.com] 2011-11-18, */
 #if defined(CONFIG_CHARGER_MAX8971)
 #include <linux/max8971.h>
 #endif
-/*                                         */
+/* LGE_CHANGE_E [seungho1.park@lge.com] ,  */
 
-/*                                        
-                                        
+/* LGE_SJIT 2011-12-02 [dojip.kim@lge.com]
+ * define the platform_data for APDS9900
  */
 static struct apds9900_platform_data apds9900_pdata = {
 	.atime    = 0xdb, // minimum ALS integration time
@@ -590,13 +590,13 @@ static struct apds9900_platform_data apds9900_pdata = {
 	.ldo_gpio = 104,
 };
 
-/*                                                                    */
+/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] add max17043 platform_data */
 static struct max17043_platform_data max17043_pdata = {
 	.gpio_alert = GPIO_GAUGE_INT,
 	.rcomp = RCOMP_BL44JN,
 };
 
-/*                                                                */
+/* LGE_SJIT 2012-01-27 [dojip.kim@lge.com] add muic platform data */
 static struct muic_platform_data muic_pdata = {
 	.gpio_int = GPIO_MUIC_INT,
 	.gpio_mhl = GPIO_MHL_SEL,
@@ -627,17 +627,17 @@ static struct i2c_board_info i2c_2_info[] __initdata = {
 	},
 #endif 
         /* MUIC */
-	/*                                        
-                          
-  */
+	/* LGE_SJIT 2012-01-27 [dojip.kim@lge.com]
+	 * Add muic platform data
+	 */
 	{
 		I2C_BOARD_INFO("ts5usba33402", 0x44),
 		.irq = OMAP_GPIO_IRQ(GPIO_MUIC_INT),
 		.platform_data = &muic_pdata,
 	},
-/*                                           */
+/* jaekyung.oh@lge.com 2011.02.12 End   <--] */
 #ifdef CONFIG_PN544_NFC
-/*                                                      */
+/*dongjoon.kim@lge.com 2011.06.07 NFC C2 bring-up[START]*/
         {
                 I2C_BOARD_INFO("pn544", NFC_I2C_SLAVE_ADDR),
                 .type = "pn544",
@@ -645,7 +645,7 @@ static struct i2c_board_info i2c_2_info[] __initdata = {
                 .platform_data = &nfc_pdata,
         },
 #endif
-	/*                                                              */
+	/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com] melfas touch mms-136 */
         {
                 I2C_BOARD_INFO(MELFAS_TS_NAME, MELFAS_TOUCH_I2C_SLAVE_ADDR),
                .platform_data = &melfas_touch_pdata,
@@ -690,9 +690,9 @@ static struct i2c_board_info i2c_4_info[] __initdata = {
 		.irq = OMAP_GPIO_IRQ(GPIO_GYRO_INT),
 		.platform_data = &mpu_data,
 	},
-	/*                                                   
-                     
-  */
+	/* LGE_SJIT 2011-11-24 [dojip.kim@lge.com] 2011-11-24
+	 * add kxtf9, ami306
+	 */
 	{
 		I2C_BOARD_INFO("kxtf9",0x0f),
 		.irq = OMAP_GPIO_IRQ(GPIO_MOTION_INT),
@@ -703,7 +703,7 @@ static struct i2c_board_info i2c_4_info[] __initdata = {
 		.irq = OMAP_GPIO_IRQ(GPIO_COMPASS_INT),
 		.platform_data = &mpu_data.compass,
 	},
-	/*                                                                    */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] add max17043 platform data */
 #if defined(CONFIG_LG_FW_MAX17043_FUEL_GAUGE_I2C)
         /* Fuel Gauge */
         {
@@ -756,14 +756,14 @@ static struct lge_i2c_config i2c_4_config __initdata = {
 
 int __init lge_i2c_init(void)
 {
-	/*                                        
-                                          
-  */
+	/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com]
+	 * call it for initialization of gpios...
+	 */
 	touch_gpio_init();
 
-	/*                                        
-                          
-  */
+	/* LGE_SJIT 2012-01-19 [dojip.kim@lge.com]
+	 * Fix sensor orientation
+	 */
 	if (system_rev == LGE_PCB_C) {
 		rotcpy(mpu_data.orientation, mpu_orientation_c);
 		rotcpy(mpu_data.accel.orientation, accel_orientation_c);

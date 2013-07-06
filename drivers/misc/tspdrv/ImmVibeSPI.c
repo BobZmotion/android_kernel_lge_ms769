@@ -36,8 +36,8 @@
 #include <mach/gpio.h>
 #include <plat/dmtimer.h>
 #include <linux/regulator/consumer.h>
-/*                                        
-                                            
+/* LGE_SJIT 2011-12-01 [dojip.kim@lge.com]
+ *  making it as platform-independent driver
  */
 #include "tspdrv.h" /* struct pwm_vib_data */
 extern struct pwm_vib_data *pwm_priv;
@@ -60,7 +60,7 @@ static bool g_bAmpEnabled = false;
 
 static struct omap_dm_timer *omap_vibrator_timer = NULL;
 
-/*                                                      */
+/* LGE_SJIT 2011-12-01 [dojip.kim@lge.com] use pwm_priv */
 static void vib_enable(bool enable )
 {
 	struct pwm_vib_data *data = pwm_priv;
@@ -120,7 +120,7 @@ IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_AmpEnable(VibeUInt8 nActuatorIndex)
 /*
  * Called at initialization time to set PWM freq, disable amp, etc...
  */
-/*                                                      */
+/* LGE_SJIT 2011-12-01 [dojip.kim@lge.com] use pwm_priv */
 IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_Initialize(void)
 {
 	int ret;

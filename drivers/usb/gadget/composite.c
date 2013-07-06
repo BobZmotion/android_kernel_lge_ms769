@@ -564,7 +564,7 @@ done:
 	return status;
 }
 
-static int unbind_config(struct usb_composite_dev *cdev,
+static int remove_config(struct usb_composite_dev *cdev,
 			      struct usb_configuration *config)
 {
 	while (!list_empty(&config->functions)) {
@@ -579,6 +579,7 @@ static int unbind_config(struct usb_composite_dev *cdev,
 			/* may free memory for "f" */
 		}
 	}
+	//list_del(&config->list);
 	if (config->unbind) {
 		DBG(cdev, "unbind config '%s'/%p\n", config->label, config);
 		config->unbind(config);
@@ -601,7 +602,7 @@ int usb_remove_config(struct usb_composite_dev *cdev,
 
 	spin_unlock_irqrestore(&cdev->lock, flags);
 
-	return unbind_config(cdev, config);
+	return remove_config(cdev, config);
 }
 
 /*-------------------------------------------------------------------------*/
@@ -1086,7 +1087,7 @@ composite_unbind(struct usb_gadget *gadget)
 		c = list_first_entry(&cdev->configs,
 				struct usb_configuration, list);
 		list_del(&c->list);
-		unbind_config(cdev, c);
+		remove_config(cdev, c);
 	}
 	if (composite->unbind)
 		composite->unbind(cdev);

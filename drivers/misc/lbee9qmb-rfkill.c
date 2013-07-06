@@ -20,7 +20,7 @@
  *
  */
 
-#define DEBUG	1
+#define DEBUG	0
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -129,7 +129,7 @@ static int lbee9qmb_rfkill_set_power(void *data, bool blocked)
 	lpm->blocked = blocked;
 
 	if (blocked) {
-		/*                                                             */
+		/* LGE_SJIT 11/18/2011 [mohamed.khadri@lge.com] BT UART Disable*/
 		if (lpm->chip_disable) {
 			if (lpm->chip_disable())
 				dev_err(lpm->dev, "%s: uart disable failed\n",
@@ -140,7 +140,7 @@ static int lbee9qmb_rfkill_set_power(void *data, bool blocked)
 		dev_dbg(lpm->dev, "%s: reset low\n", __func__);
 	}
 	else {
-		/*                                                            */
+		/* LGE_SJIT 11/18/2011 [mohamed.khadri@lge.com] BT UART Enable*/
 		if (lpm->chip_enable) {
 			if (lpm->chip_enable())
 				dev_err(lpm->dev, "%s: uart enable failed\n",

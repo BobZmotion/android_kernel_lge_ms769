@@ -354,7 +354,7 @@ extern struct hdcp_sha_in sha_input;
 	((RD_REG_32(base, offset) & FLD_MASK(start, end)) >> (end))
 
 
-//                                               
+// LGE_CHANGE_S [sungho.jung@lge.com] 2012-03-27.
 #undef DBG
 #define HDCP_DEBUG
 
@@ -373,7 +373,7 @@ extern struct hdcp_sha_in sha_input;
 #else
 #define DBG(format, ...)
 #endif
-//                                               
+// LGE_CHANGE_E [sungho.jung@lge.com] 2012-03-27.
 
 /***************************/
 /* Function prototypes     */

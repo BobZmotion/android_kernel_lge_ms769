@@ -94,12 +94,12 @@ int xmd_ch_write(int  chno, void *data, int len);
 void xmd_ch_register_xmd_boot_cb(void (*fn)(void));
 int wait_for_xmd_ack(void);
 
-//                                                  
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 #if defined(CONFIG_MACH_LGE_COSMOPOLITAN)
 extern void ifx_schedule_cp_dump_or_reset(void);
 #endif
 
 int xmd_is_recovery_state(void);
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
 #endif

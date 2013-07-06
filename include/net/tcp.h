@@ -97,9 +97,9 @@ extern void tcp_time_wait(struct sock *sk, int state, int timeo);
 				 * 15 is ~13-30min depending on RTO.
 				 */
 #if defined(CONFIG_MACH_LGE_P2_LU5400)
-    /*                                              
-                                                                                      
-                                                                
+    /* Description by heeyeon.nah@lge.com 2012-04-20
+    The tcp_syn_retries variable tells the kernel how many times to try to retransmit 
+    the initial SYN packet for an active TCP connection attempt.
     */
 #define TCP_SYN_RETRIES	4	/* number of times to retry active opening a
 				 * connection: ~180sec is RFC minimum	*/

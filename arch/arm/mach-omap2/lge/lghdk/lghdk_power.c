@@ -24,8 +24,8 @@ static int lghdk_reboot_notify(struct notifier_block *nb,
 {
 #ifdef USE_HW_RESET
 	if (code == SYS_RESTART) {
-		/*                                               
-                                           */
+		/* LGE_CHANGE_S [Darren.Kang@lge.com] 2011-01-06,
+		  Cosmopolitan: Changed for HW reset[ST] */
 		static const char NVDATA_PARTITION[]  = "/dev/block/platform/mmci-omap-hs.1/by-name/nv";
 		static const int  NVDATA_RESET_OFFSET  = 100;
 
@@ -46,7 +46,7 @@ static int lghdk_reboot_notify(struct notifier_block *nb,
 		} else {
 			printk("Can't open NVDATA partition ret = %d.\n",h_file);
 		}
-		/*                                               */
+		/* LGE_CHANGE_E [Darren.Kang@lge.com] 2011-01-06 */
 	}
 #endif
 	return NOTIFY_DONE;
@@ -58,8 +58,8 @@ static struct notifier_block lghdk_reboot_notifier = {
 
 static void lghdk_pm_restart(char str, const char *cmd)
 {
-	/*                                             
-                                          */
+	/* LGE_CHANGE [Darren.Kang@lge.com] 2011-01-06,
+	  Cosmopolitan: Changed for HW reset[ST] */
 	twl_i2c_write_u8(TWL_MODULE_PM_MASTER, 0x47, 0x06);
 }
 

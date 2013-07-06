@@ -28,14 +28,14 @@
 #define	CONTROL_2	(u8)0x02
 #define	SW_CONTROL	(u8)0x03
 #define	INT_STAT	(u8)0x04
-//                                                                                                                             
+//!![S] 2011-06-23 by pilsu.kim@lge.com : [MUIC] update MUIC detect fail issue in Rev B (TSU5611 is revisioned register change)
 #if defined (CONFIG_MUIC_TS5USBA33402_REV_A)
 #define	STATUS		(u8)0x05
 #else
 #define	INT_STAT2	(u8)0x05
 #define	STATUS		(u8)0x06
 #endif
-//                                        
+//!![E] 2011-06-23 by pilsu.kim@lge.com : 
 
 /* Masks for the each bit of CONTROL_1 register */
 #define	ID_2P2		(u8)0x40
@@ -90,7 +90,7 @@
 #define C1COMP      	(u8)0x01	/* only on MAXIM */
 
 
-//                     
+//changseok.kim@lge.com
 /* IDNO */
 #define IDNO_0000     0x00
 #define IDNO_0001     0x01

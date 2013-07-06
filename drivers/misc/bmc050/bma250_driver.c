@@ -1,5 +1,5 @@
-/*  Date: 2012/06/04 14:07:00
- *  Revision: 2.3
+/*  Date: 2011/12/29 12:37:00
+ *  Revision: 2.1
  */
 
 /*
@@ -9,7 +9,6 @@
  * (C) Copyright 2011 Bosch Sensortec GmbH
  * All Rights Reserved
  */
-
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -179,16 +178,6 @@
 #define BMA250_EE_WRITE_SETTING_S__MSK          0x04
 #define BMA250_EE_WRITE_SETTING_S__REG          BMA250_EEPROM_CTRL_REG
 
-//                                                                                   
-#define BMA250_EN_SOFT_RESET__POS         0
-#define BMA250_EN_SOFT_RESET__LEN         8
-#define BMA250_EN_SOFT_RESET__MSK         0xFF
-#define BMA250_EN_SOFT_RESET__REG         BMA250_RESET_REG
-
-#define BMA250_EN_SOFT_RESET_VALUE        0xB6
-
-#define BMA250_SHAKING_DETECT_THRESHOLD	(20)	/* threshold of shaking detection under 2G */
-//                                               
 #define BMA250_GET_BITSLICE(regvar, bitname)\
 	((regvar & bitname##__MSK) >> bitname##__POS)
 
@@ -300,11 +289,6 @@ struct bma250_data {
 #endif
 
 	atomic_t selftest_result;
-//                                                                                   
-	atomic_t fast_calib_x_rslt;
-	atomic_t fast_calib_y_rslt;
-	atomic_t fast_calib_z_rslt;
-//                                               
 };
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -922,7 +906,7 @@ static ssize_t bma250_selftest_store(struct device *dev,
 	if (data != 1)
 		return -EINVAL;
 	/* set to 2 G range */
-	if (bma250_set_range(bma250->bma250_client, BMA250_RANGE_2G) < 0)
+	if (bma250_set_range(bma250->bma250_client, 0) < 0)
 		return -EINVAL;
 
 	bma250_smbus_write_byte(bma250->bma250_client, 0x32, &clear_value);
@@ -1186,29 +1170,7 @@ static int bma250_set_cal_trigger(struct i2c_client *client,
 	return comres;
 }
 
-//                                                                                            
-static int bma250_soft_reset(struct i2c_client *client)
-{
-	int comres = 0;
-	unsigned char data = BMA250_EN_SOFT_RESET_VALUE ;
 
-	comres = bma250_smbus_write_byte(client, BMA250_EN_SOFT_RESET__REG, &data);
-
-	return comres;
-}
-
-static ssize_t bma250_softreset_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct bma250_data *bma250 = i2c_get_clientdata(client);
-
-	if (bma250_soft_reset(bma250->bma250_client) < 0)
-		return -EINVAL;
-
-	return count;
-}
 static ssize_t bma250_fast_calibration_x_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -1216,14 +1178,10 @@ static ssize_t bma250_fast_calibration_x_show(struct device *dev,
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
 
-	return sprintf(buf, "%d\n", atomic_read(&bma250->fast_calib_x_rslt));
+	if (bma250_get_offset_target_x(bma250->bma250_client, &data) < 0)
+		return sprintf(buf, "Read error\n");
 
-#if 0
-		if (bma250_get_offset_target_x(bma250->bma250_client, &data) < 0)
-			return sprintf(buf, "Read error\n");
-
-		return sprintf(buf, "%d\n", data);
-#endif
+	return sprintf(buf, "%d\n", data);
 }
 
 static ssize_t bma250_fast_calibration_x_store(struct device *dev,
@@ -1237,47 +1195,23 @@ static ssize_t bma250_fast_calibration_x_store(struct device *dev,
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
 
-	struct bma250acc acc_cal;
-	struct bma250acc acc_cal_pre;
-
 	error = strict_strtoul(buf, 10, &data);
 	if (error)
 		return error;
 
-	bma250_read_accel_xyz(bma250->bma250_client, &acc_cal_pre);
-	mdelay(50);
-
-	if (bma250_set_offset_target_x(bma250->bma250_client, (unsigned char)data) < 0)
+	if (bma250_set_offset_target_x(bma250->bma250_client,
+				(unsigned char)data) < 0)
 		return -EINVAL;
 
 	if (bma250_set_cal_trigger(bma250->bma250_client, 1) < 0)
 		return -EINVAL;
 
-	atomic_set(&bma250->fast_calib_x_rslt, 0);
 	do {
 		mdelay(2);
 		bma250_get_cal_ready(bma250->bma250_client, &tmp);
 
-		bma250_read_accel_xyz(bma250->bma250_client, &acc_cal);
-
-		if( (tmp == 0)	&&
-			((abs(acc_cal.x - acc_cal_pre.x) > BMA250_SHAKING_DETECT_THRESHOLD)
-				|| (abs((acc_cal.y - acc_cal_pre.y)) > BMA250_SHAKING_DETECT_THRESHOLD)
-				|| (abs((acc_cal.z - acc_cal_pre.z)) > BMA250_SHAKING_DETECT_THRESHOLD))
-		  )
-		{
-			printk(KERN_INFO "fast calibration for x-axis is failed due to BMA250_SHAKING\n");
-			printk(KERN_INFO "(%d, %d), (%d, %d), (%d, %d)\n", acc_cal.x, acc_cal_pre.x, acc_cal.y, acc_cal_pre.y, acc_cal.z, acc_cal_pre.z);
-			return count;
-		}
-		else
-		{
-			acc_cal_pre.x = acc_cal.x;
-			acc_cal_pre.y = acc_cal.y;
-			acc_cal_pre.z = acc_cal.z;
-		}
-
-		printk(KERN_INFO "wait 2ms and got cal ready flag is %d\n", tmp);
+		printk(KERN_INFO "wait 2ms and got cal ready flag is %d\n",
+				tmp);
 		timeout++;
 		if (timeout == 1000) {
 			printk(KERN_INFO "get fast calibration ready error\n");
@@ -1286,8 +1220,6 @@ static ssize_t bma250_fast_calibration_x_store(struct device *dev,
 
 	} while (tmp == 0);
 
-	atomic_set(&bma250->fast_calib_x_rslt, 1);
-
 	printk(KERN_INFO "x axis fast calibration finished\n");
 	return count;
 }
@@ -1295,17 +1227,17 @@ static ssize_t bma250_fast_calibration_x_store(struct device *dev,
 static ssize_t bma250_fast_calibration_y_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
+
+
+	unsigned char data;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
 
-	return sprintf(buf, "%d\n", atomic_read(&bma250->fast_calib_y_rslt));
-
-#if 0
 	if (bma250_get_offset_target_y(bma250->bma250_client, &data) < 0)
 		return sprintf(buf, "Read error\n");
 
 	return sprintf(buf, "%d\n", data);
-#endif
+
 }
 
 static ssize_t bma250_fast_calibration_y_store(struct device *dev,
@@ -1319,47 +1251,23 @@ static ssize_t bma250_fast_calibration_y_store(struct device *dev,
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
 
-	struct bma250acc acc_cal;
-	struct bma250acc acc_cal_pre;
-
 	error = strict_strtoul(buf, 10, &data);
 	if (error)
 		return error;
 
-	bma250_read_accel_xyz(bma250->bma250_client, &acc_cal_pre);
-	mdelay(50);
-
-	if (bma250_set_offset_target_y(bma250->bma250_client, (unsigned char)data) < 0)
+	if (bma250_set_offset_target_y(bma250->bma250_client,
+				(unsigned char)data) < 0)
 		return -EINVAL;
 
 	if (bma250_set_cal_trigger(bma250->bma250_client, 2) < 0)
 		return -EINVAL;
 
-	atomic_set(&bma250->fast_calib_y_rslt, 0);
-
 	do {
 		mdelay(2);
 		bma250_get_cal_ready(bma250->bma250_client, &tmp);
 
-		bma250_read_accel_xyz(bma250->bma250_client, &acc_cal);
-		if( (tmp == 0)	&&
-			((abs(acc_cal.x - acc_cal_pre.x) > BMA250_SHAKING_DETECT_THRESHOLD)
-				|| (abs((acc_cal.y - acc_cal_pre.y)) > BMA250_SHAKING_DETECT_THRESHOLD)
-				|| (abs((acc_cal.z - acc_cal_pre.z)) > BMA250_SHAKING_DETECT_THRESHOLD))
-		  )
-		{
-			printk(KERN_INFO "fast calibration for y-axis is failed due to BMA250_SHAKING\n");
-			printk(KERN_INFO "(%d, %d), (%d, %d), (%d, %d)\n", acc_cal.x, acc_cal_pre.x, acc_cal.y, acc_cal_pre.y, acc_cal.z, acc_cal_pre.z);
-			return count;
-		}
-		else
-		{
-			acc_cal_pre.x = acc_cal.x;
-			acc_cal_pre.y = acc_cal.y;
-			acc_cal_pre.z = acc_cal.z;
-		}
-
-		printk(KERN_INFO "wait 2ms and got cal ready flag is %d\n", tmp);
+		printk(KERN_INFO "wait 2ms and got cal ready flag is %d\n",
+				tmp);
 		timeout++;
 		if (timeout == 1000) {
 			printk(KERN_INFO "get fast calibration ready error\n");
@@ -1368,8 +1276,6 @@ static ssize_t bma250_fast_calibration_y_store(struct device *dev,
 
 	} while (tmp == 0);
 
-	atomic_set(&bma250->fast_calib_y_rslt, 1);
-
 	printk(KERN_INFO "y axis fast calibration finished\n");
 	return count;
 }
@@ -1377,16 +1283,17 @@ static ssize_t bma250_fast_calibration_y_store(struct device *dev,
 static ssize_t bma250_fast_calibration_z_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
+
+
+	unsigned char data;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
 
-	return sprintf(buf, "%d\n", atomic_read(&bma250->fast_calib_z_rslt));
-#if 0
 	if (bma250_get_offset_target_z(bma250->bma250_client, &data) < 0)
 		return sprintf(buf, "Read error\n");
 
 	return sprintf(buf, "%d\n", data);
-#endif
+
 }
 
 static ssize_t bma250_fast_calibration_z_store(struct device *dev,
@@ -1400,48 +1307,23 @@ static ssize_t bma250_fast_calibration_z_store(struct device *dev,
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma250_data *bma250 = i2c_get_clientdata(client);
 
-	struct bma250acc acc_cal;
-	struct bma250acc acc_cal_pre;
-
 	error = strict_strtoul(buf, 10, &data);
 	if (error)
 		return error;
 
-	bma250_read_accel_xyz(bma250->bma250_client, &acc_cal_pre);
-	mdelay(50);
-
-	if (bma250_set_offset_target_z(bma250->bma250_client, (unsigned char)data) < 0)
+	if (bma250_set_offset_target_z(bma250->bma250_client,
+				(unsigned char)data) < 0)
 		return -EINVAL;
 
 	if (bma250_set_cal_trigger(bma250->bma250_client, 3) < 0)
 		return -EINVAL;
 
-		atomic_set(&bma250->fast_calib_z_rslt, 0);
-
 	do {
 		mdelay(2);
 		bma250_get_cal_ready(bma250->bma250_client, &tmp);
 
-		bma250_read_accel_xyz(bma250->bma250_client, &acc_cal);
-
-		if( (tmp == 0)	&&
-			((abs(acc_cal.x - acc_cal_pre.x) > BMA250_SHAKING_DETECT_THRESHOLD)
-				|| (abs((acc_cal.y - acc_cal_pre.y)) > BMA250_SHAKING_DETECT_THRESHOLD)
-				|| (abs((acc_cal.z - acc_cal_pre.z)) > BMA250_SHAKING_DETECT_THRESHOLD))
-		  )
-		{
-			printk(KERN_INFO "fast calibration for z-axis is failed due to BMA250_SHAKING\n");
-			printk(KERN_INFO "(%d, %d), (%d, %d), (%d, %d)\n", acc_cal.x, acc_cal_pre.x, acc_cal.y, acc_cal_pre.y, acc_cal.z, acc_cal_pre.z);
-			return count;
-		}
-		else
-		{
-			acc_cal_pre.x = acc_cal.x;
-			acc_cal_pre.y = acc_cal.y;
-			acc_cal_pre.z = acc_cal.z;
-		}
-
-		printk(KERN_INFO "wait 2ms and got cal ready flag is %d\n", tmp);
+		printk(KERN_INFO "wait 2ms and got cal ready flag is %d\n",
+				tmp);
 		timeout++;
 		if (timeout == 1000) {
 			printk(KERN_INFO "get fast calibration ready error\n");
@@ -1450,12 +1332,9 @@ static ssize_t bma250_fast_calibration_z_store(struct device *dev,
 
 	} while (tmp == 0);
 
-	atomic_set(&bma250->fast_calib_z_rslt, 1);
-
 	printk(KERN_INFO "z axis fast calibration finished\n");
 	return count;
 }
-//                                               
 
 static ssize_t bma250_eeprom_writing_store(struct device *dev,
 		struct device_attribute *attr,
@@ -1670,10 +1549,6 @@ static DEVICE_ATTR(offset_filt_y, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
 static DEVICE_ATTR(offset_filt_z, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
 		bma250_offset_filt_z_show,
 		bma250_offset_filt_z_store);
-//                                                                                  
-static DEVICE_ATTR(softreset, S_IWUSR|S_IWGRP,
-		NULL, bma250_softreset_store);
-//                                               
 
 
 static struct attribute *bma250_attributes[] = {
@@ -1692,9 +1567,6 @@ static struct attribute *bma250_attributes[] = {
 	&dev_attr_offset_filt_x.attr,
 	&dev_attr_offset_filt_y.attr,
 	&dev_attr_offset_filt_z.attr,
-//                                                                                  
-	&dev_attr_softreset.attr,
-//                                               
 	NULL
 };
 
@@ -1757,20 +1629,13 @@ static int bma250_probe(struct i2c_client *client,
 	tempvalue = 0;
 	tempvalue = i2c_smbus_read_word_data(client, BMA250_CHIP_ID_REG);
 
-	if (tempvalue < 0) {
-		printk(KERN_ERR "Bosch Sensortec Device not found, \
-				i2c error %#x \n", tempvalue);
-		err = tempvalue;
-		goto kfree_exit;
-	}
-
-	if ((tempvalue & 0xFF) == BMA250_CHIP_ID) {
+	if ((tempvalue&0x00FF) == BMA250_CHIP_ID) {
 		printk(KERN_INFO "Bosch Sensortec Device detected!\n" \
 				"BMA250 registered I2C driver!\n");
-	} else {
-		printk(KERN_ERR "Bosch Sensortec Device not found, \
-				chip ID mismatch");
-		err = -ENODEV;
+	} else{
+		printk(KERN_INFO "Bosch Sensortec Device not found, \
+				i2c error %d \n", tempvalue);
+		err = -1;
 		goto kfree_exit;
 	}
 	i2c_set_clientdata(client, data);
@@ -1893,4 +1758,3 @@ MODULE_LICENSE("GPL");
 
 module_init(BMA250_init);
 module_exit(BMA250_exit);
-

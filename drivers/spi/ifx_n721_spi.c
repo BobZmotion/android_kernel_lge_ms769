@@ -45,7 +45,7 @@
 
 #include <linux/spi/ifx_n721_spi.h>
 #include <linux/delay.h>	
-#define MRDY_DELAY_TIME 400     //                                                                                   
+#define MRDY_DELAY_TIME 400     //20101127-1, syblue.lee@lge.com, Change delay time for transcation : 1000us -> 400us
 
 #define CONFIG_SPI_DEBUG
 #undef CONFIG_SPI_DEBUG
@@ -155,7 +155,7 @@ void dump_atcmd(char *data)
 
 
 
-#define MODEM_CHK 177 //                               
+#define MODEM_CHK 177 //gpio_177 AP_SLEEP_CHK [LGE-SPI]
 /* ################################################################################################################ */
 
 /* Structure used to store private data */
@@ -297,7 +297,7 @@ ifx_spi_close(struct tty_struct *tty, struct file *filp)
  * and this function returns number of bytes sent to MODEM
  */
 
-//                                                                    
+//#define LGE_DUMP_SPI_BIFFUER   // woojun.ye: disable SPI log printk.
 #ifdef LGE_DUMP_SPI_BIFFUER
 #define COL_SIZE 20	// Merged by jisil 50 -> 20
 static void dump_spi_buffer(const unsigned char *txt, const unsigned char *buf, int count)
@@ -382,7 +382,7 @@ ifx_spi_write(struct tty_struct *tty, const unsigned char *buf, int count)
 //	SPI_DEBUG_PRINT("%s : ", __FUNCTION__);
 //	dump_atcmd(buf+2) ; 	
 
-//                                                        
+// LGE_UPDATE_S eungbo.shim@lge.com 20110111 -- SPI RETRY 
 #if 0
 	//wait_for_completion(&spi_data->ifx_read_write_completion);
 #else
@@ -397,7 +397,7 @@ ifx_spi_write(struct tty_struct *tty, const unsigned char *buf, int count)
         dump_spi_buffer("timeout - ifx_spi_write()", buf, count);     
 //#endif
 	}
-//                                                        
+// LGE_UPDATE_E eungbo.shim@lge.com 20110111 -- SPI RETRY 
 	init_completion(&spi_data->ifx_read_write_completion);
 #ifdef CONFIG_SPI_DEBUG
 	printk("[AP] ---------------------[END] \n");
@@ -568,9 +568,9 @@ ifx_spi_probe(struct spi_device *spi)
 	spi_data_table[spi->master->bus_num - 1] = spi_data;
 
 	gpio_request(MODEM_CHK, "MODEM_CHK");
-	//                                                           
+	// 20100929 yoolje.cho@lge.com  it should be done [START_LGE]
     	gpio_direction_output(MODEM_CHK, 1);
-	//                                       
+	// 20100929 yoolje.cho@lge.com  [END_LGE]
 	
 	return status;
 }
@@ -732,15 +732,15 @@ ifx_spi_get_header_info(unsigned char *rx_buffer, unsigned int *valid_buf_size)
 		header.framesbytes[i] = rx_buffer[/*3-*/i];
 	}
 // Merged by jisil
- //                                                                                   
-       if(header.ifx_spi_header.curr_data_size > IFX_SPI_MAX_BUF_SIZE)   //                                                 
+ //20101127-2, syblue.lee@lge.com, Discard if mux size is bigger than MAX SIZE [START]
+       if(header.ifx_spi_header.curr_data_size > IFX_SPI_MAX_BUF_SIZE)   //20101201-1, syblue.lee@lge.com, bug fix : >= -> >
        {
            printk("%s - invalid header : 0x%x 0x%x 0x%x 0x%x!!!\n", __FUNCTION__, header.framesbytes[0], header.framesbytes[1], header.framesbytes[2], header.framesbytes[3]);
            *valid_buf_size = 0;
         }
        else
 	*valid_buf_size = header.ifx_spi_header.curr_data_size;
- //                                                                                 
+ //20101127-2, syblue.lee@lge.com, Discard if mux size is bigger than MAX SIZE [END]
 	if(header.ifx_spi_header.more)
 	{
 //		printk(KERN_ERR "ifx_spi_get_header_info, There is more packet = %d\n", header.ifx_spi_header.next_data_size);
@@ -954,10 +954,10 @@ ifx_spi_handle_srdy_irq(int irq, void *handle)
 
 	return IRQ_HANDLED; 
 }
-//                                                      
+// <EBS> [LGE_UPDATE_S eungbo.shim@lge.com  2009-04-08 ]
 // TODO: 1) ifx_master_initiated_transfer = 1; -->WHEN THE SPI WRITE function calls
 // TODO: 2) ifx_master_initiated_transfer = 0; -->Default 
-//                                                      
+// [LGE_UPDATE_E eungbo.shim@lge.com  2009-04-08 ] <EBS>
 static void 
 ifx_spi_handle_work(struct work_struct *work)
 {
@@ -968,7 +968,7 @@ ifx_spi_handle_work(struct work_struct *work)
 #ifdef CONFIG_SPI_DEBUG
 		printk("<<<<<<<<<<<<<<<< CP [S] \n");
 #endif
-		omap_pm_set_min_bus_tput(&(spi_data->spi->dev),OCP_INITIATOR_AGENT, 800000);	//                                      
+		omap_pm_set_min_bus_tput(&(spi_data->spi->dev),OCP_INITIATOR_AGENT, 800000);	//LGE_CHANGE Song Won jong 200MHz L3 clk
 		ifx_spi_setup_transmission(spi_data);
 #ifdef CONFIG_LGE_SPI_MODE_SLAVE
 #else
@@ -990,9 +990,9 @@ ifx_spi_handle_work(struct work_struct *work)
 	 	* MUX has some data to transfer. MUX initiates Master initiated transfer rising MRDY high, which will not be detected at Slave-MODEM.
 	 	* So it was required to rise MRDY high again */
 
-//                                                                              
+//20100701-1, syblue.lee@lge.com, delay time until CP can be ready again [START]
                  udelay(MRDY_DELAY_TIME);
- //                                                                            
+ //20100701-1, syblue.lee@lge.com, delay time until CP can be ready again [END]
 #ifdef CONFIG_LGE_SPI_MODE_SLAVE
 #else
                 ifx_spi_set_mrdy_signal(spi_data, 1);    		
@@ -1001,14 +1001,14 @@ ifx_spi_handle_work(struct work_struct *work)
 #ifdef CONFIG_SPI_DEBUG
 		printk("<<<<<<<<<<<<<<<< CP [END] \n");
 #endif
-		omap_pm_set_min_bus_tput(&(spi_data->spi->dev),OCP_INITIATOR_AGENT, -1);	//                        
+		omap_pm_set_min_bus_tput(&(spi_data->spi->dev),OCP_INITIATOR_AGENT, -1);	//LGE_CHANGE 200MHz L3 clk
 	}
 	else
     {
 #ifdef CONFIG_SPI_DEBUG
 		printk("[LGE-SPI] INTERRUPT BY OMAP\n");
 #endif
-		omap_pm_set_min_bus_tput(&(spi_data->spi->dev),OCP_INITIATOR_AGENT, 800000);	//                        
+		omap_pm_set_min_bus_tput(&(spi_data->spi->dev),OCP_INITIATOR_AGENT, 800000);	//LGE_CHANGE 200MHz L3 clk
 		ifx_spi_setup_transmission(spi_data);     
 		ifx_spi_send_and_receive_data(spi_data);
 		/* Once data transmission is completed, the MRDY signal is lowered */
@@ -1019,15 +1019,15 @@ ifx_spi_handle_work(struct work_struct *work)
 			{		
 				ifx_spi_set_mrdy_signal(spi_data, 0);
 
-//                                                                              
+//20100701-1, syblue.lee@lge.com, delay time until CP can be ready again [START]
                 udelay(MRDY_DELAY_TIME);
-//                                                                            
+//20100701-1, syblue.lee@lge.com, delay time until CP can be ready again [END]
 				ifx_spi_buffer_initialization(spi_data);
 			}
 			spi_data->ifx_master_initiated_transfer = 0;
 			complete(&spi_data->ifx_read_write_completion);
 		}
-		omap_pm_set_min_bus_tput(&(spi_data->spi->dev),OCP_INITIATOR_AGENT, -1);	//                        
+		omap_pm_set_min_bus_tput(&(spi_data->spi->dev),OCP_INITIATOR_AGENT, -1);	//LGE_CHANGE 200MHz L3 clk
 	}
 }
 

@@ -52,15 +52,15 @@
 #define MAX_PART_PKT_SIZE   2500
 #define MAX_PART_PKT_MTU    4096
 
-//                                                  
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 /* #define RMNET_CHANGE_MTU */
-// #define RMNET_ARP_ENABLE
+#define RMNET_ARP_ENABLE
 
 #if defined (RMNET_CHANGE_MTU)
 #define RMNET_MIN_MTU		64
 #define RMNET_MAX_MTU		4096
 #endif
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
 typedef enum {
 	RMNET_FULL_PACKET,
@@ -142,7 +142,7 @@ struct arp_resp {
 //static unsigned int rmnet_cnt = 0;
 #endif
 
-//                                                   
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]	
 #if 0 //defined (RMNET_ERR)
 static void xmd_net_dump(const unsigned char *txt, const unsigned char *buf, int len)
 {
@@ -176,7 +176,7 @@ static void xmd_net_dump(const unsigned char *txt, const unsigned char *buf, int
 	}
 }
 #endif
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
 static int count_this_packet(void *_hdr, int len)
 {
@@ -466,14 +466,14 @@ static void xmd_trans_packet(
 		return;
 	}
 
-//                                                  
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 #if defined (RMNET_CHANGE_MTU)
 	if (sz > p->mtu)
 #else
 	if (sz > RMNET_MTU_SIZE)
 #endif
 	{
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 #if defined (RMNET_ERR)
 		printk("rmnet:xmd_trans_packet() discarding %d pkt len\n", sz);
 #endif
@@ -506,7 +506,7 @@ static void xmd_trans_packet(
 			wake_lock_timeout(&p->wake_lock, HZ / 2);
 
 			/* adding ethernet header */
-//                                                   
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]	
 #if 0
 			{
 				char temp[] = {0xB6,0x91,0x24,0xa8,0x14,0x72,0xb6,0x91,0x24,0xa8,0x14,0x72,0x08,0x0};
@@ -553,7 +553,7 @@ static void xmd_trans_packet(
 			
 			memcpy((void *)ptr, (void *)&p->eth_hdr, ETH_HLEN);
 #endif
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
 			memcpy(ptr + ETH_HLEN, buf, sz - ETH_HLEN);
 
@@ -913,7 +913,7 @@ static void xmd_net_notify(int chno)
 			hdr_size = sizeof(struct ipv6hdr);
 		} else {
 
-//                                                   
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]	
 #if 1
 			/***********************************************************************
 				1. Case of "+PBREADY" : RIL recovery is needed
@@ -961,7 +961,7 @@ static void xmd_net_notify(int chno)
 			past_packet[info->id].state = RMNET_FULL_PACKET;
 
 			}
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 #endif
 		break;
 		}
@@ -1199,7 +1199,7 @@ static int rmnet_xmit(struct sk_buff *skb, struct net_device *dev)
 	}
 
 /* Check IPv4 & IPv6 */
-//                                                   
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]	
 #if 0 //defined (RMNET_ERR)
 	if ((skb->protocol != htons(ETH_P_IP)) && (skb->protocol != htons(ETH_P_IPV6))
 #if defined (RMNET_ARP_ENABLE)		
@@ -1216,7 +1216,7 @@ static int rmnet_xmit(struct sk_buff *skb, struct net_device *dev)
 		xmd_net_dump("rmnet_xmit", (char*)skb->data, skb->len);
 	}
 #endif	
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
 #if defined (RMNET_ARP_ENABLE)
 	if (skb->protocol == htons(ETH_P_ARP)) {
@@ -1322,7 +1322,7 @@ static void rmnet_tx_timeout(struct net_device *dev)
 	}
 }
 
-//                                                  
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 #if defined (RMNET_CHANGE_MTU)
 /* Netdevice change MTU request */
 static int rmnet_nd_change_mtu(struct net_device *dev, int new_mtu)
@@ -1356,7 +1356,7 @@ static int rmnet_nd_change_mtu(struct net_device *dev, int new_mtu)
 	return 0;
 }
 #endif
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
 static struct net_device_ops rmnet_ops = {
 	.ndo_open = rmnet_open,
@@ -1365,11 +1365,11 @@ static struct net_device_ops rmnet_ops = {
 	.ndo_get_stats = rmnet_get_stats,
 	.ndo_set_multicast_list = rmnet_set_multicast_list,
 	.ndo_tx_timeout = rmnet_tx_timeout,
-//                                                  
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 #if defined (RMNET_CHANGE_MTU)
 	.ndo_change_mtu = rmnet_nd_change_mtu,
 #endif
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 };
 
 static void __init rmnet_setup(struct net_device *dev)
@@ -1380,9 +1380,7 @@ static void __init rmnet_setup(struct net_device *dev)
 
 	ether_setup(dev);
 
-//                                                            
-//	dev->mtu = RMNET_MTU_SIZE;
-//                                                          
+	dev->mtu = RMNET_MTU_SIZE;
 
 #if !defined (RMNET_ARP_ENABLE)
 	dev->flags |= IFF_NOARP;
@@ -1391,7 +1389,7 @@ static void __init rmnet_setup(struct net_device *dev)
 	random_ether_addr(dev->dev_addr);
 }
 
-//                                                  
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 static void rmnet_set_ip4_ethr_hdr(struct net_device *dev, struct rmnet_private *p)
 {
 	unsigned char faddr[ETH_ALEN] = { 0xb6, 0x91, 0x24, 0xa8, 0x14, 0x72 };
@@ -1406,7 +1404,7 @@ static void rmnet_set_ip4_ethr_hdr(struct net_device *dev, struct rmnet_private 
 	
 	p->ip_type = RMNET_IPV4_VER;
 }
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
 static int __init rmnet_init(void)
 {
@@ -1459,9 +1457,9 @@ static int __init rmnet_init(void)
 						WAKE_LOCK_SUSPEND,
 						rmnet_channels[n].name);
 
-		//                                                  
+		// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 		rmnet_set_ip4_ethr_hdr(dev, p);
-		//                                                
+		// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
 #ifdef CONFIG_MSM_RMNET_DEBUG
 		p->timeout_us = timeout_us;

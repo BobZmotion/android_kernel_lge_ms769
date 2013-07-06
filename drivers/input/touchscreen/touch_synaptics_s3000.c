@@ -24,7 +24,7 @@
 #include <mach/gpio.h>
 
 #include <linux/input/lge_touch_core.h>
-#include <linux/input/touch_synaptics.h>
+#include <linux/input/touch_synaptics_s3200.h>
 
 #include "SynaImage.h"
 
@@ -75,8 +75,8 @@
 
 #define INTERRUPT_STATUS_REG			(ts->common_fc.dsc.data_base+1)		/* Interrupt Status */
 #define INTERRUPT_MASK_FLASH			0x01
-#define INTERRUPT_MASK_ABS0			0x04
-#define INTERRUPT_MASK_BUTTON			0x08
+#define INTERRUPT_MASK_ABS0				0x08
+#define INTERRUPT_MASK_BUTTON			0x04
 
 /* TOUCHPAD_SENSORS */
 #define FINGER_COMMAND_REG				(ts->finger_fc.dsc.command_base)
@@ -161,7 +161,7 @@
 		for(; !((_bit_mask>>_index)&0x01) && _index <= _max_finger; _index++);	\
 		if (_index <= _max_finger) _bit_mask &= ~(_bit_mask & (1<<(_index)));
 
-int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data)
+int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data, struct b_data* button, u8* total_num)
 {
 	struct synaptics_ts_data* ts =
 			(struct synaptics_ts_data*)get_touch_handle(client);
@@ -236,34 +236,34 @@ int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data)
 			if (unlikely(touch_i2c_read(ts->client,
 					FINGER_DATA_REG_START + (NUM_OF_EACH_FINGER_DATA_REG * finger_index),
 					NUM_OF_EACH_FINGER_DATA_REG,
-					ts->ts_data.finger.finger_reg[finger_index]) < 0)) {
+					ts->ts_data.finger.finger_reg[index]) < 0)) {
 				TOUCH_ERR_MSG("FINGER_DATA_REG read fail\n");
 				goto err_synaptics_getdata;
 			}
 
-			data->curr_data[finger_index].id = finger_index;
-			data->curr_data[finger_index].x_position =
-				TS_SNTS_GET_X_POSITION(ts->ts_data.finger.finger_reg[finger_index][REG_X_POSITION],
-									   ts->ts_data.finger.finger_reg[finger_index][REG_YX_POSITION]);
-			data->curr_data[finger_index].y_position = TS_SNTS_GET_Y_POSITION(ts->ts_data.finger.finger_reg[finger_index][REG_Y_POSITION],
-                                                                           ts->ts_data.finger.finger_reg[finger_index][REG_YX_POSITION]);
-			data->curr_data[finger_index].width_major = TS_SNTS_GET_WIDTH_MAJOR(ts->ts_data.finger.finger_reg[finger_index][REG_WY_WX]);
-			data->curr_data[finger_index].width_minor = TS_SNTS_GET_WIDTH_MINOR(ts->ts_data.finger.finger_reg[finger_index][REG_WY_WX]);
-			data->curr_data[finger_index].width_orientation = TS_SNTS_GET_ORIENTATION(ts->ts_data.finger.finger_reg[finger_index][REG_WY_WX]);
-			data->curr_data[finger_index].pressure = TS_SNTS_GET_PRESSURE(ts->ts_data.finger.finger_reg[finger_index][REG_Z]);
-			data->curr_data[finger_index].status = FINGER_PRESSED;
+			data[index].id = finger_index;
+			data[index].x_position =
+				TS_SNTS_GET_X_POSITION(ts->ts_data.finger.finger_reg[index][REG_X_POSITION],
+									   ts->ts_data.finger.finger_reg[index][REG_YX_POSITION]);
+			data[index].y_position =
+				TS_SNTS_GET_Y_POSITION(ts->ts_data.finger.finger_reg[index][REG_Y_POSITION],
+									   ts->ts_data.finger.finger_reg[index][REG_YX_POSITION]);
+			data[index].width_major = TS_SNTS_GET_WIDTH_MAJOR(ts->ts_data.finger.finger_reg[index][REG_WY_WX]);
+			data[index].width_minor = TS_SNTS_GET_WIDTH_MINOR(ts->ts_data.finger.finger_reg[index][REG_WY_WX]);
+			data[index].width_orientation = TS_SNTS_GET_ORIENTATION(ts->ts_data.finger.finger_reg[index][REG_WY_WX]);
+			data[index].pressure = TS_SNTS_GET_PRESSURE(ts->ts_data.finger.finger_reg[index][REG_Z]);
 
 			if (unlikely(touch_debug_mask & DEBUG_GET_DATA))
-				TOUCH_INFO_MSG("<%d> pos(%4d,%4d) w_m[%2d] w_n[%2d] w_o[%2d] p[%2d]\n",
-								finger_index, data->curr_data[finger_index].x_position, data->curr_data[finger_index].y_position,
-								data->curr_data[finger_index].width_major, data->curr_data[finger_index].width_minor,
-								data->curr_data[finger_index].width_orientation, data->curr_data[finger_index].pressure);
+				TOUCH_INFO_MSG("[%d] pos(%4d,%4d) w_m[%2d] w_n[%2d] w_o[%2d] p[%2d]\n",
+								finger_index, data[index].x_position, data[index].y_position,
+								data[index].width_major, data[index].width_minor,
+								data[index].width_orientation, data[index].pressure);
 
 			index++;
 		}
-		data->total_num = index;
+		*total_num = index;
 		if (unlikely(touch_debug_mask & DEBUG_GET_DATA))
-			TOUCH_INFO_MSG("Total_num: %d\n", data->total_num);
+			TOUCH_INFO_MSG("Total_num: %d\n", *total_num);
 	}
 
 	 /* Button */
@@ -285,15 +285,15 @@ int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data)
 				{
 					if ((ts->ts_data.button_data_reg >> cnt) & 0x1) {
 						ts->ts_data.button.key_code = ts->pdata->caps->button_name[cnt];
-						data->curr_button.key_code = ts->ts_data.button.key_code;
-						data->curr_button.state = 1;
+						button->key_code = ts->ts_data.button.key_code;
+						button->state = 1;
 						break;
 					}
 				}
 			}else {
 				/* release */
-				data->curr_button.key_code = ts->ts_data.button.key_code;
-				data->curr_button.state = 0;
+				button->key_code = ts->ts_data.button.key_code;
+				button->state = 0;
 			}
 		}
 	}

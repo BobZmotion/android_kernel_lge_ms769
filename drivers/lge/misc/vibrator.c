@@ -46,7 +46,7 @@ struct pwm_vib_data {
 	u32 match;
 	u32	gpio_enable;
 	int (*power)(bool on);	
-	int port; //                                                         
+	int port; // LGE_SJIT 2011-09-01 [jongrak.kwon@lge.com] pwm port info
 };
 
 struct workqueue_struct *vibrator_wq;
@@ -112,7 +112,7 @@ static int vibrator_get_time(struct timed_output_dev *dev)
 	    container_of(dev, struct pwm_vib_data, dev);
 	if (hrtimer_active(&data->vibe_timer)) {
 		ktime_t r = hrtimer_get_remaining(&data->vibe_timer);
-		return ktime_to_ms(r); //                                                                                              
+		return ktime_to_ms(r); // LGE_SJIT 2011-09-01 [jongrak.kwon@lge.com] use API (=> OK if CONFIG_KTIME_SCALAR is changed) 
 	} else{
 		return 0;
 	}
@@ -193,7 +193,7 @@ static int vibrator_probe(struct platform_device *pdev)
 		data->duty = pdata->duty;
 		data->gpio_enable = pdata->gpio_enable;
 		data->power = pdata->power;
-		/*                                                          */
+		/* LGE_SJIT 2011-09-01 [jongrak.kwon@lge.com] pwm port info */
 		data->port = pdata->port;
 	}
 
@@ -214,7 +214,7 @@ static int vibrator_probe(struct platform_device *pdev)
 	gpio_request(data->gpio_enable, "vib_en_gpio");
 	gpio_direction_output(data->gpio_enable, 0);
 
-	//                                                              
+	// LGE_SJIT 2011-09-01 [jongrak.kwon@lge.com] use data port info
 	data->pwm_timer	=	omap_dm_timer_request_specific(data->port);
 	if (data->pwm_timer == NULL) {
 		printk(KERN_ERR "[VIBRATOR] %s[%u]: timer_request", __FUNCTION__, __LINE__);

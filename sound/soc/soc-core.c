@@ -61,9 +61,9 @@ static LIST_HEAD(codec_list);
 
 static int soc_new_pcm(struct snd_soc_pcm_runtime *rtd, int num);
 int soc_dsp_debugfs_add(struct snd_soc_pcm_runtime *rtd);
-#define ABE_SUSPEND_ENABLE_IN_PARTIAL  //                                                                             
+#define ABE_SUSPEND_ENABLE_IN_PARTIAL  //LGE_BSP seungdae.goh@lge.com 2012-05-08  Temporary FM radio current issue fix
 #ifdef ABE_SUSPEND_ENABLE_IN_PARTIAL
-int s_partial_suspend = 0; //                                              
+int s_partial_suspend = 0; //LGE_D1_BSP_ICS seungdae.goh@lge.com 2012-04-17
 #endif
 
 /*
@@ -200,7 +200,7 @@ static ssize_t codec_reg_show(struct device *dev,
 	return soc_codec_reg_show(rtd->codec, buf, PAGE_SIZE, 0);
 }
 
-//                                                                         
+// LGE_START    , 2012-03-12, myungwon.kim@lge.com, Change Headset Algorism
 ssize_t codec_reg_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
     int reg, data;
@@ -219,7 +219,7 @@ ssize_t codec_reg_store(struct device *dev, struct device_attribute *attr, const
 }
 
 static DEVICE_ATTR(codec_reg, 0644, codec_reg_show, codec_reg_store);
-//                                                                     
+// LGE_END  , 2012-03-12, myungwon.kim@lge.com, Change Headset Algorism
 
 static ssize_t pmdown_time_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -1198,7 +1198,7 @@ int snd_soc_suspend(struct device *dev)
 	/* cancel pending deferred resume if any */
 	cancel_work_sync(&card->deferred_resume_work);
 
-        //                                              
+        //LGE_D1_BSP_ICS seungdae.goh@lge.com 2012-04-17
 #ifdef ABE_SUSPEND_ENABLE_IN_PARTIAL
         for (i = 0; i < card->num_rtd; i++) {
             if( card->rtd[i].dai_link->name && strcmp(card->rtd[i].dai_link->name, "SDP4430 Media Capture") == 0 ){
@@ -1219,10 +1219,10 @@ int snd_soc_suspend(struct device *dev)
 	/* Due to the resume being scheduled into a workqueue we could
 	* suspend before that's finished - wait for it to complete.
 	 */
-	/*                                          
-                                                               
-                                                                  
-  */
+	/* LGE_SJIT_S 2011-12-21 [dojip.kim@lge.com]
+	 * if cancel pending deferred resume, snd power state might be
+	 * not D0. So waiting for finishing deferred resume is not needed
+	 */
 	/*
 	snd_power_lock(card->snd_card);
 	snd_power_wait(card->snd_card, SNDRV_CTL_POWER_D0);
@@ -1232,7 +1232,7 @@ int snd_soc_suspend(struct device *dev)
 		dev_dbg(card->dev, "Warning: %s(): Not 'SNDRV_CTL_POWER_D0' (%x)\n",
 				__func__, (unsigned int)card->snd_card);
 	}
-	/*                                           */
+	/* LGE_SJIT_E 2011-12-21 [dojip.kim@lge.com] */
 
 	/* we're going to block userspace touching us until resume completes */
 	snd_power_change_state(card->snd_card, SNDRV_CTL_POWER_D3hot);
@@ -1261,7 +1261,7 @@ int snd_soc_suspend(struct device *dev)
 			continue;
 #ifdef ABE_SUSPEND_ENABLE_IN_PARTIAL
 
-                //                                                                
+                //LGE_D1_BSP_ICS_S  seungdae.goh@lge.com 2012-04-17    [START_LGE]
                 if( s_partial_suspend ) {
                     if( card->rtd[i].dai_link->name && strcmp(card->rtd[i].dai_link->name, "SDP4430 Media"  ) ==0) {
                         printk(KERN_DEBUG"$$$ Do NOT suspend stream [%d][%s][%s] ~~\n", i , card->rtd[i].dai_link->name, card->rtd[i].dai_link->stream_name );
@@ -1273,7 +1273,7 @@ int snd_soc_suspend(struct device *dev)
                         snd_pcm_suspend_all(card->rtd[i].pcm);
                 }
                 else
-                //                                                              
+                //LGE_D1_BSP_ICS_E  seungdae.goh@lge.com 2012-04-17    [END_LGE]
 #endif
 		snd_pcm_suspend_all(card->rtd[i].pcm);
 	}

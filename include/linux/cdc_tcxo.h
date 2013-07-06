@@ -19,28 +19,28 @@
 
 /* REGISTER1 bit fields */
 
-#define CDC_TCXO_REQ1POL	BIT(0)
-#define CDC_TCXO_REQ2POL	BIT(1)
-#define CDC_TCXO_REQ3POL	BIT(2)
-#define CDC_TCXO_REQ4POL	BIT(3)
-#define CDC_TCXO_REQ1INT	BIT(4)
-#define CDC_TCXO_REQ2INT	BIT(5)
-#define CDC_TCXO_REQ3INT	BIT(6)
-#define CDC_TCXO_REQ4INT	BIT(7)
+#define CDC_TCXO_REQ1POL	0x01
+#define CDC_TCXO_REQ2POL	0x02
+#define CDC_TCXO_REQ3POL	0x04
+#define CDC_TCXO_REQ4POL	0x08
+#define CDC_TCXO_REQ1INT	0x10
+#define CDC_TCXO_REQ2INT	0x20
+#define CDC_TCXO_REQ3INT	0x40
+#define CDC_TCXO_REQ4INT	0x80
 
 /* REGISTER2 bit fields */
 
-#define CDC_TCXO_MREQ1		BIT(4)
-#define CDC_TCXO_MREQ2		BIT(5)
-#define CDC_TCXO_MREQ3		BIT(6)
-#define CDC_TCXO_MREQ4		BIT(7)
+#define CDC_TCXO_MREQ1		0x10
+#define CDC_TCXO_MREQ2		0x20
+#define CDC_TCXO_MREQ3		0x40
+#define CDC_TCXO_MREQ4		0x80
 
 /* REGISTER3 bit fields */
 
-#define CDC_TCXO_REQ1PRIO	BIT(0)
-#define CDC_TCXO_REQ2PRIO	BIT(1)
-#define CDC_TCXO_REQ3PRIO	BIT(2)
-#define CDC_TCXO_REQ4PRIO	BIT(3)
+#define CDC_TCXO_REQ1PRIO	0x01
+#define CDC_TCXO_REQ2PRIO	0x02
+#define CDC_TCXO_REQ3PRIO	0x04
+#define CDC_TCXO_REQ4PRIO	0x08
 #define CDC_TCXO_LDOEN0		BIT(4)
 #define CDC_TCXO_LDOEN1		BIT(5)
 #define CDC_TCXO_MREQCTRL0	BIT(6)
@@ -62,8 +62,8 @@ struct cdc_tcxo_platform_data {
 int cdc_tcxo_set_req_int(int clk_id, int enable);
 int cdc_tcxo_set_req_prio(int clk_id, int req_prio);
 #else
-static inline int cdc_tcxo_set_req_int(int clk_id, int enable) { return 0; }
-static inline int cdc_tcxo_set_req_prio(int clk_id, int req_prio) { return 0; }
+int cdc_tcxo_set_req_int(int clk_id, int enable) { return 0; }
+int cdc_tcxo_set_req_prio(int clk_id, int req_prio) { return 0; }
 #endif
 
 #endif /* _LINUX_CDC_TCXO_H_ */

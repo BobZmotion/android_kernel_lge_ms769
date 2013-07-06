@@ -36,7 +36,7 @@
 
 
 
-/*                                                                            */
+/* LGE_CHANGE [E920:FW:dojip.kim@lge.com] 2010-03-08, defined in board-e920.h */
 #if defined(CONFIG_MACH_LGE_E920)
 /* nothing */
 #else
@@ -45,7 +45,7 @@
 //#define IFX_SRDY_GPIO			14	/* SRDY GPIO pin for IFX - According to Windows Mobile */
 //#define IFX_MRDY_GPIO			22	/* MRDY GPIO pin for IFX - According to Windows Mobile */
 //#define IFX_SRDY_GPIO			21	/* SRDY GPIO pin for IFX - According to Windows Mobile */
-//                            
+//modified by hyo.park@lge.com
 #define IFX_MRDY_GPIO			120	/* MRDY GPIO pin for IFX - According to Windows Mobile */
 #define IFX_SRDY_GPIO			119	/* SRDY GPIO pin for IFX - According to Windows Mobile */
 
@@ -53,10 +53,10 @@
 
 #define MODEM_GPIO_AUDIO		95
 #define MODEM_GPIO_RESET		163 //103
-//                            
+//modified by hyo.park@lge.com
 //#define MODEM_GPIO_PWRON		110
 #define MODEM_GPIO_PWRON		164
-#define MODEM_GPIO_PWRON_SW		3  //                                                                           
+#define MODEM_GPIO_PWRON_SW		3  //LGE_CHANGE [MIPI-HSI] hyungsun.seo@lge.com : 2011-7-20 defined for CP Reset
 #endif
 
 

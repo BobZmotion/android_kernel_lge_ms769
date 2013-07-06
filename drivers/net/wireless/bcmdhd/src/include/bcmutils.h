@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmutils.h 354837 2012-09-04 06:58:44Z $
+ * $Id: bcmutils.h 309397 2012-01-19 15:36:59Z $
  */
 
 #ifndef	_bcmutils_h_
@@ -598,7 +598,7 @@ extern void *_bcmutils_dummy_fn;
 
 
 #ifndef setbit
-#ifndef NBBY		  
+#ifndef NBBY		      
 #define	NBBY	8	
 #endif 
 #define	setbit(a, i)	(((uint8 *)a)[(i) / NBBY] |= 1 << ((i) % NBBY))
@@ -641,29 +641,6 @@ extern void *_bcmutils_dummy_fn;
 #define CRC16_GOOD_VALUE 0xf0b8		
 #define CRC32_INIT_VALUE 0xffffffff	
 #define CRC32_GOOD_VALUE 0xdebb20e3	
-
-
-#define MACF				"%02x:%02x:%02x:%02x:%02x:%02x"
-#define ETHERP_TO_MACF(ea)	((struct ether_addr *) (ea))->octet[0], \
-							((struct ether_addr *) (ea))->octet[1], \
-							((struct ether_addr *) (ea))->octet[2], \
-							((struct ether_addr *) (ea))->octet[3], \
-							((struct ether_addr *) (ea))->octet[4], \
-							((struct ether_addr *) (ea))->octet[5]
-
-#define ETHER_TO_MACF(ea) 	(ea).octet[0], \
-							(ea).octet[1], \
-							(ea).octet[2], \
-							(ea).octet[3], \
-							(ea).octet[4], \
-							(ea).octet[5]
-#if !defined(SIMPLE_MAC_PRINT)
-#define MACDBG "%02x:%02x:%02x:%02x:%02x:%02x"
-#define MAC2STRDBG(ea) (ea)[0], (ea)[1], (ea)[2], (ea)[3], (ea)[4], (ea)[5]
-#else
-#define MACDBG				"%02x:%02x:%02x"
-#define MAC2STRDBG(ea) (ea)[0], (ea)[4], (ea)[5]
-#endif 
 
 
 typedef struct bcm_bit_desc {

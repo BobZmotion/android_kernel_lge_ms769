@@ -58,9 +58,9 @@ static struct msm_xo_voter *xo_handle_tdmb;
 
 // -------------------------------------------------------------------- 
 // P2 DMB GPIOs
-#define T3900_DMB_INT_N			44	/* IRQ, IN, LOW_ACTIVE */
-#define T3900_DMB_RESET_N		48	/* RESET, OUT, LOW_ACTIVE */
-#define T3900_DMB_EN			50	/* PWR_EN, OUT, HIGH_ACTIVE */
+#define T3900_DMB_INT_N		44	/* IRQ, IN, LOW_ACTIVE */			
+#define T3900_DMB_RESET_N		48     /* RESET, OUT, LOW_ACTIVE */
+#define T3900_DMB_EN			50    /* PWR_EN, OUT, HIGH_ACTIVE */
 
 #ifdef ANTENNA_SWITCHING
 /*
@@ -187,6 +187,7 @@ int tdmb_t3900_power_off(void)
 {
 	if ( t3900_ctrl_info.is_power_on == TRUE )
 	{
+
 #ifdef PMIC_CLOCK_SHARING
 		if(xo_handle_tdmb != NULL)
 		{
@@ -304,7 +305,7 @@ int tdmb_t3900_spi_write_read(uint8* tx_data, int tx_length, uint8 *rx_data, int
 // For P2 porting
 #ifndef CONFIG_LGE_SPI_SLAVE
 		.cs_change	= 0,									/* pdata->force_cs_mode = 0 */
-#endif /*                      */
+#endif /* CONFIG_LGE_SPI_SLAVE */
 	};
 	
 	struct spi_message	m;
@@ -312,7 +313,7 @@ int tdmb_t3900_spi_write_read(uint8* tx_data, int tx_length, uint8 *rx_data, int
 // For P2 porting
 #ifndef CONFIG_LGE_SPI_SLAVE
 	m.is_dma_mapped = 1;									/* pdata->dma_mode = 1 */
-#endif /*                      */
+#endif /* CONFIG_LGE_SPI_SLAVE */
 
 	//printk("tdmb_t3900_spi_write_read start\n");
 
@@ -441,7 +442,7 @@ static int  broadcast_t3900_probe(struct spi_device *spi)
 	t3900_ctrl_info.spi_ptr->bits_per_word 	= 8;
 
 	// For P2 porting
-	//t3900_ctrl_info.spi_ptr->max_speed_hz = (5400 * 1000);
+	//t3900_ctrl_info.spi_ptr->max_speed_hz 	= (5400 * 1000);
 	t3900_ctrl_info.spi_ptr->max_speed_hz 	= (6 * 1000 * 1000);
 
 	rc = spi_setup(spi);

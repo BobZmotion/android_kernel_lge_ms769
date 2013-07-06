@@ -20,7 +20,7 @@
 
 #if defined(CONFIG_LGE_BROADCAST_TDMB)
 #define TDMB_T3900_IRQ		44
-#endif /*                           */
+#endif /* CONFIG_LGE_BROADCAST_TDMB */
 
 #if defined(CONFIG_SPI_IFX)
 static void ifx_n721_dev_init(void)
@@ -86,14 +86,14 @@ static struct omap2_mcspi_device_config ifxn721_mcspi_config = {
 };
 #else
 #define ifx_n721_dev_init	NULL
-#endif /*                      */
+#endif /* CONFIG_LGE_SPI_SLAVE */
 
 #if defined(CONFIG_LGE_BROADCAST_TDMB)
 static struct omap2_mcspi_device_config t3900_mcspi_config = {
 	.turbo_mode 		= 0,
 	.single_channel 	= 1,  /* 0 : slave, 1 : master */
 };
-#endif /*                           */
+#endif /* CONFIG_LGE_BROADCAST_TDMB */
 
 static struct spi_board_info spi_bd_info[] __initdata = {
 #if defined(CONFIG_LGE_BROADCAST_TDMB)
@@ -108,7 +108,7 @@ static struct spi_board_info spi_bd_info[] __initdata = {
 		.controller_data = &t3900_mcspi_config,
 		.irq			= OMAP_GPIO_IRQ(TDMB_T3900_IRQ),
 	},
-#endif /*                           */
+#endif /* CONFIG_LGE_BROADCAST_TDMB */
 #if defined(CONFIG_SPI_IFX)
 	{
 		.modalias		 = "ifxn721",
@@ -129,7 +129,7 @@ static struct spi_board_info spi_bd_info[] __initdata = {
         .controller_data = &ifxn721_mcspi_config,
         .irq             = OMAP_GPIO_IRQ(119),
     },
-#endif /*                      */
+#endif /* CONFIG_LGE_SPI_SLAVE */
 };
 
 int __init u2_spi_init(void)

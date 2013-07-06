@@ -21,14 +21,14 @@
 #ifndef __MAX17043_FUELGAUGE_H_
 #define __MAX17043_FUELGAUGE_H_
 
-//                                                                           
+//LGE_CHANGE_S [euiseop.shin@lge.com] 2011-07-11,[P940] debug for fuel gauge 
 //#define __DEBUG_FUELGAUGE
 #ifdef __DEBUG_FUELGAUGE
 #define DGAU(fmt, args...) printk("GAU]%s() :: " fmt "\n", __func__, ##args) 
 #else
 #define DGAU(fmt, args...) 
 #endif
-//                                                     
+//LGE_CHANGE_E [euiseop.shin@lge.com] 2011-07-11,[P940]
 
 //#define FUEL_GPIO_TEST_BOARD 1
 
@@ -45,7 +45,7 @@
 #define FUEL_GAUGE_MAX17043_UDELAY	5	/* 0x6C(Write) 0x6D(Read)*/
 #define FUEL_GAUGE_MAX17043_TIMEOUT	20	/* 0x6C(Write) 0x6D(Read)*/
 
-/*                                                   */
+/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] add rcomp */
 struct max17043_platform_data {
 	u8	slave_addr;
 	u16	gpio_alert;	/* active low */
@@ -62,14 +62,24 @@ typedef struct __battery_graph_prop
 	s32 y;
 } battery_graph_prop;
 
-//                                                                                    
+// LGE_CHANGE [euiseop.shin@lge.com] 2011-05-26, LGE_P940, add definition of max17043.
 #define MAX17043_I2C_NAME "max17043_i2c"
 #define MAX17043_I2C_ADDR	 0x36
 
-//                                                                                    
+//LGE_CHANGE [euiseop.shin@lge.com] 2011-07-11,[P940] moved here from charger_rt9524.h
 #define SAFE_SHUTDOWN_SOC_CON	5
+#ifdef CONFIG_MACH_LGE_CX2
+#define SHUTDOWN_SOC_CON	1 //5
+#else
 #define SHUTDOWN_SOC_CON	6 //5 /*[SU540][MR] charger issue fixed - charger is not able to chrge up 100% capacity  */
+#endif
 
+#if defined(CONFIG_MACH_LGE_COSMO) || defined(CONFIG_MACH_LGE_CX2) //nthyunjin.yang 120412 [start]
+#define GAUGE_INT 21
+
+#define RCOMP_BL44JN (0xB8)
+#define RCOMP_BL48LN (0xB8)
+#endif//nthyunjin.yang 120412 [end]
 
 #define FG_CONTROL_ENABLE	1704301
 #define FG_CONTROL_DISABLE	1704300
@@ -101,7 +111,7 @@ typedef struct __battery_graph_prop
 #define MAX17043_BATTERY_FULL	97		// Tuning Value
 #define MAX17043_TOLERANCE	20		// Tuning Value
 
-//                                                                                                     
+// LGE_CHANGE [euiseop.shin@lge.com] 2011-04-13, LGE_P940, add a definition of Battery Alert Threshold.
 #define ATHD_LEVEL		15		/* Alert Threshold : 1~32(%) */
 
 typedef enum {

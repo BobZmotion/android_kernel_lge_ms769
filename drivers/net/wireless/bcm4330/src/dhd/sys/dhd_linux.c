@@ -92,13 +92,13 @@ typedef struct histo_ {
 static histo_t vi_d1, vi_d2, vi_d3, vi_d4;
 #endif /* WLMEDIA_HTSF */
 
-/*                                                                   */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-03-30, change ifname to wlan%d */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 #undef alloc_etherdev
 #define alloc_etherdev(sizeof_priv) \
 	alloc_netdev(sizeof_priv, "wlan%d", ether_setup)
-#endif /*                          */
-/*                                                                   */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-03-30, change ifname to wlan%d */
 
 #if defined(CONFIG_MACH_MAHIMAHI) && defined(CONFIG_WIFI_CONTROL_FUNC)
 #include <linux/wifi_tiwlan.h>
@@ -408,11 +408,11 @@ module_param(dhd_msg_level, int, 0);
 module_param_string(firmware_path, firmware_path, MOD_PARAM_PATHLEN, 0);
 module_param_string(nvram_path, nvram_path, MOD_PARAM_PATHLEN, 0);
 
-/*                                                   */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-04-03, configs */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 module_param_string(config_path, config_path, MOD_PARAM_PATHLEN, 0);
-#endif /*                          */
-/*                                                   */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-04-03, configs */
 
 /* Watchdog interval */
 uint dhd_watchdog_ms = 10;
@@ -657,7 +657,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 {
 #if !defined(CONFIG_LGE_BCM432X_PATCH)
 
-	//                                                     
+	//bill.jung@lge.com - Don't use legacy power save mode.
 	//int power_mode = PM_MAX;
 	int power_mode = PM_FAST;
 
@@ -2634,13 +2634,13 @@ dhd_bus_start(dhd_pub_t *dhdp)
 #endif /* PNO_SUPPORT */
 
 /* enable dongle roaming event */
-/*                                                                                       */
+/* LGE_CHANGE_S [jongpil.yoon@lge.com] 2011-04-07, <current issue because of L2 Roaming> */
 #if defined(CONFIG_MACH_LGE)
 	/* do nothing */
 #else	/* original */
 	setbit(dhdp->eventmask, WLC_E_ROAM);
 #endif
-/*                                                                                       */
+/* LGE_CHANGE_E [jongpil.yoon@lge.com] 2011-04-07, <current issue because of L2 Roaming> */
 
 	dhdp->pktfilter_count = 1;
 	/* Setup filter to allow only unicast */
@@ -3373,7 +3373,7 @@ dhd_os_sdtxunlock(dhd_pub_t *pub)
 #ifdef DHD_USE_STATIC_BUF
 #if defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_BRCM_USE_STATIC_BUF)
 extern void* mem_prealloc( int section, unsigned long size);
-#endif /*                                                                          */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_BRCM_USE_STATIC_BUF) */
 void * dhd_os_prealloc(int section, unsigned long size)
 {
 #if defined(CONFIG_MACH_MAHIMAHI) && defined(CONFIG_WIFI_CONTROL_FUNC)
@@ -3406,7 +3406,7 @@ void * dhd_os_prealloc(int section, unsigned long size)
 	return 0;
 #else
 return MALLOC(0, size);
-#endif /*                                                                          */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_BRCM_USE_STATIC_BUF) */
 #endif /* #if defined(CONFIG_MACH_MAHIMAHI) && defined(CONFIG_WIFI_CONTROL_FUNC) */
 }
 #endif /* DHD_USE_STATIC_BUF */

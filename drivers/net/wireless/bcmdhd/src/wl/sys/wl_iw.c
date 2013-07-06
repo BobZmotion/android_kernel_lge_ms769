@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_iw.c 352251 2012-08-22 06:08:38Z $
+ * $Id: wl_iw.c 312290 2012-02-02 02:52:18Z $
  */
 
 #if defined(USE_IW)
@@ -260,7 +260,6 @@ dev_iw_iovar_setbuf(
 
 	iolen = bcm_mkiovar(iovar, param, paramlen, bufptr, buflen);
 	ASSERT(iolen);
-	BCM_REFERENCE(iolen);
 
 	return (dev_wlc_ioctl(dev, WLC_SET_VAR, bufptr, iolen));
 }
@@ -1228,7 +1227,7 @@ wl_iw_iscan_set_scan(
 	wl_iw_set_event_mask(dev);
 	wl_iw_iscan(iscan, &ssid, WL_SCAN_ACTION_START);
 
-	iscan->timer.expires = jiffies + msecs_to_jiffies(iscan->timer_ms);
+	iscan->timer.expires = jiffies + iscan->timer_ms*HZ/1000;
 	add_timer(&iscan->timer);
 	iscan->timer_on = 1;
 
@@ -1394,7 +1393,6 @@ wl_iw_handle_scanresults_ies(char **event_p, char *end,
 			wpa_snprintf_hex(buf + 10, 2+1, &(ie->len), 1);
 			wpa_snprintf_hex(buf + 12, 2*ie->len+1, ie->data, ie->len);
 			event = IWE_STREAM_ADD_POINT(info, event, end, &iwe, buf);
-			kfree(buf);
 #endif 
 			break;
 		}
@@ -1627,7 +1625,7 @@ wl_iw_iscan_get_scan(
 		event = IWE_STREAM_ADD_POINT(info, event, end, &iwe, (char *)event);
 
 		
-		if (bi->rateset.count <= sizeof(bi->rateset.rates)) {
+		if (bi->rateset.count) {
 			if (event + IW_MAX_BITRATES*IW_EV_PARAM_LEN >= end)
 				return -E2BIG;
 
@@ -3612,11 +3610,11 @@ wl_iw_iscan_get(iscan_info_t *iscan)
 static void wl_iw_send_scan_complete(iscan_info_t *iscan)
 {
 	union iwreq_data wrqu;
+	char extra[IW_CUSTOM_MAX + 1];
 
 	memset(&wrqu, 0, sizeof(wrqu));
-
-	
-	wireless_send_event(iscan->dev, SIOCGIWSCAN, &wrqu, NULL);
+	memset(extra, 0, sizeof(extra));
+	wireless_send_event(iscan->dev, SIOCGIWSCAN, &wrqu, extra);
 }
 
 static int
@@ -3654,7 +3652,7 @@ _iscan_sysioc_thread(void *data)
 				rtnl_unlock();
 #endif
 				
-				iscan->timer.expires = jiffies + msecs_to_jiffies(iscan->timer_ms);
+				iscan->timer.expires = jiffies + iscan->timer_ms*HZ/1000;
 				add_timer(&iscan->timer);
 				iscan->timer_on = 1;
 				break;
@@ -3666,7 +3664,7 @@ _iscan_sysioc_thread(void *data)
 			case WL_SCAN_RESULTS_PENDING:
 				WL_TRACE(("iscanresults pending\n"));
 				
-				iscan->timer.expires = jiffies + msecs_to_jiffies(iscan->timer_ms);
+				iscan->timer.expires = jiffies + iscan->timer_ms*HZ/1000;
 				add_timer(&iscan->timer);
 				iscan->timer_on = 1;
 				break;

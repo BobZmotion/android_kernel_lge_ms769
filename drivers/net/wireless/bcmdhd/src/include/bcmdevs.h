@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmdevs.h 329854 2012-04-27 01:42:28Z $
+ * $Id: bcmdevs.h 322893 2012-03-22 03:31:32Z $
  */
 
 #ifndef	_BCMDEVS_H
@@ -149,9 +149,6 @@
 #define BCM4334_D11N_ID		0x4380		
 #define BCM4334_D11N2G_ID	0x4381		
 #define BCM4334_D11N5G_ID	0x4382		
-#define BCM43341_D11N_ID	0x4386		
-#define BCM43341_D11N2G_ID	0x4387		
-#define BCM43341_D11N5G_ID	0x4388		
 #define BCM4360_D11AC_ID	0x43a0
 #define BCM4360_D11AC2G_ID	0x43a1
 #define BCM4360_D11AC5G_ID	0x43a2
@@ -266,8 +263,6 @@
 #define BCM4360_CHIP_ID		0x4360          
 #define BCM4352_CHIP_ID		0x4352          
 #define BCM43526_CHIP_ID	0xAA06
-#define BCM43341_CHIP_ID	43341		
-#define BCM43342_CHIP_ID	43342		
 
 #define BCM4335_CHIP_ID         0x4335
 
@@ -345,7 +340,6 @@
 #define	BFL_PACTRL		0x00000002  
 #define BFL_AIRLINEMODE	0x00000004  
 #define	BFL_ADCDIV		0x00000008  
-#define	BFL_RFPLL	        0x00000008  
 #define	BFL_ENETROBO		0x00000010  
 #define	BFL_NOPLLDOWN		0x00000020  
 #define	BFL_CCKHIPWR		0x00000040  
@@ -452,9 +446,6 @@
 #define MIN_SLOW_CLK		32		
 #define	XTAL_ON_DELAY		1000		
 
-
-
-#define BCM943341WLABGS_SSID	0x062d
 
 
 #define GPIO_NUMPINS		32

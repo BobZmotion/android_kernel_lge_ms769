@@ -35,12 +35,12 @@
 #include <wl_iw.h>
 
 
-/*                                                              */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-05-14, support start/stop */
 #if defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_ARCH_MSM)
 #include <asm/gpio.h>
 #include <linux/interrupt.h>
-#endif /*                                                               */
-/*                                                              */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_ARCH_MSM) */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-05-14, support start/stop */
 #define WL_ERROR(x) printf x
 #define WL_TRACE(x)
 
@@ -134,14 +134,14 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 #endif
 			WL_ERROR(("=========== WLAN placed in RESET ========\n"));
 
-/*                                                              */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-05-14, support start/stop */
 #if defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_ARCH_MSM)
             if (gpio_get_value(CONFIG_BCM4330_GPIO_WL_RESET)) {
                 disable_irq(gpio_to_irq(CONFIG_BCM4330_GPIO_WL_RESET));
                 gpio_set_value(CONFIG_BCM4330_GPIO_WL_RESET, 0);
             }
-#endif /*                                                               */
-/*                                                              */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_ARCH_MSM) */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-05-14, support start/stop */
 
 		break;
 
@@ -156,7 +156,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 #endif
 			WL_ERROR(("=========== WLAN going back to live  ========\n"));
 
-/*                                                              */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-05-14, support start/stop */
 #if defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_ARCH_MSM)
             if (!gpio_get_value(CONFIG_BCM4330_GPIO_WL_RESET)) {
                 gpio_set_value(CONFIG_BCM4330_GPIO_WL_RESET, 1);
@@ -165,8 +165,8 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 
                 enable_irq(gpio_to_irq(CONFIG_BCM4330_GPIO_WL_RESET));
             }
-#endif /*                                                               */
-/*                                                              */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_ARCH_MSM) */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-05-14, support start/stop */
 
 		break;
 
@@ -177,7 +177,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			bcm_wlan_power_off(1);
 #endif /* CUSTOMER_HW */
 
-/*                                                                     */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-03-05, for gpio set in dhd_linux */
 #if defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_ARCH_MSM)
 			//gpio_tlmm_config(GPIO_CFG(CONFIG_BCM4330_GPIO_WL_RESET, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA), GPIO_ENABLE);
 			if (!gpio_get_value(CONFIG_BCM4330_GPIO_WL_RESET)) {
@@ -186,8 +186,8 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			}
 			gpio_set_value(CONFIG_BCM4330_GPIO_WL_RESET, 0);
 			//gpio_tlmm_config(GPIO_CFG(CONFIG_BCM4330_GPIO_WL_RESET, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_2MA), GPIO_ENABLE);
-#endif /*                                                               */
-/*                                                                     */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_ARCH_MSM) */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-03-05, for gpio set in dhd_linux */
 
 		break;
 
@@ -199,11 +199,11 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 #endif /* CUSTOMER_HW */
 
 
-/*                                                                     */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-03-05, for gpio set in dhd_linux */
 #if defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_ARCH_MSM)
 	        gpio_set_value(CONFIG_BCM4330_GPIO_WL_RESET, 1);
-#endif /*                                                               */
-/*                                                                     */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) && defined(CONFIG_ARCH_MSM) */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-03-05, for gpio set in dhd_linux */
 
 			/* Lets customer power to get stable */
 			OSL_DELAY(200);

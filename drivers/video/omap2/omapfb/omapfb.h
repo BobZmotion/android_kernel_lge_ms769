@@ -132,10 +132,8 @@ int dss_mode_to_fb_mode(enum omap_color_mode dssmode,
 int omapfb_setup_overlay(struct fb_info *fbi, struct omap_overlay *ovl,
 		u16 posx, u16 posy, u16 outw, u16 outh);
 
-int omapfb_enable_vsync(struct omapfb2_device *fbdev);
-void omapfb_disable_vsync(struct omapfb2_device *fbdev);
-void get_fb_resolution(struct omap_dss_device *dssdev,
-		u16 *xres, u16 *yres);
+int omapfb_enable_vsync(struct omapfb2_device *fbdev, enum omap_channel ch,
+                bool enable);
 
 /* find the display connected to this fb, if any */
 static inline struct omap_dss_device *fb2display(struct fb_info *fbi)
@@ -187,12 +185,5 @@ static inline void omapfb_put_mem_region(struct omapfb2_mem_region *rg)
 	atomic_dec(&rg->lock_count);
 	up_read(&rg->lock);
 }
-
-#if defined(CONFIG_INVERT_COLOR)
-void set_invert_color(struct device *dev, int set_invert_color);
-int	get_invert_color(void);
-void set_saturation(struct device *dev, int sat);
-int get_saturation(void);
-#endif
 
 #endif

@@ -25,7 +25,7 @@
 #include <linux/gpio_keys.h>
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
-/*                                                             */
+/* LGE_SJIT 2012-01-13 [dojip.kim@lge.com] export input handle */
 #include <linux/lge/lge_input.h>
 
 struct gpio_button_data {
@@ -490,11 +490,11 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	if (pdata->rep)
 		__set_bit(EV_REP, input->evbit);
 
-	/*                                                     */
+	/* LGE_SJIT 2012-01-13 [dojip.kim@lge.com] MHL keybits */
 #if defined(CONFIG_MHL_INPUT_RCP)
 	hdmi_common_register_keys(input);
 #endif
-	/*                                                      */
+	/* LGE_SJIT 2012-01-13 [dojip.kim@lge.com] for hook key */
 #if defined(CONFIG_SND_OMAP_SOC_LGE_JACK)
 	__set_bit(KEY_HOOK, input->keybit);
 #endif
@@ -538,7 +538,7 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 
 	device_init_wakeup(&pdev->dev, wakeup);
 
-	/*                                                             */
+	/* LGE_SJIT 2012-01-13 [dojip.kim@lge.com] export input handle */
 #ifdef CONFIG_MACH_LGE
 	lge_input_set(input);
 #endif

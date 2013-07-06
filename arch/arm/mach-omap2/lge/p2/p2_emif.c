@@ -46,9 +46,9 @@ static struct lge_emif_devices emif_devices __initdata = {
 
 int __init lge_emif_init(void)
 {
-	/*                                        
-                                       
-  */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com]
+	 * fix the device mapping on reivision
+	 */
 #ifdef CONFIG_MACH_LGE_P2_P940
 	if (system_rev <= LGE_PCB_A) {
 		emif_devices.emif1_devices.cs0_device = &samsung_2G_S4;

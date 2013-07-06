@@ -1119,9 +1119,9 @@ static struct twlreg_info twl_regs[] = {
 	TWL6032_ADJUSTABLE_SMPS(SMPS4, 0x10),
 	TWL6032_ADJUSTABLE_SMPS(VIO, 0x16),
 
-/*                                                  
-  
-                                                           
+/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com] from p940
+ *
+ * ORIG: [yehan.ahn@lge.com] 2011-06-09, add regen1, regen2
  */
 #if defined(CONFIG_MACH_LGE)
 	TWL6030_FIXED_RESOURCE(REGEN1, 0x7D, 0),

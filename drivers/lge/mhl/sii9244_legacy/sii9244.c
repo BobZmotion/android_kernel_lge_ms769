@@ -26,36 +26,30 @@
 #include <linux/fcntl.h> 
 #include <asm/uaccess.h> 
 #include <linux/regulator/consumer.h>
-/*                                                  */
+#include <linux/mutex.h>
+#include "sii9244_driver.h"
+/* LGE_CHANGE_S [seungho1.park@lge.com] 2011-11-21, */
 #if defined(CONFIG_MUIC)
 #include <linux/muic/muic.h>
 #include <linux/muic/muic_client.h>
 #endif
-/*                                         */
-
-//#include "sii9244_driver.h"
-//#include "Common_Def.h"
-
-//                                                                    
-#include <linux/mutex.h>
-
-#include "sii9244_driver.h"
+/* LGE_CHANGE_E [seungho1.park@lge.com] ,  */
 
 extern void hdmi_common_send_uevent(int x, int y, int action, int tvCtl_x, int tvCtl_y);
 extern void hdmi_common_send_keyevent(u8 code);
-//                                                                    
+extern int mhl_power_control(int on);
+extern int hpd_enable_control(int on);
+extern void sii9244_driver_init(void);
 
-//                                                            
+// LGE_CHANGE_S [jh.koo, kibum.lee] 2011-08-20, for MHL safety
 #include <linux/wakelock.h>
 static struct wake_lock mhl_lock;
 static int mhl_connected = 0;
-extern void sii9244_driver_init(void);
-extern struct timer_list simg_timer;
 
 struct mhl_work_struct {
 	struct work_struct work;
 };
-//                                                            
+// LGE_CHANGE_E [jh.koo, kibum.lee] 2011-08-20, for MHL safety
 
 #if 0
 #define SII_LOG_FUNCTION_NAME_ENTRY             printk(KERN_INFO "[SII9244]## %s() ++ ##\n",  __func__);
@@ -92,21 +86,6 @@ struct i2c_client *sii9244b_i2c_client = NULL;
 struct i2c_driver sii9244c_i2c_driver;
 struct i2c_client *sii9244c_i2c_client = NULL;
 
-
-//extern bool sii9244_init(void);
-//extern void sii9244_mhl_tx_int(void);
-//extern void simg_mhl_tx_handler(void);
-extern int dss_mainclk_enable(void);
-extern void dss_mainclk_disable(void);
-
-//                                                                     
-extern int mhl_power_control(int on);
-//                              
-//                                                                                         
-extern int hpd_enable_control(int on);
-//                              
-
-//                                                                                                                
 struct mhl_rcp_dev{
 	char *name;
 	struct device *dev;
@@ -159,7 +138,7 @@ struct device *mhl_switch;
 EXPORT_SYMBOL(mhl_switch);
 
 //-------------------------------------------------------------------------------------------
-//                                                       
+// kibum.lee@lge.com Don't worry!! this api is test code.
 static ssize_t check_MHL_command(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int count;
@@ -174,7 +153,7 @@ static ssize_t check_MHL_command(struct device *dev, struct device_attribute *at
 
 }
 
-//                                                       
+// kibum.lee@lge.com Don't worry!! this api is test code.
 static ssize_t change_switch_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
 	char *after;
@@ -189,21 +168,21 @@ static ssize_t change_switch_store(struct device *dev, struct device_attribute *
 			SII_DEV_DBG("[MHL] try %d\n", i+1);
 			msleep(500);
 		}
-//                                                                  
+// LGE_CHANGE_S [jh.koo@lge.com] 2011-05-21, [P940] add  MHL driver 
 //		gpio_request(GPIO_MHL_INT, "MHL_INT");
 		gpio_direction_input(GPIO_MHL_INT);
 		request_irq(gpio_to_irq(GPIO_MHL_INT), mhl_int_irq_handler, IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING, "mhl_irq", dev);
-//                                
+// LGE_CHANGE_E [jh.koo@lge.com]		
 		sii9244_cfg_power(1);
 //		sii9244_init();
 //		sii9244_mhl_tx_int();
 	} else {	
 		sii9244_cfg_power(0);
-//                                                                  
+// LGE_CHANGE_S [jh.koo@lge.com] 2011-05-21, [P940] add  MHL driver 
 //		gpio_request(GPIO_MHL_SEL, "MUIC/MHL SEL");
 		gpio_direction_output(GPIO_MHL_SEL, GPIO_LEVEL_LOW);
 		gpio_set_value(GPIO_MHL_SEL, GPIO_LEVEL_LOW);
-//                               
+// LGE_CHANGE_E [jh.koo@lge.com]	
 	}
     SII_LOG_FUNCTION_NAME_EXIT;
 
@@ -236,12 +215,12 @@ void MHL_On(bool on)
 			sii9244_mhl_tx_int();
  			gpio_set_value(GPIO_MHL_SEL, GPIO_LEVEL_HIGH); //daniel for mass product issue
 
-            //                                                                                         
+            // LGE_CHANGE_S [jh.koo@lge.com] 2011-07-22, [P940] add HDMI hot plug detect enable control
              hpd_enable_control(1);
-            //                              
+            // LGE_CHANGE_E [jh.koo@lge.com]
 		}
         
-		wake_lock(&mhl_lock);		//                                                         
+		wake_lock(&mhl_lock);		// LGE_CHANGE [jh.koo, kibum.lee] 2011-08-20, for MHL safty
 	} 
     else
     {
@@ -260,7 +239,7 @@ void MHL_On(bool on)
 #endif
 		}
 		
-		wake_unlock(&mhl_lock);		//                                                         
+		wake_unlock(&mhl_lock);		// LGE_CHANGE [jh.koo, kibum.lee] 2011-08-20, for MHL safty
 		wake_lock_timeout(&mhl_lock, 2*HZ);
 
 	}
@@ -272,7 +251,7 @@ void MHL_On(bool on)
 EXPORT_SYMBOL(MHL_On);
 
 
-//                                         
+// LGE_CHANGE_S [jh.koo kibum.lee] 20110915
 bool is_MHL_connected(void)
 {
     if(mhl_connected)
@@ -282,7 +261,7 @@ bool is_MHL_connected(void)
 
 }
 EXPORT_SYMBOL(is_MHL_connected);
-//                                         
+// LGE_CHANGE_E [jh.koo kibum.lee] 20110915
 
 
 static DEVICE_ATTR(mhl_sel, S_IRUGO | S_IWUSR | S_IXOTH, check_MHL_command, change_switch_store);
@@ -358,7 +337,7 @@ static ssize_t MHD_check_write(struct device *dev, struct device_attribute *attr
 
 static DEVICE_ATTR(MHD_file, S_IRUGO , MHD_check_read, MHD_check_write);
 
-/*                                                    */
+/* LGE_CHANGE_S [donghyuk79.park@lge.com] 2012-03-08, */
 char mhl_orient_value[2];
 
 
@@ -406,7 +385,7 @@ static ssize_t MHL_orient_write(struct device *dev, struct device_attribute *att
 }
 
 static DEVICE_ATTR(MHL_orient, S_IRUGO | S_IWUSR | S_IXOTH , MHL_orient_read, MHL_orient_write);
-/*                                                    */
+/* LGE_CHANGE_E [donghyuk79.park@lge.com] 2012-03-08, */
 
 struct i2c_client* get_sii9244_client(u8 device_id)
 {
@@ -541,7 +520,7 @@ irqreturn_t mhl_int_irq_handler(int irq, void *dev_id)
     return IRQ_HANDLED;
 }
 
-//                                                                                                                  
+// LGE_CHANGE_S [jh.koo kibum.lee] 20110806 , MHL RCP codes into media keys and transfer theses to the input manager
 #if 0
 void rcp_cbus_uevent(u8 rcpCode)	
 {
@@ -796,7 +775,7 @@ void mhl_writeburst_uevent(unsigned short mev)
 EXPORT_SYMBOL(mhl_writeburst_uevent);
 #endif
 EXPORT_SYMBOL(rcp_cbus_uevent);
-//                                                                                                                  
+// LGE_CHANGE_E [jh.koo kibum.lee] 20110806 , MHL RCP codes into media keys and transfer theses to the input manager
  
 irqreturn_t mhl_wake_up_irq_handler(int irq, void *dev_id)
 {
@@ -809,7 +788,7 @@ irqreturn_t mhl_wake_up_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-/*                                                  */
+/* LGE_CHANGE_S [seungho1.park@lge.com] 2011-11-21, */
 #if defined(CONFIG_MUIC)
 int mhl_on_none(struct muic_client_device *mcdev)
 {
@@ -824,12 +803,11 @@ int mhl_on_mhl(struct muic_client_device *mcdev)
 	return 0;
 }
 static struct muic_client_ops mhl_ops = {
-	.notifier_priority = MUIC_CLIENT_NOTI_POWER_MHL,
 	.on_none = mhl_on_none,
 	.on_mhl = mhl_on_mhl,
 };
 #endif
-/*                                         */
+/* LGE_CHANGE_E [seungho1.park@lge.com] ,  */
 
 
 
@@ -841,10 +819,10 @@ static int sii9244_i2c_probe(struct i2c_client *client, const struct i2c_device_
 
 	struct class *mhl_class;
 	struct device *mhl_dev;
-/*                                                    */
+/* LGE_CHANGE_S [donghyuk79.park@lge.com] 2012-03-08, */
 	struct class *mhl_class_orient;
 	struct device *mhl_dev_orient;
-/*                                                    */
+/* LGE_CHANGE_E [donghyuk79.park@lge.com] 2012-03-08, */
     SII_LOG_FUNCTION_NAME_ENTRY;
 
 	state = kzalloc(sizeof(struct sii9244_state), GFP_KERNEL);
@@ -857,11 +835,11 @@ static int sii9244_i2c_probe(struct i2c_client *client, const struct i2c_device_
 	i2c_set_clientdata(client, state);
 
 
-/*                                                  */
+/* LGE_CHANGE_S [seungho1.park@lge.com] 2011-11-21, */
 #if defined(CONFIG_MUIC)
 	muic_client_dev_register(client->name, state, &mhl_ops);
 #endif
-/*                                         */
+/* LGE_CHANGE_E [seungho1.park@lge.com] ,  */
 	
 	/* rest of the initialisation goes here. */
 	
@@ -886,7 +864,7 @@ static int sii9244_i2c_probe(struct i2c_client *client, const struct i2c_device_
 	if (device_create_file(mhl_dev, &dev_attr_MHD_file) < 0)
 		SII_DEV_DBG_ERROR("Failed to create device file(%s)!\n", dev_attr_MHD_file.attr.name);
 
-/*                                                    */
+/* LGE_CHANGE_S [donghyuk79.park@lge.com] 2012-03-08, */
 	mhl_class_orient = class_create(THIS_MODULE, "mhl_orient");
 	if (IS_ERR(mhl_class_orient))
 	{
@@ -902,7 +880,7 @@ static int sii9244_i2c_probe(struct i2c_client *client, const struct i2c_device_
 	if (device_create_file(mhl_dev_orient, &dev_attr_MHL_orient) < 0)
 		SII_DEV_DBG_ERROR("Failed to create device file(%s)!\n", dev_attr_MHL_orient.attr.name);
 
-/*                                                    */
+/* LGE_CHANGE_E [donghyuk79.park@lge.com] 2012-03-08, */
 	SII_LOG_FUNCTION_NAME_EXIT;
 
 
@@ -919,7 +897,7 @@ static int __devexit sii9244_remove(struct i2c_client *client)
     SII_LOG_FUNCTION_NAME_ENTRY;
     state = i2c_get_clientdata(client);
 
-    //                                
+    // wooho47.jung@lge.com 2011.11.11
     // ADD : for null defense
     if(state)
 	    kfree(state);
@@ -962,7 +940,7 @@ static int __devexit sii9244a_remove(struct i2c_client *client)
     
     state = i2c_get_clientdata(client);
     
-    //                                
+    // wooho47.jung@lge.com 2011.11.11
     // ADD : for null defense    
     if(state)
 	    kfree(state);
@@ -1006,7 +984,7 @@ static int __devexit sii9244b_remove(struct i2c_client *client)
     
     state = i2c_get_clientdata(client);
     
-    //                                
+    // wooho47.jung@lge.com 2011.11.11
     // ADD : for null defense    
     if(state)
 	    kfree(state);
@@ -1043,10 +1021,10 @@ static int sii9244c_i2c_probe(struct i2c_client *client, const struct i2c_device
 	sii9244_wq = create_singlethread_workqueue("sii9244_wq");
 	//INIT_WORK(&sii9244_int_work, sii9244_interrupt_event_work);
 
-//                                                                  
+// LGE_CHANGE_S [jh.koo@lge.com] 2011-05-21, [P940] add  MHL driver 
 	ret = request_threaded_irq(gpio_to_irq(GPIO_MHL_INT), NULL, mhl_int_irq_handler,
 				IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING | IRQF_ONESHOT, "mhl_int", (void *) state); 
-//                               
+// LGE_CHANGE_E [jh.koo@lge.com]	
 
 	if (ret) {
 		SII_DEV_DBG_ERROR("unable to request irq mhl_int"
@@ -1066,11 +1044,11 @@ static int sii9244c_i2c_probe(struct i2c_client *client, const struct i2c_device
 
 }
 
-//                                                                                           
+// LGE_CHANGE_S [jh.koo kibum.lee] 2011-10-05, [P940] when the sleep, disable vdac regulator.
 static int sii9244_i2c_suspend(struct i2c_client *client, pm_message_t state)
 {
 //	client->dev.power.power_state = state;
-//                                                                                        
+//	hpd_enable_control(0);	// LGE_DEL [sanghyuk.kwon] 2011.10.25, vdac disable at audio BSP
 //	sii9244_cfg_power(0);
 	SII_DEV_DBG("[MHL] P940 MHL : vdac Suspend \n");
 	return 0;
@@ -1082,7 +1060,7 @@ static int sii9244_i2c_resume(struct i2c_client *client)
 //	printk(KERN_INFO "[MHL] P940 MHL : Resume \n");
 	return 0;
 }
-//                                                                                           
+// LGE_CHANGE_E [jh.koo kibum.lee] 2011-10-05, [P940] when the sleep, disable vdac regulator.
 
 
 static int __devexit sii9244c_remove(struct i2c_client *client)
@@ -1093,7 +1071,7 @@ static int __devexit sii9244c_remove(struct i2c_client *client)
     
     state = i2c_get_clientdata(client);
     
-    //                                
+    // wooho47.jung@lge.com 2011.11.11
     // ADD : for null defense    
     if(state)
 	    kfree(state);
@@ -1159,13 +1137,14 @@ void sii9244_cfg_power(bool on)
 
 	if(on)
 	{
-//                                                                    
+// LGE_CHANGE_S [jh.koo@lge.com] 2011-05-21, [P940] add  MHL driver 		
 //		gpio_request(GPIO_MHL_EN, "MHL_EN");
 		gpio_direction_output(GPIO_MHL_EN, GPIO_LEVEL_LOW);
 		gpio_set_value(GPIO_MHL_EN, GPIO_LEVEL_HIGH);
 
+#ifdef CONFIG_MACH_LGE_P2  //mo2sanghyun.lee not CX2
 		mhl_power_control(1);
-
+#endif
 		mdelay(2);
 
 //		gpio_request(GPIO_MHL_RST, "MHL_RESET_N");
@@ -1176,12 +1155,13 @@ void sii9244_cfg_power(bool on)
 		mdelay(2);
 		gpio_set_value(GPIO_MHL_RST, GPIO_LEVEL_HIGH);
 		mdelay(2);
-//                                 
+// LGE_CHANGE_E [jh.koo@lge.com]			
 	}
 	else
 	{
+#ifdef CONFIG_MACH_LGE_P2	  //mo2sanghyun.lee not CX2
 		mhl_power_control(0);
-		
+#endif		
 		gpio_direction_output(GPIO_MHL_EN, GPIO_LEVEL_LOW);
 		gpio_set_value(GPIO_MHL_EN, GPIO_LEVEL_LOW);
 	}
@@ -1194,7 +1174,7 @@ void sii9244_cfg_power(bool on)
 
 static void sii9244_cfg_gpio()
 {
-//                                                                 
+// LGE_CHANGE_S [jh.koo@lge.com] 2011-05-21, [P940] add  MHL driver
     SII_LOG_FUNCTION_NAME_ENTRY;
 	gpio_request(GPIO_MHL_INT, "MHL_INT");
 	gpio_direction_input(GPIO_MHL_INT);
@@ -1215,7 +1195,7 @@ static void sii9244_cfg_gpio()
 //	gpio_direction_output(GPIO_MHL_WAKE_UP, GPIO_LEVEL_LOW);
 	gpio_direction_input(GPIO_MHL_WAKE_UP);	
 //	gpio_set_value(GPIO_MHL_WAKE_UP, GPIO_LEVEL_LOW);
-//                              
+// LGE_CHANGE_E [jh.koo@lge.com]
     SII_LOG_FUNCTION_NAME_EXIT;
 
 }
@@ -1336,9 +1316,9 @@ static int __init sii9244_module_init(void)
 	    SII_DEV_DBG("[MHL SII9244C] add i2c driver\n");
     }
 
-//                                                           
+// LGE_CHANGE_S [jh.koo, kibum.lee] 2011-08-20, for MHL safty
 	wake_lock_init(&mhl_lock, WAKE_LOCK_SUSPEND, "mhl_wake_lock");
-//                                                           
+// LGE_CHANGE_E [jh.koo, kibum.lee] 2011-08-20, for MHL safty
     sii9244_driver_init();
     SII_LOG_FUNCTION_NAME_EXIT;
 
@@ -1352,9 +1332,9 @@ static void __exit sii9244_exit(void)
 	i2c_del_driver(&sii9244b_i2c_driver);	
 	i2c_del_driver(&sii9244c_i2c_driver);
 
-//                                                           
+// LGE_CHANGE_S [jh.koo, kibum.lee] 2011-08-20, for MHL safty
 	wake_lock_destroy(&mhl_lock);
-//                                                           
+// LGE_CHANGE_E [jh.koo, kibum.lee] 2011-08-20, for MHL safty
 };
 module_exit(sii9244_exit);
 

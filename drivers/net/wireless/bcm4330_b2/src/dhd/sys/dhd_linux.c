@@ -89,7 +89,7 @@ typedef struct histo_ {
 static histo_t vi_d1, vi_d2, vi_d3, vi_d4;
 #endif /* WLMEDIA_HTSF */
 
-/*                                                                   */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-03-30, change ifname to wlan%d */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 #undef alloc_etherdev
 #if defined(CONFIG_MACH_STARTABLET)
@@ -99,8 +99,8 @@ static histo_t vi_d1, vi_d2, vi_d3, vi_d4;
 #define alloc_etherdev(sizeof_priv) \
 	alloc_netdev(sizeof_priv, "wlan%d", ether_setup)
 #endif
-#endif /*                          */
-/*                                                                   */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-03-30, change ifname to wlan%d */
 #if defined(SOFTAP)
 extern bool ap_cfg_running;
 extern bool ap_fw_loaded;
@@ -305,11 +305,11 @@ module_param(dhd_msg_level, int, 0);
 module_param_string(firmware_path, firmware_path, MOD_PARAM_PATHLEN, 0660);
 module_param_string(nvram_path, nvram_path, MOD_PARAM_PATHLEN, 0);
 
-/*                                                   */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-04-03, configs */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 module_param_string(config_path, config_path, MOD_PARAM_PATHLEN, 0);
-#endif /*                          */
-/*                                                   */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-04-03, configs */
 
 /* Watchdog interval */
 uint dhd_watchdog_ms = 10;
@@ -565,7 +565,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 
 				/* Enable packet filter, only allow unicast packet to send up */
 				dhd_set_packet_filter(1, dhd);
-#endif	/*                                    */
+#endif	/* !defined(CONFIG_LGE_BCM432X_PATCH) */
 
 				/* If DTIM skip is set up as default, force it to wake
 				 * each third DTIM for better power savings.  Note that
@@ -593,7 +593,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 				/* disable pkt filter */
 				dhd_set_packet_filter(0, dhd);
 
-#endif	/*                                    */
+#endif	/* !defined(CONFIG_LGE_BCM432X_PATCH) */
 				/* restore pre-suspend setting for dtim_skip */
 				bcm_mkiovar("bcn_li_dtim", (char *)&dhd->dtim_skip,
 					4, iovbuf, sizeof(iovbuf));
@@ -2752,11 +2752,11 @@ dhd_bus_start(dhd_pub_t *dhdp)
 #endif /* PNO_SUPPORT */
 
 /* enable dongle roaming event */
-/*                                                                                                                     */
+/* LGE_DEV_PORTING, [jongpil.yoon@lge.com], 2011-03-28, <Resolve the current issue because of the trial of L2 roaming> */
 #if !defined(CONFIG_LGE_BCM432X_PATCH)
 	setbit(dhdp->eventmask, WLC_E_ROAM);
-#endif /*                        */
-/*                                                                                                                 */
+#endif /*CONFIG_LGE_BCM432X_PATCH*/
+/* LGE_DEV_END, [jongpil.yoon@lge.com], 2011-03-28, <Resolve the current issue because of the trial of L2 roaming> */
 
 	dhdp->pktfilter_count = 4;
 	/* Setup filter to allow only unicast */

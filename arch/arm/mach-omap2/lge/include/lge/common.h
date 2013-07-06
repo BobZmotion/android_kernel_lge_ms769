@@ -123,4 +123,6 @@ void omap4_create_board_props(void);
 void omap_ion_init(void);
 void omap4_register_ion(void);
 
-#endif /*                     */
+extern unsigned long lge_get_no_pad_wakeup_gpios(int bank_id);
+
+#endif /* __LGE_PLAT_COMMON_H */

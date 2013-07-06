@@ -34,13 +34,13 @@
 #define DRIVER_NAME				"BQ25040"
 
 #define CHR_IC_DEALY				200	/* 200 us */
-#define CHR_IC_SET_DEALY			2000	//                                                                                                              
+#define CHR_IC_SET_DEALY			2000	// LGE_CHANGE [byoungcheol.lee@lge.com]  2011-06-30, changed delay time to 2000 from 1500 for bq25040 in Rev. B.
 #define CHR_TIMER_SECS				3600 /* 7200 secs*/
 
-//                                                                                     
+// LGE_CHANGE [byoungcheol.lee@lge.com]  2011-08-30, Add to reset Safety timer for test
 #define CHR_RESET_SAFETY_TIMER_SECS		10 /* Add to reset Safety timer. Charger will be reconfigurated on every reset time  */
-//                                                                                                                                
-#define CHR_IC_REINIT_MS_DELAY			32	//                                                                                          
+//#define CHR_IC_REINIT_DELAY			32000	// LGE_CHANGE [byoungcheol.lee@lge.com]  2011-09-03, add to reinitial wait time for bq25040.
+#define CHR_IC_REINIT_MS_DELAY			32	// LGE_CHANGE [byoungcheol.lee@lge.com]  2011-09-03, add to reinitial wait time for bq25040.
 
 static DEFINE_MUTEX(charging_lock);
 
@@ -50,6 +50,10 @@ static int bat_soc;
 struct delayed_work	charger_timer_work;
 
 struct timer_list charging_timer;
+
+#ifdef CONFIG_MACH_LGE_CX2 //nthyunjin.yang 120615 cpufreq test
+int cpufreq_temp_ctrl_value;
+#endif
 
 void charging_timer_func(unsigned long try)
 {
@@ -66,8 +70,8 @@ void charging_timer_func(unsigned long try)
 	else
 	{
 		//wait = (HZ*CHR_TIMER_SECS * (100 - bat_soc)) / 100;
-		wait = HZ*CHR_TIMER_SECS; //                                                                        
-		//                                                                                                                           
+		wait = HZ*CHR_TIMER_SECS; // LGE_CHANGE [byoungcheol.lee@lge.com]  2011-07-7, changed charging timer
+		//wait = HZ*CHR_RESET_SAFETY_TIMER_SECS; // LGE_CHANGE [byoungcheol.lee@lge.com]  2011-08-30, changed charging timer for test
 		charging_timer.expires += wait;
 		charging_timer.data += 1;
 
@@ -113,7 +117,7 @@ void charging_ic_active_default()
 	gpio_set_value(CHG_EN_SET_N_OMAP, 0);
 
 	//udelay(CHR_IC_DEALY);
-	udelay(CHR_IC_SET_DEALY); //                                                                     
+	udelay(CHR_IC_SET_DEALY); // LGE_CHANGE [byoungcheol.lee@lge.com]  2011-06-30, changed delay time
 
 	charging_ic_status = POWER_SUPPLY_TYPE_USB;
 
@@ -122,17 +126,17 @@ void charging_ic_active_default()
 	// [jongho3.lee@lge.ocm] FIXME : get battery SOC from fuel gague
 	bat_soc = get_bat_soc();
 	
-//                                             
+// [jongho3.lee@lge.com] charging timer setting
 	//wait = (HZ*CHR_TIMER_SECS * (100 - bat_soc)) / 100;
-	wait = HZ*CHR_TIMER_SECS; //                                                                        
-	//                                                                                                                           
+	wait = HZ*CHR_TIMER_SECS; // LGE_CHANGE [byoungcheol.lee@lge.com]  2011-07-7, changed charging timer
+	//wait = HZ*CHR_RESET_SAFETY_TIMER_SECS; // LGE_CHANGE [byoungcheol.lee@lge.com]  2011-08-30, changed charging timer for test
 
 	init_timer(&charging_timer);
 	charging_timer.data = 0;
 	charging_timer.expires = jiffies + wait;
 	charging_timer.function = charging_timer_func;
 	add_timer(&charging_timer);
-//                                             
+// [jongho3.lee@lge.com] charging timer setting
 
 	printk("[%s]:: %s: \n", DRIVER_NAME, __func__);
 }
@@ -157,10 +161,10 @@ void charging_ic_set_ta_mode()
 
 	gpio_set_value(CHG_EN_SET_N_OMAP, 0);
 	
-	msleep(CHR_IC_REINIT_MS_DELAY); //                                                                                                                        
+	msleep(CHR_IC_REINIT_MS_DELAY); // LGE_CHANGE [byoungcheol.lee@lge.com]  2011-09-03, Add delay time cause recharging fail. ( > 32mSec in reconfiguration )
 	
 	//udelay(CHR_IC_DEALY);
-	udelay(CHR_IC_SET_DEALY); //                                                                     
+	udelay(CHR_IC_SET_DEALY); // LGE_CHANGE [byoungcheol.lee@lge.com]  2011-06-30, changed delay time
 
 	gpio_set_value(CHG_EN_SET_N_OMAP, 1);
 	udelay(CHR_IC_DEALY);
@@ -175,17 +179,17 @@ void charging_ic_set_ta_mode()
 	// [jongho3.lee@lge.ocm] FIXME : get battery SOC from fuel gague
 	bat_soc = get_bat_soc();
 	
-//                                             
+// [jongho3.lee@lge.com] charging timer setting
 	//wait = (HZ*CHR_TIMER_SECS * (100 - bat_soc)) / 100;
-	wait = HZ*CHR_TIMER_SECS; //                                                                        
-	//                                                                                                                           
+	wait = HZ*CHR_TIMER_SECS; // LGE_CHANGE [byoungcheol.lee@lge.com]  2011-07-7, changed charging timer
+	//wait = HZ*CHR_RESET_SAFETY_TIMER_SECS; // LGE_CHANGE [byoungcheol.lee@lge.com]  2011-08-30, changed charging timer for test
 
 	init_timer(&charging_timer);
 	charging_timer.data = 0;
 	charging_timer.expires = jiffies + wait;
 	charging_timer.function = charging_timer_func;
 	add_timer(&charging_timer);
-//                                             
+// [jongho3.lee@lge.com] charging timer setting
 	
 	printk("[%s]:: %s: \n", DRIVER_NAME, __func__);
 }
@@ -216,7 +220,7 @@ void charging_ic_set_factory_mode()
 
 	gpio_set_value(CHG_EN_SET_N_OMAP, 0);
 	//udelay(CHR_IC_DEALY);
-	udelay(CHR_IC_SET_DEALY); //                                                                     
+	udelay(CHR_IC_SET_DEALY); // LGE_CHANGE [byoungcheol.lee@lge.com]  2011-06-30, changed delay time
 	gpio_set_value(CHG_EN_SET_N_OMAP, 1);
 	udelay(CHR_IC_DEALY);
 	gpio_set_value(CHG_EN_SET_N_OMAP, 0);
@@ -238,38 +242,39 @@ void charging_ic_set_factory_mode()
 	// [jongho3.lee@lge.ocm] FIXME : get battery SOC from fuel gauge
 	bat_soc = get_bat_soc();
 	
-//                                             
+// [jongho3.lee@lge.com] charging timer setting
 	//wait = (HZ*CHR_TIMER_SECS * (100 - bat_soc)) / 100;
-	wait = HZ*CHR_TIMER_SECS; //                                                                        
-	//                                                                                                                           
+	wait = HZ*CHR_TIMER_SECS; // LGE_CHANGE [byoungcheol.lee@lge.com]  2011-07-7, changed charging timer
+	//wait = HZ*CHR_RESET_SAFETY_TIMER_SECS; // LGE_CHANGE [byoungcheol.lee@lge.com]  2011-08-30, changed charging timer for test
 
 	init_timer(&charging_timer);
 	charging_timer.data = 0;
 	charging_timer.expires = jiffies + wait;
 	charging_timer.function = charging_timer_func;
 	add_timer(&charging_timer);
-//                                             
+// [jongho3.lee@lge.com] charging timer setting
 	
 	printk("[%s]:: %s: \n", DRIVER_NAME, __func__);
 }
 EXPORT_SYMBOL(charging_ic_set_factory_mode);
 
-//                                                                                       
+// LGE_CHANGE [byoungcheol.lee@lge.com] 2011-11-22, Add battery present for Factory mode.
 extern int get_bat_present(void);
 
 void charging_ic_deactive()
 {
-
+#if !defined(CONFIG_MACH_LGE_CX2)
 	printk("[CHG] charging_ic_status = %d\n", charging_ic_status);
+#endif
 
-	if((charging_ic_status == POWER_SUPPLY_TYPE_BATTERY) ||
-	  ((charging_ic_status == POWER_SUPPLY_TYPE_FACTORY)
-	    && !get_bat_present()))
-	{
-		D("[charger_rt9524]:: it's already  %s mode!! \n", __func__);
-		return;
-	}
-
+		if((charging_ic_status == POWER_SUPPLY_TYPE_BATTERY) ||
+		  ((charging_ic_status == POWER_SUPPLY_TYPE_FACTORY)
+		    && !get_bat_present()))
+		{
+			D("[charger_rt9524]:: it's already  %s mode!! \n", __func__);
+			return;
+		}
+	
 	mutex_lock(&charging_lock);
 
 	gpio_set_value(CHG_EN_SET_N_OMAP, 1);
@@ -280,9 +285,9 @@ void charging_ic_deactive()
 
 	mutex_unlock(&charging_lock);
 
-//                                             
+// [jongho3.lee@lge.com] charging timer setting
 	del_timer(&charging_timer);
-//                                             
+// [jongho3.lee@lge.com] charging timer setting
 
 	printk("[%s]:: %s: \n", DRIVER_NAME, __func__);
 }
@@ -310,13 +315,13 @@ static void charging_timer_work(struct work_struct *work)
 	charger_fsm(CHARG_FSM_CAUSE_CHARGING_TIMER_EXPIRED);
 }
 
-//                                                                                   
+// LGE_CHANGE [euiseop.shin@lge.com] 2011-04-07,P940 Battery Charger Mode [START_LGE]
 void set_boot_charging_mode(int charging_mode)
 {
 	charging_ic_status = charging_mode;
 }
 EXPORT_SYMBOL(set_boot_charging_mode);
-//                                                                                 
+// LGE_CHANGE [euiseop.shin@lge.com] 2011-04-07,P940 Battery Charger Mode [END_LGE]
 
 static int charging_ic_probe(struct platform_device *dev)
 {

@@ -237,7 +237,7 @@ static int RMI4Init(struct synaptics_fw_data *fw, struct synaptics_ts_data *ts)
 	return ret;
 }
 
-#ifndef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200        /*                                                                */
+#ifndef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200        /* seungbum.park@lge.com - 2012/06/13 - not used for S3200 series */
 static unsigned short GetConfigSize(struct synaptics_fw_data *fw)
 {
 	return fw->m_configBlockSize * fw->m_configBlockCount;
@@ -300,20 +300,11 @@ static int RMI4WaitATTN(int errorCount,
 	int uErrorCount = 0;
 
 	/* To work around the physical address error from Control Bridge */
-#ifdef CONFIG_MACH_LGE_U2
-	/*                                                                */
-        ret = SynaWaitForATTN(2000, fw, ts);
-        if (ret < 0) {
-                TOUCH_ERR_MSG("SynaWaitForATTN 2000ms timeout error\n");
-                return ret;
-        }
-#else
 	ret = SynaWaitForATTN(1000, fw, ts);
 	if (ret < 0) {
 		TOUCH_ERR_MSG("SynaWaitForATTN 1000ms timeout error\n");
 		return ret;
 	}
-#endif
 
 	do {
 		ret = SynaReadRegister(ts->client, fw->m_uF34Reflash_FlashControl, &fw->m_uPageData[0], 1);
@@ -979,7 +970,7 @@ static int RMI4ReadFirmwareHeader(struct synaptics_fw_data *fw, struct synaptics
 
 	checkSumCode = ExtractLongFromHeader(&(fw->image_bin[0]));
 	fw->m_bootloadImgID = (unsigned int)fw->image_bin[4] + (unsigned int)fw->image_bin[5] * 0x100;
-#ifdef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200       /*                                    */
+#ifdef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200       /* seungbum.park@lge.com - 2012/06/13 */
 	fw->m_firmwareImgVersion = fw->image_bin[7];
 #else
 	fw->m_firmwareImgVersion = fw->image_bin[31];
@@ -993,11 +984,11 @@ static int RMI4ReadFirmwareHeader(struct synaptics_fw_data *fw, struct synaptics
 				checkSumCode, fw->m_bootloadImgID, fw->m_firmwareImgVersion, fw->m_firmwareImgSize, fw->m_configImgSize);
 	}
 
-#ifndef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200       /*                                                                */
+#ifndef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200       /* seungbum.park@lge.com - 2012/06/13 - not used for S3200 series */
 #if !defined(TEST_WRONG_CHIPSET_FW_FORCE_UPGRADE)
 	/* Check prpoer FW */
-	if (strncmp(ts->fw_info.product_id , &fw->image_bin[16], 10)) {
-		printk(KERN_INFO "[Touch E] IC = %s, Firmware Target = %s\n ", ts->fw_info.product_id, &fw->image_bin[16]);
+	if (strncmp(ts->fw_info->product_id , &fw->image_bin[16], 10)) {
+		printk(KERN_INFO "[Touch E] IC = %s, Firmware Target = %s\n ", ts->fw_info->product_id, &fw->image_bin[16]);
 		printk(KERN_INFO "[Touch E] WARNING - Firmware is mismatched with Touch IC\n");
 		printk(KERN_INFO "[Touch E] Firmware upgrade stop\n");
 		return -ENODEV;
@@ -1015,7 +1006,7 @@ static int RMI4ReadFirmwareHeader(struct synaptics_fw_data *fw, struct synaptics
 			(unsigned short)((fw->m_fileSize - 4) >> 1),
 			(unsigned long *)&fw->m_FirmwareImgFile_checkSum);
 
-#ifndef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200	/*                                                                */
+#ifndef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200	/* seungbum.park@lge.com - 2012/06/13 - not used for S3200 series */
 	if (fw->m_fileSize != (0x100 + fw->m_firmwareImgSize + fw->m_configImgSize))
 		TOUCH_ERR_MSG("SynaFirmware[] size = 0x%lX, expected 0x%lX\n",
 				fw->m_fileSize, (0x100 + fw->m_firmwareImgSize + fw->m_configImgSize));
@@ -1139,8 +1130,8 @@ int FirmwareUpgrade(struct synaptics_ts_data *ts, const char* fw_path)
 
 		TOUCH_INFO_MSG("Touch FW image read %ld bytes from %s\n", read_bytes, fw_path);
 	}else {
-		fw->image_size = ts->fw_info.fw_size-1;
-		fw->image_bin = (unsigned char *)(&ts->fw_info.fw_start[0]);
+		fw->image_size = ts->fw_info->fw_size-1;
+		fw->image_bin = (unsigned char *)(&ts->fw_info->fw_start[0]);
 	}
 
 #ifdef LGE_TOUCH_TIME_DEBUG

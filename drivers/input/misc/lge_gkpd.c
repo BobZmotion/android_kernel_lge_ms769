@@ -34,10 +34,10 @@ static int gkpd_last_index = 0;
 static unsigned char gkpd_value[21];
 static struct wake_lock gkpd_wake_lock;
 
-//                                                               
+// LGE_CHANGE_S [younglae.kim@lge.com] 2012-06-28, add AT%KEYLOCK
 static unsigned int is_key_lock = 0;
 static struct wake_lock keylock_wake_lock;
-//                                               
+// LGE_CHANGE_E [younglae.kim@lge.com] 2012-06-28
 
 struct gkpd_device {
 	struct key_table *keys;
@@ -146,7 +146,7 @@ static ssize_t keypad_test_mode_store(struct device *dev,
 static DEVICE_ATTR(key_test_mode, 0660, keypad_test_mode_show, keypad_test_mode_store);
 
 
-//                                                                                         
+// LGE_CHANGE_S [younglae.kim@lge.com] 2012-06-28, add function & sysfs path for AT%KEYLOCK
 int get_key_lock_status(void)
 {
 	return is_key_lock;
@@ -183,7 +183,7 @@ static ssize_t key_lock_store(struct device *dev,
 
 static DEVICE_ATTR(key_lock, 0660, key_lock_show, key_lock_store);
 
-//                                               
+// LGE_CHANGE_E [younglae.kim@lge.com] 2012-06-28
 
 static int __devinit gkpd_probe(struct platform_device *pdev)
 {
@@ -208,16 +208,16 @@ static int __devinit gkpd_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_device_create_file_gkpd;
 
-//                                                                                 
+// LGE_CHANGE_S [younglae.kim@lge.com] 2012-06-28, create sysfs path for AT%KEYLOCK
 	ret = device_create_file(&pdev->dev, &dev_attr_key_lock);
 	if (ret < 0)
 		goto err_device_create_file_keylock;
-//                                               
+// LGE_CHANGE_E [younglae.kim@lge.com] 2012-06-28
 
 	wake_lock_init(&gkpd_wake_lock, WAKE_LOCK_SUSPEND, "lge-gpkd");
-//                                                                             
+// LGE_CHANGE_S [younglae.kim@lge.com] 2012-06-28, add wake_lock for AT%KEYLOCK
 	wake_lock_init(&keylock_wake_lock, WAKE_LOCK_SUSPEND, "lge-keylock");
-//                                               
+// LGE_CHANGE_E [younglae.kim@lge.com] 2012-06-28
 
 	dev_info(&pdev->dev, "GKPD: gkpd probed\n");
 

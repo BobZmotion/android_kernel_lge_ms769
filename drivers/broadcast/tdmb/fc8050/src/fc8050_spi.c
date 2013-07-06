@@ -130,7 +130,7 @@ static int spi_dataread(HANDLE hDevice, fci_u8 addr, fci_u8* data, fci_u16 lengt
 	tx_data[0] = SPI_CMD_BURST_READ;
 	tx_data[1] = addr;
 
-	ret = fc8050_spi_write_then_read(fc8050_spi, &tx_data[0], 2, &data[0], length);
+		ret = fc8050_spi_write_then_read(fc8050_spi, &tx_data[0], 2, &data[0], length);
 	//printk("spi_dataread  (0x%x,0x%x,0x%x,0x%x)\n", data[0], data[1], data[2], data[3]);
 	if(!ret)
 	{

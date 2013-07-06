@@ -81,9 +81,9 @@
 static irqreturn_t lh430wv4_panel_te_isr(int irq, void *data);
 static void lh430wv4_panel_te_timeout_work_callback(struct work_struct *work);
 static int _lh430wv4_panel_enable_te(struct omap_dss_device *dssdev, bool enable);
-//                                                                                                                   
+//LGE_CHANGE_S [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 extern int dispc_enable_gamma(enum omap_channel ch, u8 gamma);
-//                                                                                                                   
+//LGE_CHANGE_E [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 #define DSI_GEN_SHORTWRITE_NOPARAM 0x3
 #define DSI_GEN_SHORTWRITE_1PARAM 0x13
 #define DSI_GEN_SHORTWRITE_2PARAM 0x23
@@ -238,6 +238,41 @@ u8 lgd_lcd_command_for_mipi[][30] = {
 };
 #else // CONFIG_DSI_VIDEO_MODE
 u8 lgd_lcd_command_for_mipi[][30] = {
+#ifndef CONFIG_MACH_LGE_P2
+	{SHORT_CMD_MIPI,DSI_GEN_SHORTWRITE_1PARAM,0x01,0x20,},											/* Display Inversion */
+	{SHORT_CMD_MIPI,DSI_GEN_SHORTWRITE_2PARAM,0x02,0x36,0x00,}, 									/* Set Address Mode */
+	{SHORT_CMD_MIPI,DSI_GEN_SHORTWRITE_2PARAM,0x02,0x3A,0x70,}, 									/* Interface Pixel Fromat */
+	//LGE_CHANGE_S [taekeun1.kim@lge.com] 2010-12-14, P920 : code refine.
+	//	  {LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x04,0xB1, 0x06, 0x43, 0x1C,},							/* RGB Interface Setting */
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x04,0xB1, 0x06, 0x43, 0x0A,},								/* RGB Interface Setting */
+	//LGE_CHANGE_E [taekeun1.kim@lge.com] 2010-12-14, P920 : code refine.
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x03,0xB2, 0x00, 0xC8,},										/* Panel Characteristics Setting */
+	{SHORT_CMD_MIPI,DSI_GEN_SHORTWRITE_2PARAM, 0x02, 0xB3, 0x00,},									/* Panel Drive Setting */
+	{SHORT_CMD_MIPI,DSI_GEN_SHORTWRITE_2PARAM, 0x02, 0xB4, 0x04,},									/* Display Mode Control */
+	//LGE_CHANGE_S [taekeun1.kim@lge.com] 2010-12-14, P920 : code refine.
+	//	  {LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x06, 0xB5, 0x42, 0x18, 0x02, 0x04, 0x10 ,},			/* Display Control 1 */
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x06, 0xB5, 0x40, 0x18, 0x02, 0x00, 0x01 ,},					/* Display Control 1 */
+	//LGE_CHANGE_E [taekeun1.kim@lge.com] 2010-12-14, P920 : code refine.
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x07, 0xB6, 0x0B, 0x0F, 0x02, 0x40, 0x10, 0xE8,}, 			/* Display Control 2 */
+	// LGE_ChangeS [Darren.Kang@lge.com] 20110104 change for image stablization <- by sync on [ST]
+	//{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x06, 0xC3, 0x07, 0x02, 0x02, 0x02, 0x02 ,},				/* Power Control 3 */
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x06, 0xC3, 0x07, 0x0A, 0x0A, 0x0A, 0x02 ,},					/* Power Control 3 */
+	// LGE_ChangeS [Darren.Kang@lge.com] 20110104 change for image stablization <- by sync on [END]
+	// LGE_CHANGES Darren.Kang@lge.com 20110126 for optimizing panel gate voltage & VCOM Level  [ST]
+	//{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x07, 0xC4, 0x12, 0x24, 0x18, 0x18, 0x04, 0x49,},  panle gate voltage						/* Power Control 4 */
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x07, 0xC4, 0x12, 0x24, 0x18, 0x18, 0x04, 0x49,}, 			/* Power Control 4 */
+	//{SHORT_CMD_MIPI,DSI_GEN_SHORTWRITE_2PARAM, 0x02, 0xC5, 0x5B,}, VCOM level						/* Power Control 5 */
+	{SHORT_CMD_MIPI,DSI_GEN_SHORTWRITE_2PARAM, 0x02, 0xC5, 0x6B,},									/* Power Control 5 */
+	// LGE_CHANGES Darren.Kang@lge.com 20110126 for optimizing panel gate voltage & VCOM Leve [END]
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x04,0xC6, 0x41, 0x63, 0x03,},								/* Power Control 6 */
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x0A,0xD0, 0x33, 0x22, 0x77, 0x02, 0x00, 0x00, 0x30, 0x01, 0x01,}, /* Positive Gamma Curve for Red */
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x0A,0xD1, 0x33, 0x22, 0x77, 0x02, 0x00, 0x00, 0x30, 0x01, 0x01,}, /* Negative Gamma Curve for Red */
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x0A,0xD2, 0x33, 0x22, 0x77, 0x02, 0x00, 0x00, 0x30, 0x01, 0x01,}, /* Positive Gamma Curve for Green */
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x0A,0xD3, 0x33, 0x22, 0x77, 0x02, 0x00, 0x00, 0x30, 0x01, 0x01,}, /* Negative Gamma Curve for Green */
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x0A,0xD4, 0x33, 0x22, 0x77, 0x02, 0x00, 0x00, 0x30, 0x01, 0x01,}, /* Positive Gamma Curve for Blue */
+	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,0x0A,0xD5, 0x33, 0x22, 0x77, 0x02, 0x00, 0x00, 0x30, 0x01, 0x01,}, /* Negative Gamma Curve for Blue */
+	{END_OF_COMMAND, },
+#else
 	{SHORT_CMD_MIPI, DSI_GEN_SHORTWRITE_1PARAM, 0x01, 0x20,},
 	{SHORT_CMD_MIPI, DSI_GEN_SHORTWRITE_2PARAM, 0x02, 0x35, 0x00,},
 	//{SHORT_CMD_MIPI, DSI_GEN_SHORTWRITE_2PARAM, 0x02, 0x3A, 0x77,},	//reset same register
@@ -263,6 +298,7 @@ u8 lgd_lcd_command_for_mipi[][30] = {
 	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE, 0x0A, 0xD4, 0x01, 0x01, 0x77, 0x06, 0x01, 0x18, 0x51, 0x11, 0x03,},
 	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE, 0x0A, 0xD5, 0x01, 0x01, 0x77, 0x06, 0x01, 0x00, 0x51, 0x11, 0x03,},
 	{END_OF_COMMAND,},
+#endif
 };
 #endif
 
@@ -732,7 +768,7 @@ static ssize_t display_file_tuning_store(struct device *dev,
 }
 static DEVICE_ATTR(file_tuning, 0660, NULL, display_file_tuning_store);
 #endif
-//                                                                                                                   
+//LGE_CHANGE_S [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 extern int dispc_set_gamma_rgb(enum omap_channel ch, u8 gamma,int red,int green,int blue);
 static ssize_t display_gamma_tuning_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -753,7 +789,7 @@ static ssize_t display_gamma_tuning_store(struct device *dev,
 
 
 static DEVICE_ATTR(gamma_tuning, 0660, display_gamma_tuning_show, display_gamma_tuning_store);
-//                                                                                                                   
+//LGE_CHANGE_E [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 static ssize_t show_cabc_available_modes(struct device *dev,
 		struct device_attribute *attr,
 		char *buf)
@@ -922,12 +958,12 @@ static struct attribute *lh430wv4_panel_attrs[] = {
 	&dev_attr_esd_interval.attr,
 	&dev_attr_ulps.attr,
 	&dev_attr_ulps_timeout.attr,
-//                                                                                                                   
+//LGE_CHANGE_S [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
     &dev_attr_gamma_tuning.attr,
 #if defined(CONFIG_LUT_FILE_TUNING)
     &dev_attr_file_tuning.attr,
 #endif
-//                                                                                                                   
+//LGE_CHANGE_E [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 	NULL,
 };
 
@@ -959,6 +995,7 @@ static void lh430wv4_panel_hw_reset(struct omap_dss_device *dssdev)
 	if (td->panel_config->sleep.hw_reset)
 		msleep(td->panel_config->sleep.hw_reset);
 }
+
 
 static int lh430wv4_panel_probe(struct omap_dss_device *dssdev)
 {
@@ -1162,6 +1199,11 @@ static int lh430wv4_panel_power_on(struct omap_dss_device *dssdev)
 	/* At power on the first vsync has not been received yet */
         dssdev->first_vsync = false;
 
+#ifdef CONFIG_MACH_LGE_COSMO
+	gpio_set_value(27,1);
+	msleep(5);
+#endif
+
 	r = omapdss_dsi_display_enable(dssdev);
 	if (r) {
 		dev_err(&dssdev->dev, "failed to enable DSI\n");
@@ -1195,12 +1237,12 @@ static int lh430wv4_panel_power_on(struct omap_dss_device *dssdev)
 			if (r)
 				goto err;
 		}
-//                                                                                                                   
+//LGE_CHANGE_S [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 #if defined(CONFIG_P2_GAMMA)
         dispc_enable_gamma(OMAP_DSS_CHANNEL_LCD, 0);
         dispc_enable_gamma(OMAP_DSS_CHANNEL_LCD2, 0);
 #endif
-//                                                                                                                   
+//LGE_CHANGE_E [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 		if(dssdev->phy.dsi.type == OMAP_DSS_DSI_TYPE_VIDEO_MODE){
 			r = lh430wv4_panel_dcs_write_0(td, DCS_DISPLAY_ON);
 			if (r)
@@ -1219,10 +1261,10 @@ static int lh430wv4_panel_power_on(struct omap_dss_device *dssdev)
 		
 		omapdss_dsi_vc_enable_hs(dssdev, td->channel, true);
 
-		/*                                              
-                                                                    
-                                                                                  
-   */
+		/* LGE_SJIT 2012-03-06 [choongryeol.lee@lge.com]
+		 * For ignoring "DISPC_IRQ_SYNC_LOST_DIGIT" that could be happened
+		 * when lcd is resumed, we set the "first_vsync" value as false for HDMI channel
+		 */
 		omap_dispc_set_first_vsync(OMAP_DSS_CHANNEL_DIGIT, false);
 
 		if(dssdev->phy.dsi.type == OMAP_DSS_DSI_TYPE_VIDEO_MODE){
@@ -1273,6 +1315,11 @@ static void lh430wv4_panel_power_off(struct omap_dss_device *dssdev)
 	/* reset  the panel */
 	if (panel_data->reset_gpio)
 		gpio_set_value(panel_data->reset_gpio, 0);
+
+#ifdef CONFIG_MACH_LGE_COSMO
+	/* LCD_EN GPIO_27*/
+	gpio_set_value(27,0);
+#endif
 
 	/* disable lcd ldo */
 	if (dssdev->platform_disable)
@@ -1426,11 +1473,11 @@ err:
 	return r;
 }
 
-/*                                              
-                                                                              
-                                                                            
-                                                
-                                                                               
+/* LGE_SJIT 2012-02-15 [choongryeol.lee@lge.com]
+  *  When lcd is turned on, the garbage image can be displayed in command mode
+  *  The root cause of this problem is that DCS_DISPLAY_ON commnad is issued
+  *  before image data writting to the lcd gram.
+  *  So we send DCS_DISPLAY_ON command after first frame is written to lcd gram
   */
 static void lh430wv4_panel_display_on_work(struct work_struct *work)
 {

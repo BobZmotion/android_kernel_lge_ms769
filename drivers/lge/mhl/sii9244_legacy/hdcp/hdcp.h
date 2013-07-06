@@ -194,7 +194,7 @@ enum av_mute
 #define HDCP_DRIVER_ERROR	6
 #define HDCP_CANCELLED_AUTH	7
 
-#define HDCP_INFINITE_REAUTH 0x100		//                                                      
+#define HDCP_INFINITE_REAUTH 0x100		// kibum.lee@lge.com, plz check backup_retry_count value
 #define HDCP_MAX_DDC_ERR	5
 /* FIXME: should be 300ms delay between HDMI start frame event and HDCP enable
  * (to respect 7 VSYNC delay in 24 Hz)
@@ -203,7 +203,7 @@ enum av_mute
 #define HDCP_R0_DELAY		110
 #define HDCP_KSV_TIMEOUT_DELAY  5000
 #define HDCP_REAUTH_DELAY	100
-#define HDCP_DDC_TIMEOUT	3000		//                            
+#define HDCP_DDC_TIMEOUT	3000		// 	2000		// kibum.lee@lge.com
 #define HDCP_STOP_FRAME_BLOCKING_TIMEOUT 2*HDCP_DDC_TIMEOUT
 
 /* Event source */
@@ -253,7 +253,7 @@ struct hdcp {
 	void __iomem *hdmi_wp_base_addr;
 	void __iomem *deshdcp_base_addr;
     
-    //                                
+    // wooho47.jung@lge.com 2011.11.05
     // ADD : cancel work queue backtrace happend
     struct mutex event_lock;
     
@@ -327,7 +327,7 @@ struct hdcp_sha_context {
 // #define DEBUG
 
 #ifdef DEBUG
-//                                
+// wooho47.jung@lge.com 2011.11.04
 // ADD : for HDCP Debug
 //#define DBG(format, ...) printk(KERN_DEBUG "HDCP: " format, ## __VA_ARGS__)
 #define DBG(format, ...) printk(KERN_DEBUG "[HDCP][%s] :: " format, __func__, ## __VA_ARGS__)
@@ -335,7 +335,7 @@ struct hdcp_sha_context {
 #define DBG(format, ...)
 #endif
 
-//                                
+// wooho47.jung@lge.com 2011.11.04
 // ADD : for HDCP Debug
 #define DBG_ERROR(fmt, args...)     printk(KERN_ERR "===== [HDCP Exception] [%s][%d] :: "fmt, __func__, __LINE__, ##args);
 

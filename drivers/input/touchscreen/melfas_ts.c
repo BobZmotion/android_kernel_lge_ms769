@@ -101,7 +101,7 @@ int (*g_power_enable) (int en, bool log_en);
 static char tmp_flag[10];
 static struct workqueue_struct *melfas_wq;
 
-/*                                                        */
+/* LGE_SJIT 2011-12-09 [dojip.kim@lge.com] helper for irq */
 static inline void melfas_enable_irq(int irq)
 {
 #if DEBUG_PRINT
@@ -147,7 +147,7 @@ static void melfas_ts_work_func(struct work_struct *work)
 	buf[0] = MIP_INPUT_EVENT_PACKET_SIZE;
 	ret = i2c_master_send(client, buf, 1);
 	ret |= i2c_master_recv(client, &read_num, 1);
-	/*                                                          */
+	/* LGE_SJIT 2011-12-09 [dojip.kim@lge.com] reset on i2c err */
 	if (ret < 0) {
 		dev_err(&client->dev, "%s: i2c error %d\n", __func__, ret);
 		g_power_enable(0, true);
@@ -709,7 +709,7 @@ static int melfas_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		g_Mtouch_info[i].strength = -1;
 
 #if DEBUG_PRINT
-	/*                                                       */
+	/* SJIT 2011-12-09 [dojip.kim@lge.com] read MODE_CONTROL */
 	ret = i2c_smbus_read_byte_data(client, MODE_CONTROL);
 	if (ret < 0) {
 		printk(KERN_ERR "%s: i2c read error\n", __func__);
@@ -867,7 +867,7 @@ static void melfas_ts_late_resume(struct early_suspend *h)
 }
 #endif
 
-/*                                               */
+/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com] FIXME */
 #if defined(CONFIG_PM) && !defined(CONFIG_HAS_EALRYSUSPEND)
 static int melfas_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 {

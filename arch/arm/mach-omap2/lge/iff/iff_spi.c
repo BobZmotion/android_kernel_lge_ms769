@@ -113,7 +113,7 @@ static struct spi_board_info spi_bd_info[] __initdata = {
 
 int __init iff_spi_init(void)
 {
-//                                               
+//MIPI-HSI jjongjin.park@lge.com 2011.06.20 START
 #if defined(CONFIG_SPI_IFX)
 	int ret = 0;
 
@@ -123,7 +123,7 @@ int __init iff_spi_init(void)
 	
 	return lge_set_cp_init(ifx_n721_dev_init);
 #endif
-//                                             
+//MIPI-HSI jjongjin.park@lge.com 2011.06.20 END
 	return 0;
 };
 

@@ -136,10 +136,11 @@ static void ion_handle_destroy(struct kref *kref)
 	 */
 	WARN_ON(handle->kmap_cnt || handle->dmap_cnt || handle->usermap_cnt);
 	ion_buffer_put(handle->buffer);
-	mutex_lock(&handle->client->lock);
+//120817 jaeshin.lee@lge.com gpu: ion: Fix race condition with ion_import	
+//	mutex_lock(&handle->client->lock);
 	if (!RB_EMPTY_NODE(&handle->node))
 		rb_erase(&handle->node, &handle->client->handles);
-	mutex_unlock(&handle->client->lock);
+//	mutex_unlock(&handle->client->lock);
 	kfree(handle);
 }
 
@@ -189,34 +190,6 @@ static bool ion_handle_validate(struct ion_client *client, struct ion_handle *ha
 	return false;
 }
 
-static bool ion_handle_validate_frm_dev(struct ion_device *dev,
-					struct ion_handle *handle)
-{
-	struct rb_node **p;
-	struct rb_node *parent = NULL;
-	struct ion_client *client;
-	struct rb_node *n;
-
-	p = &dev->user_clients.rb_node;
-	while (*p) {
-		parent = *p;
-		client = rb_entry(parent, struct ion_client, node);
-
-		n = client->handles.rb_node;
-		while (n) {
-			struct ion_handle *handle_node =
-					rb_entry(n, struct ion_handle, node);
-			if (handle < handle_node)
-				n = n->rb_left;
-			else if (handle > handle_node)
-				n = n->rb_right;
-			else
-				return true;
-		}
-	}
-	return false;
-}
-
 static void ion_handle_add(struct ion_client *client, struct ion_handle *handle)
 {
 	struct rb_node **p = &client->handles.rb_node;
@@ -259,7 +232,7 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 		/* if the client doesn't support this heap type */
 		if (!((1 << heap->type) & client->heap_mask))
 			continue;
-		/* if the caller didn't specify this heap ID */
+		/* if the caller didn't specify this heap type */
 		if (!((1 << heap->id) & flags))
 			continue;
 		buffer = ion_buffer_create(heap, dev, len, align, flags);
@@ -297,19 +270,20 @@ void ion_free(struct ion_client *client, struct ion_handle *handle)
 {
 	bool valid_handle;
 
-	if (WARN_ON(!client || !handle))
-		return;
 	BUG_ON(client != handle->client);
 
 	mutex_lock(&client->lock);
 	valid_handle = ion_handle_validate(client, handle);
-	mutex_unlock(&client->lock);
+//120817 jaeshin.lee@lge.com gpu: ion: Fix race condition with ion_import 
+//	mutex_unlock(&client->lock);
 
 	if (!valid_handle) {
 		WARN("%s: invalid handle passed to free.\n", __func__);
+		mutex_unlock(&client->lock);		
 		return;
 	}
 	ion_handle_put(handle);
+	mutex_unlock(&client->lock);		
 }
 EXPORT_SYMBOL(ion_free);
 
@@ -370,31 +344,6 @@ int ion_phys(struct ion_client *client, struct ion_handle *handle,
 	return ret;
 }
 EXPORT_SYMBOL(ion_phys);
-
-int ion_phys_frm_dev(struct ion_device *dev, struct ion_handle *handle,
-	     ion_phys_addr_t *addr, size_t *len)
-{
-	struct ion_buffer *buffer;
-	int ret;
-
-	/* TBD: Investigate why this validate_frm_dev is taking very long
-	* Once root-caused and fixed, then enable this below logic.
-	*/
-	/* if (!ion_handle_validate_frm_dev(dev, handle))
-		return -EINVAL;
-	*/
-
-	buffer = handle->buffer;
-
-	if (!buffer->heap->ops->phys) {
-		pr_err("%s: ion_phys is not implemented by this heap.\n", __func__);
-		return -ENODEV;
-	}
-	ret = buffer->heap->ops->phys(buffer->heap, buffer, addr, len);
-	return ret;
-}
-EXPORT_SYMBOL(ion_phys_frm_dev);
-
 
 void *ion_map_kernel(struct ion_client *client, struct ion_handle *handle)
 {
@@ -790,10 +739,13 @@ static void ion_vma_open(struct vm_area_struct *vma)
 	/* check that the client still exists and take a reference so
 	   it can't go away until this vma is closed */
 	client = ion_client_lookup(buffer->dev, current->group_leader);
+
 	if (IS_ERR_OR_NULL(client)) {
 		vma->vm_private_data = NULL;
 		return;
 	}
+//120817 jaeshin.lee@lge.com 	https://github.com/Albinoman887/bricked-pyramid-3.0/commit/dc5e2b81a7383a16999407e854fd80c6e67f2e62
+	ion_handle_get(handle);	
 	pr_debug("%s: %d client_cnt %d handle_cnt %d alloc_cnt %d\n",
 		 __func__, __LINE__,
 		 atomic_read(&client->ref.refcount),
@@ -811,21 +763,19 @@ static void ion_vma_close(struct vm_area_struct *vma)
 	/* this indicates the client is gone, nothing to do here */
 	if (!handle)
 		return;
+		
 	client = handle->client;
-
-	if ((client == 0x00100100)||(client == 0x00200200))
-	{
-		printk("[%s:%d] VM had already closed  \n",__func__, __LINE__);
-		return ;
-	}
-	
 	pr_debug("%s: %d client_cnt %d handle_cnt %d alloc_cnt %d\n",
 		 __func__, __LINE__,
 		 atomic_read(&client->ref.refcount),
 		 atomic_read(&handle->ref.refcount),
 		 atomic_read(&buffer->ref.refcount));
+//120817 jaeshin.lee@lge.com gpu: ion: Fix race condition with ion_import 
+	mutex_lock(&client->lock);		 
 	ion_handle_put(handle);
+	mutex_unlock(&client->lock);
 	ion_client_put(client);
+
 	pr_debug("%s: %d client_cnt %d handle_cnt %d alloc_cnt %d\n",
 		 __func__, __LINE__,
 		 atomic_read(&client->ref.refcount),
@@ -902,7 +852,10 @@ static int ion_share_mmap(struct file *file, struct vm_area_struct *vma)
 
 err1:
 	/* drop the reference to the handle */
+//120817 jaeshin.lee@lge.com gpu: ion: Fix race condition with ion_import 
+	mutex_lock(&client->lock);
 	ion_handle_put(handle);
+	mutex_unlock(&client->lock);
 err:
 	/* drop the reference to the client */
 	ion_client_put(client);
@@ -1158,7 +1111,7 @@ static const struct file_operations ion_fops = {
 };
 
 static size_t ion_debug_heap_total(struct ion_client *client,
-				   unsigned int id)
+				   enum ion_heap_type type)
 {
 	size_t size = 0;
 	struct rb_node *n;
@@ -1168,7 +1121,7 @@ static size_t ion_debug_heap_total(struct ion_client *client,
 		struct ion_handle *handle = rb_entry(n,
 						     struct ion_handle,
 						     node);
-		if (handle->buffer->heap->id == id)
+		if (handle->buffer->heap->type == type)
 			size += handle->buffer->size;
 	}
 	mutex_unlock(&client->lock);
@@ -1186,7 +1139,7 @@ static int ion_debug_heap_show(struct seq_file *s, void *unused)
 		struct ion_client *client = rb_entry(n, struct ion_client,
 						     node);
 		char task_comm[TASK_COMM_LEN];
-		size_t size = ion_debug_heap_total(client, heap->id);
+		size_t size = ion_debug_heap_total(client, heap->type);
 		if (!size)
 			continue;
 
@@ -1198,7 +1151,7 @@ static int ion_debug_heap_show(struct seq_file *s, void *unused)
 	for (n = rb_first(&dev->kernel_clients); n; n = rb_next(n)) {
 		struct ion_client *client = rb_entry(n, struct ion_client,
 						     node);
-		size_t size = ion_debug_heap_total(client, heap->id);
+		size_t size = ion_debug_heap_total(client, heap->type);
 		if (!size)
 			continue;
 		seq_printf(s, "%16.s %16u %16u\n", client->name, client->pid,

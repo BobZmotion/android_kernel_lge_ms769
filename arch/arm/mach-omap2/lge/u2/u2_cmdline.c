@@ -112,7 +112,7 @@ void __init lge_manipulate_cmdline(char *default_command_line)
 
 	/* add parameters */
 	for (i = 0; i < ARRAY_SIZE(cmdline_parameters); i++) {
-		/*                                                                       */
+		/* LGE_CHANGE [james.jang@lge.com] 2012-05-08, to prevent stack overflow */
 		static char param[COMMAND_LINE_SIZE];
 		memset(param, 0, COMMAND_LINE_SIZE);
 		if (strlen(cmdline_parameters[i].value) ||

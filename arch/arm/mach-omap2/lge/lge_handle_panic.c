@@ -74,12 +74,7 @@ static int crash_handle_enable = 1;
 module_param_named(crash_handle_enable, crash_handle_enable,
 				   int, S_IRUGO | S_IWUSR | S_IWGRP);
 
-#if defined (USER_MODE) /*                                                             */
-int lge_hidden_reset_enable = 1;
-#else
 int lge_hidden_reset_enable = 0;
-#endif
-
 module_param_named(hidden_reset_enable, lge_hidden_reset_enable,
 				   int, S_IRUGO | S_IWUSR | S_IWGRP);
 

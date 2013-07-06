@@ -128,7 +128,7 @@ static void CP_CRASH_wq_func(struct work_struct *cp_crash_wq)
 		// CHECK CP_CRASH_DUMP OPTION
 		if (lge_is_crash_dump_enabled() != 1)
 		{	
-#ifndef ENABLE_CP_CRASH_RESET	//                 
+#ifndef ENABLE_CP_CRASH_RESET	// LGE_RIL_RECOVERY
 			printk(" CP CRASH! immediate RIL/CP reset");
 			input_report_key(in_dev, EVENT_KEY, 1);
 			input_report_key(in_dev, EVENT_KEY, 0);
@@ -146,7 +146,7 @@ static void CP_CRASH_wq_func(struct work_struct *cp_crash_wq)
 	}
 	else
 	{
-//                                                   
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]	
 #if 0	
 		/*****************************************************************************
 			1. Case of HSI_LL_MSG_BREAK in hsi_ll_read_complete_cb
@@ -154,7 +154,7 @@ static void CP_CRASH_wq_func(struct work_struct *cp_crash_wq)
 		*****************************************************************************/
 		printk(KERN_INFO "[CP CRASH IRQ] CP_CRASH_wq_func() - CP_CRASH_INT_N - Invaild\n");
 
-#ifndef ENABLE_CP_CRASH_RESET	//                 
+#ifndef ENABLE_CP_CRASH_RESET	// LGE_RIL_RECOVERY
 		printk(" CP CRASH! immediate RIL/CP reset");
 		input_report_key(in_dev, EVENT_KEY, 1);
 		input_report_key(in_dev, EVENT_KEY, 0);
@@ -162,7 +162,7 @@ static void CP_CRASH_wq_func(struct work_struct *cp_crash_wq)
 		printk("[CPW] input_report_key(): %d\n", EVENT_KEY);
 #endif
 #endif		
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 	}
 }
 

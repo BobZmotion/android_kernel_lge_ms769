@@ -29,7 +29,7 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 
-/*                                                       */
+/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] LGE board rev */
 #include <lge/board_rev.h>
 
 #include "control.h"
@@ -61,7 +61,7 @@ static ssize_t omap4_soc_type_show(struct kobject *kobj,
 	return sprintf(buf, "%s\n", omap_types[omap_type()]);
 }
 
-/*                                                       */
+/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] LGE board rev */
 #if defined(CONFIG_MACH_LGE)
 static const char *app_board_rev_types[] = {
 	[LGE_PCB_EVB]			= "EVB",
@@ -86,7 +86,7 @@ static const char *app_board_rev_types[] = {
 	[OMAP4_PANDA_ID]		= "Panda",
 	[OMAP4_MAX_ID]			= "Unknown",
 };
-#endif /*                 */
+#endif /* CONFIG_MACH_LGE */
 
 static ssize_t omap4_prod_id_show(struct kobject *kobj,
 				struct kobj_attribute *attr, char *buf)
@@ -101,7 +101,7 @@ static ssize_t omap4_die_id_show(struct kobject *kobj,
 {
 	struct  omap_die_id opi;
 	omap_get_die_id(&opi);
-	/*                                                           */
+	/* LGE_SJIT 2012-01-19 [dojip.kim@lge.com] change the format */
 #ifdef CONFIG_MACH_LGE
 	return sprintf(buf, "%08x%08x%08x%08x", opi.id_3,
 						opi.id_2, opi.id_1, opi.id_0);
@@ -111,7 +111,7 @@ static ssize_t omap4_die_id_show(struct kobject *kobj,
 #endif
 }
 
-/*                                                       */
+/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] LGE board rev */
 #if defined(CONFIG_MACH_LGE)
 static ssize_t omap4_board_rev_show(struct kobject *kobj,
 				 struct kobj_attribute *attr, char *buf)
@@ -140,7 +140,7 @@ static ssize_t omap4_board_rev_show(struct kobject *kobj,
 
 	return sprintf(buf, "%s\n", app_board_rev_types[apps_brd_rev]);
 }
-#endif /*                 */
+#endif /* CONFIG_MACH_LGE */
 
 static ssize_t omap4_soc_type_max_freq(struct kobject *kobj,
 				 struct kobj_attribute *attr, char *buf)
@@ -151,10 +151,8 @@ static ssize_t omap4_soc_type_max_freq(struct kobject *kobj,
 		max_freq = "1.5Ghz";
 	else if (omap4_has_mpu_1_3ghz())
 		max_freq = "1.3Ghz";
-#if !defined(CONFIG_MACH_LGE_U2)
 	else if (omap4_has_mpu_1_2ghz())
 		max_freq = "1.2Ghz";
-#endif
 	else
 		max_freq = "1.0Ghz";
 
@@ -212,7 +210,7 @@ static OMAP4_SOC_ATTR_RO(max_freq, omap4_soc_type_max_freq);
 static OMAP4_SOC_ATTR_RO(dpll_trimmed, omap4_soc_dpll_trimmed);
 static OMAP4_SOC_ATTR_RO(rbb_trimmed, omap4_soc_rbb_trimmed);
 static OMAP4_SOC_ATTR_RO(production_id, omap4_prod_id_show);
-/*                                                                      */
+/* LGE_SJIT 2012-01-19 [dojip.kim@lge.com] only read for user and group */
 #ifdef CONFIG_MACH_LGE
 static struct kobj_attribute omap4_soc_prop_attr_die_id =
 	__ATTR(die_id, (S_IRUSR|S_IRGRP), omap4_die_id_show, NULL);

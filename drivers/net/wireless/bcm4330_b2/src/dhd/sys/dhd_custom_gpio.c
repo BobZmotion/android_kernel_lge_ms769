@@ -34,7 +34,7 @@
 #include <wlioctl.h>
 #include <wl_iw.h>
 
-/*                                                              */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-05-14, support start/stop */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 #if defined(CONFIG_ARCH_MSM) || defined(CONFIG_ARCH_TEGRA)
 #include <asm/gpio.h>
@@ -49,13 +49,13 @@
 #include <mach/hardware.h>
 #include <mach/gpio-names.h>
 
-/*                                                              */
+/*bill.park@lge.com, comment out because of 32k clock always on */
 //static struct clk *wifi_32k_clk;
 #include "mach/io.h"
 static int interrupt_en_flag = 0;               //by sjpark 11-03-10
 #endif /* defined(CONFIG_ARCH_TEGRA) */
-#endif /*                                   */
-/*                                                              */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-05-14, support start/stop */
 #define WL_ERROR(x) printf x
 #define WL_TRACE(x)
 
@@ -156,7 +156,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 #endif
 			WL_ERROR(("=========== WLAN placed in RESET ========\n"));
 
-/*                                                              */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-05-14, support start/stop */
 #if defined(CONFIG_LGE_BCM432X_PATCH) 
 #if defined(CONFIG_ARCH_MSM)
             if (gpio_get_value(CONFIG_BCM4330_GPIO_WL_RESET)) {
@@ -177,8 +177,8 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 				interrupt_en_flag = 1;          //by sjpark 11-03-11
 			}
 #endif
-#endif /*                                   */
-/*                                                              */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-05-14, support start/stop */
 		break;
 
 		case WLAN_RESET_ON:
@@ -192,7 +192,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 #endif
 			WL_ERROR(("=========== WLAN going back to live  ========\n"));
 
-/*                                                              */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-05-14, support start/stop */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 #if defined(CONFIG_ARCH_MSM)
             if (!gpio_get_value(CONFIG_BCM4330_GPIO_WL_RESET)) {
@@ -209,8 +209,8 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 				gpio_set_value(TEGRA_GPIO_PU2, 1);
 			mdelay(150);
 #endif
-#endif /*                                   */
-/*                                                              */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-05-14, support start/stop */
 
 		break;
 
@@ -220,7 +220,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 #ifdef CUSTOMER_HW
 			bcm_wlan_power_off(1);
 #endif /* CUSTOMER_HW */
-/*                                                                     */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-03-05, for gpio set in dhd_linux */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 #if defined(CONFIG_ARCH_MSM)
 			//gpio_tlmm_config(GPIO_CFG(CONFIG_BCM4330_GPIO_WL_RESET, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA), GPIO_ENABLE);
@@ -254,8 +254,8 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			/* always turn on 32k clock */
 			//                      clk_disable(wifi_32k_clk);
 #endif
-#endif /*                                   */
-/*                                                                     */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-03-05, for gpio set in dhd_linux */
 		break;
 
 		case WLAN_POWER_ON:
@@ -266,7 +266,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			/* Lets customer power to get stable */
 			OSL_DELAY(200);
 #endif /* CUSTOMER_HW */
-/*                                                                     */
+/* LGE_CHANGE_S [yoohoo@lge.com] 2009-03-05, for gpio set in dhd_linux */
 #if defined(CONFIG_LGE_BCM432X_PATCH)
 #if defined(CONFIG_ARCH_MSM)
 			        gpio_set_value(CONFIG_BCM4330_GPIO_WL_RESET, 1);
@@ -289,8 +289,8 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			mdelay(150);
 
 #endif
-#endif /*                                   */
-/*                                                                     */
+#endif /* defined(CONFIG_LGE_BCM432X_PATCH) */
+/* LGE_CHANGE_E [yoohoo@lge.com] 2009-03-05, for gpio set in dhd_linux */
 		break;
 	}
 }

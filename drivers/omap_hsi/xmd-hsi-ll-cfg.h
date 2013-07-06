@@ -49,15 +49,23 @@
 /* Frame Size */
 #define HSI_LL_MAX_FRAME_SIZE       HSI_FRAMESIZE_DEFAULT
 
-//                                                  
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [START]
 /* For 96MHZ Base CLK, 96MHZ(0) 48MHZ(1)  24MHZ(3)
     Divisor value => HSI CLK == HSI base CLK/(1+divisor value)
     Clock Change 48MHz => 96MHz */
 #define HSI_LL_DIVISOR_VALUE        HSI_DIVISOR_DEFAULT /* For 96MHZ Base CLK, 96MHZ(0) 48MHZ(1)  24MHZ(3) */
-//                                                
+// LGE_CHANGE [MIPI-HSI] jaesung.woo@lge.com [END]
 
 /*To enable Power management */
 #define HSI_LL_ENABLE_PM
+//mo2haewoon.you@lge.com [START]
+#if defined(CONFIG_MACH_LGE_COSMO)  || defined(CONFIG_MACH_LGE_CX2)
+#define HSI_LL_WAKE_LOCK
+
+#define HSI_LL_AC_WAKE_TIMEOUT		3 * HZ
+#define HSI_LL_CA_WAKE_TIMEOUT		3 * HZ
+#endif
+//mo2haewoon.you@lge.com [END]
 
 #define HSI_LL_COUNTERS_VALUE	   (HSI_COUNTERS_FT_DEFAULT | \
 									HSI_COUNTERS_TB_DEFAULT | \

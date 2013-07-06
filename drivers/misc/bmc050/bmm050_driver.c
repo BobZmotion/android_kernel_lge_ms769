@@ -1,6 +1,6 @@
 /*
- * Last modified: Jul 26th, 2012
- * Revision: V2.4
+ * Last modified: Dec 27, 2011
+ * Revision: V2.1
  * This software program is licensed subject to the GNU General Public License
  * (GPL).Version 2,June 1991, available at http://www.fsf.org/copyleft/gpl.html
 
@@ -31,9 +31,9 @@
 
 #define SENSOR_CHIP_ID_BMM (0x32)
 
-#define BMM_REG_NAME(name) BMM050_##name
-#define BMM_VAL_NAME(name) BMM050_##name
-#define BMM_CALL_API(name) bmm050_##name
+#define BMM_REG_NAME(name) BMC050_##name
+#define BMM_VAL_NAME(name) BMC050_##name
+#define BMM_CALL_API(name) bmc050_##name
 
 #define BMM_I2C_WRITE_DELAY_TIME 1
 
@@ -73,7 +73,7 @@ static const struct op_mode_map op_mode_maps[] = {
 
 
 struct bmm_client_data {
-	struct bmm050 device;
+	struct bmc050 device;
 	struct i2c_client *client;
 	struct input_dev *input;
 	struct delayed_work work;
@@ -84,7 +84,7 @@ struct bmm_client_data {
 
 	atomic_t delay;
 
-	struct bmm050_mdata value;
+	struct bmc050_mdata value;
 	u8 enable:1;
 	s8 op_mode:4;
 	u8 odr;
@@ -762,7 +762,7 @@ static ssize_t bmm_show_value(struct device *dev,
 static ssize_t bmm_show_value_raw(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct bmm050_mdata value;
+	struct bmc050_mdata value;
 	int count;
 
 	BMM_CALL_API(get_raw_xyz)(&value);
@@ -1339,7 +1339,6 @@ static int bmm_remove(struct i2c_client *client)
 
 static const struct i2c_device_id bmm_id[] = {
 	{SENSOR_NAME, 0},
-	{}
 };
 
 MODULE_DEVICE_TABLE(i2c, bmm_id);

@@ -93,7 +93,7 @@
 #define APDS9190_ENABLE_PEN     0x04
 #define APDS9190_ENABLE_PON     0x01
 
-//                                                                           
+// LGE_CHANGE_S [younglae.kim@lge.com] , add for Proximity sensor calibration
 #define DEFAULT_CROSS_TALK		50
 #if defined(CONFIG_MACH_LGE_U2_P760)
 #define ADD_TO_CROSS_TALK       250
@@ -103,7 +103,7 @@
 #define SUB_FROM_PS_THRESHOLD	100
 
 static int stored_cross_talk = 0;
-//                                    
+// LGE_CHANGE_E [younglae.kim@lge.com]
 
 #define APDS9190_SENSOR_DEBUG 0
 
@@ -142,10 +142,10 @@ struct apds9190_data {
 	unsigned int ps_detection;		/* 0 = near-to-far; 1 = far-to-near */
 	unsigned int ps_data;			/* to store PS data */
 
-//                                                                           
+// LGE_CHANGE_S [younglae.kim@lge.com] , add for Proximity sensor calibration
 	unsigned int cross_talk;
     unsigned int avg_cross_talk;
-//                                    
+// LGE_CHANGE_E [younglae.kim@lge.com]
 
     struct wake_lock wakelock;
 };
@@ -160,7 +160,7 @@ static int apds9190_initialized = 0;
  */
 
 
-//                                                                           
+// LGE_CHANGE_S [younglae.kim@lge.com] , add for Proximity sensor calibration
 static int __init prox_cal_data(char *str)
 {
 	s32 value = simple_strtol(str, NULL, 10);
@@ -170,7 +170,7 @@ static int __init prox_cal_data(char *str)
 	return 1;
 }
 __setup("prox_cal_data=", prox_cal_data);
-//                                    
+// LGE_CHANGE_E [younglae.kim@lge.com]
 
 static int apds9190_set_command(struct i2c_client *client, int command)
 {
@@ -969,7 +969,7 @@ static ssize_t apds9190_show_status(struct device *dev,
 static DEVICE_ATTR(status, S_IRUSR | S_IRGRP, apds9190_show_status, NULL);
 
 
-//                                                                           
+// LGE_CHANGE_S [younglae.kim@lge.com] , add for Proximity sensor calibration
 static int apds9190_Run_Cross_talk_Calibration(struct i2c_client *client)
 {
 	struct apds9190_data *data = i2c_get_clientdata(client);
@@ -1010,8 +1010,8 @@ RE_CALIBRATION:
 	// store cross_talk value into the apds9190_data structure
 	data->cross_talk = total_pdata / 10;
 
-    /*                                                                          
-                                                                                    
+    /* LGE_CHANGE [younglae.kim@lge.com] 2012-07-05, original average cross-talk
+     * this value is used at Hidden Menu to check if the calibration is pass or fail
     */
     data->avg_cross_talk = data->cross_talk;
 
@@ -1060,9 +1060,6 @@ static ssize_t apds9190_store_run_calibration(struct device *dev,
 	// set threshold for near/far status
 	data->ps_threshold = data->cross_talk + ADD_TO_CROSS_TALK;
 	data->ps_hysteresis_threshold = data->ps_threshold - SUB_FROM_PS_THRESHOLD;
-	
-	apds9190_set_pilt(client, data->ps_hysteresis_threshold);
-	apds9190_set_piht(client, data->ps_threshold);
 
 	printk("%s: [piht][pilt][c_t] = [%d][%d][%d]\n",
 				__func__, data->ps_threshold, data->ps_hysteresis_threshold, data->cross_talk);
@@ -1071,9 +1068,9 @@ static ssize_t apds9190_store_run_calibration(struct device *dev,
 }
 static DEVICE_ATTR(run_calibration,  S_IRUGO | S_IWUSR| S_IWGRP,
 		   apds9190_show_run_calibration, apds9190_store_run_calibration);
-//                                    
+// LGE_CHANGE_E [younglae.kim@lge.com]
 
-//                                                                           
+// LGE_CHANGE_S [younglae.kim@lge.com] 2012-07-18, add for ALC/Proximity Test
 static ssize_t apds9190_show_default_crosstalk(struct device *dev,
             struct device_attribute *attr, char *buf)
 {
@@ -1096,7 +1093,7 @@ static ssize_t apds9190_store_default_crosstalk(struct device *dev,
 }
 static DEVICE_ATTR(default_crosstalk, S_IRUGO | S_IWUSR | S_IWGRP,
             apds9190_show_default_crosstalk, apds9190_store_default_crosstalk);
-//                                    
+// LGE_CHANGE_E [younglae.kim@lge.com]
 
 static struct attribute *apds9190_attributes[] = {
 	
@@ -1183,7 +1180,7 @@ static int __devinit apds9190_probe(struct i2c_client *client,
     data->pers = pdata->pers;
     data->ppcount = 0x0F;
 
-//                                                                           
+// LGE_CHANGE_S [younglae.kim@lge.com] , add for Proximity sensor calibration
 	if(stored_cross_talk >= 0 && stored_cross_talk <= 720)
 		data->cross_talk = stored_cross_talk;
 	else
@@ -1198,14 +1195,14 @@ static int __devinit apds9190_probe(struct i2c_client *client,
 						__func__, stored_cross_talk, data->cross_talk,
 						__func__, data->ps_hysteresis_threshold, data->ps_threshold);
 
-//                                    
+// LGE_CHANGE_E [younglae.kim@lge.com]
     data->irq_gpio = pdata->irq_gpio;
 
     gpio_request(pdata->ldo_gpio, "apds9190_ldo");
     gpio_direction_output(pdata->ldo_gpio, 1);
     gpio_set_value(pdata->ldo_gpio, 1);
 
-//                                                                              
+// LGE_CHANGE_ need delay >4.5ms between VDD up & I2C init [jongho3.lee@lge.com]
 	mdelay(5);
 
 	data->client = client;

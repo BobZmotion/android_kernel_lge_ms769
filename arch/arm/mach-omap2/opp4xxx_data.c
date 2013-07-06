@@ -177,8 +177,13 @@ static struct omap_opp_def __initdata omap443x_opp_def_list[] = {
 	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 800000000, OMAP4430_VDD_MPU_OPPTURBO_UV),
 	/* MPU OPP4 - OPP-NT */
 	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 1008000000, OMAP4430_VDD_MPU_OPPNITRO_UV),
+#if defined(CONFIG_MACH_LGE_CX2) //##hwcho20120518 1.2Ghz Àû¿ë.
+	/* MPU OPP5 - OPP-SB */
+	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 1200000000, OMAP4430_VDD_MPU_OPPNITROSB_UV),
+#else
 	/* MPU OPP5 - OPP-SB */
 	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", false, 1200000000, OMAP4430_VDD_MPU_OPPNITROSB_UV),
+#endif //##	
 	/* L3 OPP1 - OPP50 */
 	OPP_INITIALIZER("l3_main_1", "virt_l3_ck", "core", true, 100000000, OMAP4430_VDD_CORE_OPP50_UV),
 	/* L3 OPP2 - OPP100, OPP-Turbo, OPP-SB */
@@ -479,13 +484,7 @@ static struct omap_opp_def __initdata omap447x_opp_low_def_list[] = {
 	/* SGX OPP2 - OPP100 */
 	OPP_INITIALIZER("gpu", "dpll_per_m7x2_ck", "core", true, 307200000, OMAP4470_VDD_CORE_OPP100_UV),
 	/* SGX OPP3 - OPPOV */
-	OPP_INITIALIZER("gpu", "dpll_per_m7x2_ck", "core", true, 384000000, OMAP4470_VDD_CORE_OPP100_OV_UV),
-	/* BB2D OPP1 - OPP50 */
-	OPP_INITIALIZER("bb2d", "dpll_per_m6x2_ck", "core", true, 153600000, OMAP4470_VDD_CORE_OPP50_UV),
-	/* BB2D OPP1 - OPP100 */
-	OPP_INITIALIZER("bb2d", "dpll_per_m6x2_ck", "core", true, 307200000, OMAP4470_VDD_CORE_OPP100_UV),
-	/* BB2D OPP2 - OPP-OV */
-	OPP_INITIALIZER("bb2d", "dpll_per_m6x2_ck", "core", true, 384000000, OMAP4470_VDD_CORE_OPP100_OV_UV),
+	OPP_INITIALIZER("gpu", "dpll_per_m7x2_ck", "core", false, 384000000, OMAP4470_VDD_CORE_OPP100_OV_UV),
 	/* FDIF OPP1 - OPP25 */
 	OPP_INITIALIZER("fdif", "fdif_fck", "core", true, 32000000, OMAP4470_VDD_CORE_OPP50_UV),
 	/* FDIF OPP2 - OPP50 */
@@ -540,10 +539,6 @@ static struct omap_opp_def __initdata omap447x_opp_high_def_list[] = {
 	/* SGX OPP2 - OPP100 is absent*/
 	/* SGX OPP3 - OPPOV */
 	OPP_INITIALIZER("gpu", "dpll_per_m7x2_ck", "core", true, 384000000, OMAP4470_VDD_CORE_OPP100_OV_UV),
-	/* BB2D OPP1 - OPP50 */
-	OPP_INITIALIZER("bb2d", "dpll_per_m6x2_ck", "core", true, 192000000, OMAP4470_VDD_CORE_OPP50_UV),
-	/* BB2D OPP2 - OPP-OV */
-	OPP_INITIALIZER("bb2d", "dpll_per_m6x2_ck", "core", true, 384000000, OMAP4470_VDD_CORE_OPP100_OV_UV),
 	/* FDIF OPP1 - OPP25 */
 	OPP_INITIALIZER("fdif", "fdif_fck", "core", true, 32000000, OMAP4470_VDD_CORE_OPP50_UV),
 	/* FDIF OPP2 - OPP50 */
@@ -661,9 +656,9 @@ int __init omap4_opp_init(void)
 		r = omap_init_opp_table(omap446x_opp_def_list,
 			ARRAY_SIZE(omap446x_opp_def_list));
 		trimmed = omap_readl(0x4a002268) & ((1 << 18) | (1 << 19));
-		/*                                        
-                                                     
-   */
+		/* LGE_SJIT 2012-01-13 [dojip.kim@lge.com]
+		 * wrong works on iFF rev_b, so temporarily blocked
+		 */
 #ifdef CONFIG_MACH_LGE_IFF
 		/* if device is untrimmed override DPLL TRIM register */
 		if (system_rev > 2 && !trimmed)
@@ -703,10 +698,8 @@ int __init omap4_opp_init(void)
 		omap4_opp_enable("iva", 500000000);
 
 	/* Enable Nitro and NitroSB MPU OPPs */
-#if !defined(CONFIG_MACH_LGE_U2)
 	if (omap4_has_mpu_1_2ghz())
 		omap4_opp_enable("mpu", 1200000000);
-#endif
 	if (!trimmed)
 		pr_info("This is DPLL un-trimmed SOM. OPP is limited at 1.2 GHz\n");
 	if (omap4_has_mpu_1_5ghz() && trimmed)

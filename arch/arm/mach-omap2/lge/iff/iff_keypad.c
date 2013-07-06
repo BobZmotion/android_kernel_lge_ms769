@@ -16,8 +16,8 @@
 #include <lge/common.h>
 #include <lge/board_rev.h>
 
-/*                                                                   */
-/*                                                 */
+/* LGE_SJIT 2011-11-17 [dojip.kim@lge.com] modified for omap4-keypad */
+/* LGE_SJIT_S 2011-10-12 [choongryeol.lee@lge.com] */
 static const int iff_keymap[] = {
 	KEY(0, 0, KEY_VOLUMEUP),
 	KEY(1, 0, KEY_VOLUMEDOWN),
@@ -34,14 +34,14 @@ static struct omap4_keypad_platform_data iff_keypad_data = {
 	.cols			= 1,
 };
 
-/*                                                  */
+/* LGE_SJIT_E 2011-10-12 [choongryeol.lee@lge.com]  */
 
 int __init iff_keypad_init(void)
 {
-	/*                                        
-                                               
-                                                       
-  */
+	/* LGE_SJIT 2012-01-13 [dojip.kim@lge.com]
+	 * Not use omap keypad driver due to LG HW bug
+	 * rev_c uses gpio-keys which is defined in iff_pdev.c
+	 */
 	if (system_rev == LGE_PCB_C)
 		return 0;
 

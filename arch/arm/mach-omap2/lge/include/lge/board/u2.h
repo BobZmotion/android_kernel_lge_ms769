@@ -82,7 +82,7 @@ void lge_set_reboot_reason(unsigned int reason);
 #else
 #define LGE_RAM_CONSOLE_START_DEFAULT (PLAT_PHYS_OFFSET + (455 * SZ_1M))
 #define LGE_RAM_CONSOLE_SIZE_DEFAULT  (SZ_1M)
-#endif /*                         */
+#endif /* CONFIG_LGE_HANDLE_PANIC */
 #endif /* CONFIG_ANDROID_RAM_CONSOLE */
 
 /* gpios for NFC - PN544 */
@@ -92,7 +92,7 @@ void lge_set_reboot_reason(unsigned int reason);
 //#define NFC_GPIO_FRIM		49
 #define NFC_GPIO_FRIM_HW_1_X	42
 //#define NFC_I2C_SLAVE_ADDR 	0x28
-#endif //                    
+#endif //CONFIG_LGE_NFC_PN544
 
 /* gpios for GPS */
 #if defined(CONFIG_GPS)
@@ -111,4 +111,4 @@ void lge_set_reboot_reason(unsigned int reason);
 extern struct sii9244_platform_data sii9244_pdata;
 #endif
 
-#endif /*                  */
+#endif /* __LGE_BOARD_U2_H */

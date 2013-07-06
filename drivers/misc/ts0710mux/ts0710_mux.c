@@ -2,7 +2,7 @@
 // -------------------- Start of Changes History -------------------------------------
 // when       who     what, where, why
 // --------   ---     ---------------------------------------------------------------- 
-//                                                                                                      
+// 04/14/11  Teleca   LGE_TELECA_CR#402_TD#20898_PHONE_RESET - Teleca - Phone restarts when data is used
 // -------------------- End of Changes History ---------------------------------------
 
 /*
@@ -100,7 +100,7 @@
 
 //	macro : ENABLE_MUX_WAKE_LOCK
 //	description : This macro enables wakelock if ts_ldisc_close function is called because of RILD exit
-//                                                                                                
+//#define LGE_DUMP_SEQUENCE // et.jo. ATTENTION: LOG make phone slow. enable only dubugging need. 
 #define ENABLE_MUX_WAKE_LOCK
 #ifdef ENABLE_MUX_WAKE_LOCK
 
@@ -214,9 +214,9 @@ struct spi_data_recived_struct {
     int size;
     int updated;
 };
-//                                                                             
+// LGE_UPDATE_S eungbo.shim@lge.com 20110307 -- Increasing PRE Q Buffer Size   
 #define MAX_WAITING_FRAMES 1000 //100
-//                                                                           
+// LGE_UPDATE_E eungbo.shim@lge.com 20110307 -- Increasing PRE Q Buffer Size 
 struct spi_data_send_struct;
 struct spi_data_send_struct {
     struct spi_data_send_struct *next;
@@ -301,7 +301,7 @@ static int node_put_to_send(u8 dlci, u8 *data, int size)
                 max_frame_usage = free_node;
 #ifdef LGE_DUMP_SEQUENCE
 				printk("\nTS0710:node_put_to_send:max_frame_usage=%d\n",max_frame_usage);
-#endif /*                   */            
+#endif /* LGE_DUMP_SEQUENCE */            
 			}
             break;    
         }
@@ -342,7 +342,7 @@ static int node_put_to_send(u8 dlci, u8 *data, int size)
 	else
 		printk("MUX:retval ERROR!!!: %d\n", retval);
 	printk("MUX:node_put_to_send\n");
-#endif //                   
+#endif // LGE_DUMP_SEQUENCE 
     return retval;
 } 
 
@@ -1087,7 +1087,7 @@ void process_uih(ts0710_con * ts0710, char *data, int len, u8 dlci) {
 	tty->ldisc.ops->receive_buf(tty, uih_data_start, NULL, uih_len);
 #endif
 	if (flow_control)
-		tty_throttle(tty);	//                                                                   
+		tty_throttle(tty);	//20101127-3, syblue.lee@lge.com, Teleca's patch for mux flow control
 //		ts0710_flow_off(tty, dlci, ts0710);
 }
 
@@ -1432,13 +1432,13 @@ static void mux_close(struct tty_struct *tty, struct file *filp)
     {
 /*Workaround Infineon modem - DLS opened once will never be closed*/
         TS0710_PRINTK("%s - skip to close channel[%d]\n", __FUNCTION__, dlci);  
-//                                                                         
+//20100915-1, syblue.lee@lge.com, Fix VT can't recevie data from CP [START]
     	if(dlci==12)
     	{	//When VT close DLC 12 with flow off status, must send flow ON status to CP
             //TS0710_PRINTK("%s - sending flow ON status to CP\n", __FUNCTION__);  
     		ts0710_flow_on(dlci, &ts0710_connection);
     	}
-//                                                                     
+//20100915, syblue.lee@lge.com, Fix VT can't recevie data from CP [END]
         return;
     }
 #else        
@@ -1469,7 +1469,7 @@ static void mux_close(struct tty_struct *tty, struct file *filp)
 		mux_recv_info[line] = 0;
 		TS0710_DEBUG("Free mux_recv_info for /dev/mux%d\n", line);
 	}
-        tty_unthrottle(tty);	//                                                                   
+        tty_unthrottle(tty);	//20101127-3, syblue.lee@lge.com, Teleca's patch for mux flow control
 //	ts0710_flow_on(dlci, ts0710);
 
 	wake_up_interruptible(&tty->read_wait);
@@ -1664,9 +1664,9 @@ static int mux_write(struct tty_struct *tty,
   {
     	TS0710_DEBUG("TS0710 Write:Flow OFF state = %d \n",ts0710->dlci[dlci].state);
 
-//                                             
+// LGE_TELECA_CR#402_TD#20898_PHONE_RESET START
 		if(mux_filp[dlci] != NULL && mux_filp[dlci]->f_flags & O_NONBLOCK)
-//                                           
+// LGE_TELECA_CR#402_TD#20898_PHONE_RESET END
 		{
       		TS0710_DEBUG("TS0710 Write: returning  EWOULDBLOCK for flow stopped channel\n");
       		return -EWOULDBLOCK;
@@ -1688,9 +1688,9 @@ static int mux_write(struct tty_struct *tty,
 
           if(frame_written == -ENOMEM) //-12 == ENOMEM // EBS 
 		  {
-//                                             
+// LGE_TELECA_CR#402_TD#20898_PHONE_RESET START
 	            if(mux_filp[dlci] != NULL && mux_filp[dlci]->f_flags & O_NONBLOCK)
-//                                           
+// LGE_TELECA_CR#402_TD#20898_PHONE_RESET END
 				{
 	              return -EWOULDBLOCK;
 	            }
@@ -1970,10 +1970,10 @@ void ts_ldisc_rx(struct tty_struct *tty, const u8 *data, char *flags, int size)
 	            }
 	            else
 				{
-					//                                                                  
+					// LGE_UPDATE_S eungbo.shim@lge.com -- Kernel mux received bad data.
 						if(i == 0 || i == 1|| i == 2|| i == 3)
 		              		printk("\n[LGE-MUX] :ts_ldisc_rx:bad_data,%x  Size = %d\n",data[i], size);
-					//                                                                  
+					// LGE_UPDATE_E eungbo.shim@lge.com -- Kernel mux received bad data.
 
 						break;
           	     }
@@ -2155,9 +2155,9 @@ static int ts_ldisc_open(struct tty_struct *tty)
     spi_data_recieved.flags = NULL;
     spi_data_recieved.size = 0;
     spi_data_recieved.updated = 0;
-    //                                                                            
+    // LGE_UPDATE_S // 20100826 syblue.lee@lge.com, initialize task handle [START]
     task = NULL;
-    //                                                                            
+    // LGE_UPDATE_E // 20100826 syblue.lee@lge.com, initialize task handle [START]
     write_task = NULL;
     write_task = kthread_run(ts_ldisc_tx_looper,NULL,"%s","ts_ldisc_tx_looper");
     if(write_task == NULL)
@@ -2182,9 +2182,9 @@ static void ts_ldisc_close(struct tty_struct *tty)
         TS0710_DEBUG("ts_ldisc_close READ_THREAD is stopped\n");    
     }
     if(write_task != NULL){
-        //                                                                                                        
+        // LGE_UPDATE_S // 20100826 syblue.lee@lge.com, if write semaphore holds on the thread, release it [START]
         up(&spi_write_sema);
-        //                                                                                                        
+        // LGE_UPDATE_E // 20100826 syblue.lee@lge.com, if write semaphore holds on the thread, release it [START]
         kthread_stop(write_task);
         TS0710_DEBUG("ts_ldisc_close WRITE_THREAD is stopped\n");    
     }
@@ -2252,7 +2252,7 @@ static void ts_ldisc_close(struct tty_struct *tty)
 	ts_ldisc_called = 0; //false
 	TS0710_PRINTK("[%s] ts_ldisc_called => 0 !!!!\n", __FUNCTION__);
 #endif //RIL_RECOVERY_MODE
-#endif //              
+#endif //LGE_KERNEL_MUX
 
 }
 

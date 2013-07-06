@@ -687,68 +687,6 @@ int usb_remove_device(struct usb_device *udev)
 	return 0;
 }
 
-bool usb_can_disconnect_device(struct usb_device *udev)
-{
-	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
-
-	/* Currently only root hubs supported */
-	if (udev->parent == NULL && hcd->driver->disconnect)
-		return true;
-
-	return false;
-}
-
-bool usb_can_reconnect_device(struct usb_device *udev)
-{
-	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
-
-	/* Currently only root hubs supported */
-	if (udev->parent == NULL && hcd->driver->reconnect)
-		return true;
-
-	return false;
-}
-
-
-/**
- * usb_disconnect_device - disconnect a device
- * @port: port with device to be disconnected
- */
-int usb_disconnect_device(struct usb_device *udev, int port)
-{
-	struct usb_hcd *hcd;
-
-	if (udev->parent)
-		return -EINVAL;
-
-	hcd = bus_to_hcd(udev->bus);
-
-	if (!hcd->driver->disconnect)
-		return -EINVAL;
-
-	return hcd->driver->disconnect(hcd, port);
-}
-
-/**
- * usb_reconnect_device - re-connect a device
- * @port: port with device to be reconnected
- * Must be disconnected before
- */
-int usb_reconnect_device(struct usb_device *udev, int port)
-{
-	struct usb_hcd *hcd;
-
-	if (udev->parent)
-		return -EINVAL;
-
-	hcd = bus_to_hcd(udev->bus);
-
-	if (!hcd->driver->reconnect)
-		return -EINVAL;
-
-	return hcd->driver->reconnect(hcd, port);
-}
-
 enum hub_activation_type {
 	HUB_INIT, HUB_INIT2, HUB_INIT3,		/* INITs must come first */
 	HUB_POST_RESET, HUB_RESUME, HUB_RESET_RESUME,
@@ -773,26 +711,10 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 	if (type == HUB_INIT3)
 		goto init3;
 
-	/* The superspeed hub except for root hub has to use Hub Depth
-	 * value as an offset into the route string to locate the bits
-	 * it uses to determine the downstream port number. So hub driver
-	 * should send a set hub depth request to superspeed hub after
-	 * the superspeed hub is set configuration in initialization or
-	 * reset procedure.
-	 *
-	 * After a resume, port power should still be on.
+	/* After a resume, port power should still be on.
 	 * For any other type of activation, turn it on.
 	 */
 	if (type != HUB_RESUME) {
-		if (hdev->parent && hub_is_superspeed(hdev)) {
-			ret = usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
-					HUB_SET_DEPTH, USB_RT_HUB,
-					hdev->level - 1, 0, NULL, 0,
-					USB_CTRL_SET_TIMEOUT);
-			if (ret < 0)
-				dev_err(hub->intfdev,
-						"set hub depth failed\n");
-		}
 
 		/* Speed up system boot by using a delayed_work for the
 		 * hub's initial power-up delays.  This is pretty awkward
@@ -1069,6 +991,18 @@ static int hub_configure(struct usb_hub *hub,
 	if (!hub->descriptor) {
 		ret = -ENOMEM;
 		goto fail;
+	}
+
+	if (hub_is_superspeed(hdev) && (hdev->parent != NULL)) {
+		ret = usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
+				HUB_SET_DEPTH, USB_RT_HUB,
+				hdev->level - 1, 0, NULL, 0,
+				USB_CTRL_SET_TIMEOUT);
+
+		if (ret < 0) {
+			message = "can't set hub depth";
+			goto fail;
+		}
 	}
 
 	/* Request the entire hub descriptor.
@@ -1741,7 +1675,9 @@ void usb_disconnect(struct usb_device **pdev)
 	 * so that the hardware is now fully quiesced.
 	 */
 	dev_dbg (&udev->dev, "unregistering device\n");
+	mutex_lock(hcd->bandwidth_mutex);
 	usb_disable_device(udev, 0);
+	mutex_unlock(hcd->bandwidth_mutex);
 	usb_hcd_synchronize_unlinks(udev);
 
 	usb_remove_ep_devs(&udev->ep0);

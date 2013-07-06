@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmdefs.h 316830 2012-02-23 20:29:22Z $
+ * $Id: bcmdefs.h 311099 2012-01-27 14:46:59Z $
  */
 
 #ifndef	_bcmdefs_h_
@@ -55,7 +55,6 @@
 #define CONST	const
 #ifndef BCMFASTPATH
 #define BCMFASTPATH
-#define BCMFASTPATH_HOST
 #endif 
 
 

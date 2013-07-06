@@ -287,7 +287,7 @@ long has_wake_lock(int type)
 static void suspend_sys_sync(struct work_struct *work)
 {
 	if (debug_mask & DEBUG_SUSPEND)
-		pr_info("PM: Syncing filesystems...[suspend_sys_sync]");
+		pr_info("PM: Syncing filesystems...\n");
 
 	sys_sync();
 
@@ -654,7 +654,7 @@ int wake_lock_active(struct wake_lock *lock)
 }
 EXPORT_SYMBOL(wake_lock_active);
 
-/*                                                                    */
+/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com] suspend autotest (demigod) */
 #ifdef CONFIG_LGE_SUSPEND_AUTOTEST
 int wake_lock_active_name(char *name)
 {

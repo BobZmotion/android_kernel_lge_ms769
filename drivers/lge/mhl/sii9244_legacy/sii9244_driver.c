@@ -71,7 +71,7 @@ extern struct i2c_client *sii9244a_i2c_client;
 extern struct i2c_client *sii9244b_i2c_client;
 extern struct i2c_client *sii9244c_i2c_client;
 
-#if 1 //                                               
+#if 1 // LGE_SJIT 2011-12-09 [choongryeol.lee@lge.com] 
 void hdmi_restart(void)
 {
 /* In kernel 3.0, hdmi_restart() is removed
@@ -134,7 +134,7 @@ u8 TX_RGND_check (void);
 void process_mhl_discovery_success(void);
 void cbus_cmd_bind(u8 command, u8 offset, u8* data, u16 data_lenth, bool priority);
 
-//                                
+// wooho47.jung@lge.com 2011.11.11
 // ADD : wrong used work queue function.
 // mismatch the dev address pointer.
 //static void cbus_cmd_send(void* _dev);
@@ -172,7 +172,7 @@ extern void hdmi_common_send_uevent(int x, int y, int action, int tvCtl_x, int t
 
 static unsigned short kbd_key_pressed[2];
 #endif
-//                  
+// kibum.lee@lge.com
 //static DEFINE_SPINLOCK(mhl_timer_lock);
 int resen_check_init = FALSE;
 int rsen_timer = FALSE;
@@ -183,7 +183,7 @@ struct rsen_check_delayed_work rsen_check_control;
 struct timer_list simg_timer;
 
 #include <linux/mutex.h>
-static DEFINE_MUTEX(cbus_cmd_bind_mutex);		//                  
+static DEFINE_MUTEX(cbus_cmd_bind_mutex);		// kibum.lee@lge.com
 extern bool is_MHL_connected(void);
 //--------------------------------------------------------------------
 struct simg_state {
@@ -399,7 +399,7 @@ struct i2c_client* get_simgI2C_client(u8 device_id)
 //--------------------------------------------------------------------
 u8 gpio_outb( u8 set, u8 gpio_no )
 {
-//               
+// jh.koo@lge.com
 /*
   if(set)
   {
@@ -423,7 +423,7 @@ signed long simg_schedule_timeout_uninterruptible(signed long timeout)
 	__set_current_state(TASK_UNINTERRUPTIBLE);
 	rc = schedule_timeout(timeout);
 	SII_LOG_FUNCTION_NAME_EXIT;
-	//                                       
+	//msleep(timeout);		// kibum.lee@lge.com 
 	return rc;
 }
 
@@ -453,7 +453,7 @@ static irqreturn_t simg_int_irq_handler(int irq, void *devid)
     SII_LOG_FUNCTION_NAME_ENTRY;
  	schedule_work(&simg_interrupt_work);
     SII_LOG_FUNCTION_NAME_EXIT;
-	return IRQ_HANDLED;		//                  
+	return IRQ_HANDLED;		// kibum.lee@lge.com
 }
 
 void simg_interrupt_enable(bool flag)
@@ -493,7 +493,7 @@ u8 I2C_ReadByte(u8 deviceID, u8 offset)
         return 0;	
     }
 
-	//                                      
+	// just defence code //kibum.lee@lge.com
 	if(is_MHL_connected() == false)
 	{
         //SII_DEV_DBG("[MHL] mhl disconnected\n");
@@ -531,7 +531,7 @@ int I2C_WriteByte(u8 deviceID, u8 offset, u8 value)
 	unsigned char data[2];
 	struct i2c_client* client_ptr = get_simgI2C_client(deviceID);
 
-	//                                      
+	// just defence code //kibum.lee@lge.com
 	if(is_MHL_connected() == false)
 	{
         //SII_DEV_DBG("[MHL] mhl disconnected\n");
@@ -612,7 +612,7 @@ void ReadModifyWriteCBUS(u8 Offset, u8 Mask, u8 Value)
   WriteByteCBUS(Offset, Temp);
 }
 
-
+#if 0
 static void simg_chip_rst(void)
 {
   //skip power on in this test code
@@ -635,32 +635,8 @@ static void simg_chip_rst(void)
 #endif
   
 }
-
-#if 0
-static void simg_interrupt_cb(struct work_struct *simg_work)
-{
-    static int function_start = 1;   //for test....		// for MHL CTS
-    SII_LOG_FUNCTION_NAME_ENTRY;
-    if(function_start == 0)
-    {
-        function_start = 1;
-        simg_interrupt_enable(FALSE);
-        simg_msleep(1000);
-        SII_DEV_DBG("SiI9244 function start ## **\n");
-        simg_msleep(1000);      
-        simg_chip_rst();
-        sii9244_mhl_tx_int();    
-        simg_interrupt_enable(TRUE);
-    }
-    else
-    {
-        SII_DEV_DBG(" ##### (Line:%d) simg_mhl_tx_handler START #####\n", (int)__LINE__ );
-        simg_mhl_tx_handler();
-        SII_DEV_DBG(" ##### (Line:%d) simg_mhl_tx_handler Final END ##### \n", (int)__LINE__ );
-    }
-    SII_LOG_FUNCTION_NAME_EXIT;
-}
 #endif
+//--------------------------------------------------------------------
 
 static void mhl_tx_init(void)
 {
@@ -695,14 +671,14 @@ static u8 CBusProcessErrors (u8 intStatus)
         if ( intStatus & BIT_MSC_XFR_ABORT )
         {
             //result = mscAbortReason = ReadByteCBUS( REG_DDC_ABORT_REASON );
-            result = mscAbortReason = ReadByteCBUS( REG_PRI_XFR_ABORT_REASON );	//                  
+            result = mscAbortReason = ReadByteCBUS( REG_PRI_XFR_ABORT_REASON );	// kibum.lee@lge.com
 
             SII_DEV_DBG_ERROR("CBUS:: MSC Transfer ABORTED. Clearing 0x0D\n");
             WriteByteCBUS( REG_PRI_XFR_ABORT_REASON, 0xFF );
         }
         if ( intStatus & BIT_MSC_ABORT )
         {
-	      result = mscAbortReason = ReadByteCBUS( REG_CBUS_PRI_FWR_ABORT_REASON );	//                  
+	      result = mscAbortReason = ReadByteCBUS( REG_CBUS_PRI_FWR_ABORT_REASON );	// kibum.lee@lge.com
             SII_DEV_DBG_ERROR("CBUS:: MSC Peer sent an ABORT. Clearing 0x0E\n");
             WriteByteCBUS( REG_CBUS_PRI_FWR_ABORT_REASON, 0xFF );
         }
@@ -959,7 +935,7 @@ void process_mhl_discovery_success(void)
 			
                 delete_all_cbus_cmd(); 
                 ForceUsbIdSwitchOpen();
-                simg_msleep(50);			//                  
+                simg_msleep(50);			// kibum.lee@lge.com
                 ReleaseUsbIdSwitchOpen();
 
                 //customer need to change the USB PATH
@@ -1079,12 +1055,12 @@ void proccess_msc_msg_handle(void)
             {
                 SiiMhlTxRcpkSend(msg_data);
                 // need to send RCP keycode...
-//                                                                    
+// LGE_CHANGE_S [jh.koo@lge.com] 2011-05-21, [P940] add  MHL driver 		
 #if 1	// xmoondash :: compile error
 /* jinho96.kim 2011.01.06 */
 				rcp_cbus_uevent(msg_data);	//MHL v1 //NAGSM_Android_SEL_Kernel_Aakash_20101126
 #endif
-//                              
+// LGE_CHANGE_E [jh.koo@lge.com]
 
 				printk(KERN_ERR "Key Code:%d \n",msg_data);                
             }
@@ -1214,7 +1190,7 @@ void mhl_path_enable(bool path_en)
 
     SII_DEV_DBG(  "(Line:%d)  MHL_STATUS_PATH_ENABLED !!! path_en=%d\n", (int)__LINE__, path_en ); 
     
-    //                                
+    // wooho47.jung@lge.com 2011.11.11
     // ADD : init data    
     memset(data, 0x00, sizeof(data));
 
@@ -1559,7 +1535,7 @@ void mhltx_got_status(u8 status0, u8 status1)
     u8 data[16];
     u16 data_size;
     
-    //                                
+    // wooho47.jung@lge.com 2011.11.11
     // MOD : init data
     memset(data, 0x00, sizeof(data));
     data_size = 0;
@@ -1760,12 +1736,12 @@ void cbus_cmd_done(void)
             // check the previous data
             if(current_p->payload.data[0] == MHL_MSC_MSG_RCPE)
             {
-	         mutex_lock(&cbus_cmd_bind_mutex);	//                  
+	         mutex_lock(&cbus_cmd_bind_mutex);	// kibum.lee@lge.com
                 next_p = current_p->next;
                 cbus_cmd_head->next = next_p;
                 next_p->prev = cbus_cmd_head;
 
-		   mutex_unlock(&cbus_cmd_bind_mutex);	//                  
+		   mutex_unlock(&cbus_cmd_bind_mutex);	// kibum.lee@lge.com
 		   
                 kfree(current_p);
 
@@ -1788,11 +1764,11 @@ void cbus_cmd_done(void)
 
         case MHL_WRITE_BURST:
 
-		mutex_lock(&cbus_cmd_bind_mutex);	//                  
+		mutex_lock(&cbus_cmd_bind_mutex);	// kibum.lee@lge.com
             next_p = current_p->next;
             cbus_cmd_head->next = next_p;
             next_p->prev = cbus_cmd_head;
-		mutex_unlock(&cbus_cmd_bind_mutex);	//                  
+		mutex_unlock(&cbus_cmd_bind_mutex);	// kibum.lee@lge.com
 		
             kfree(current_p);
 
@@ -1822,11 +1798,11 @@ void cbus_cmd_done(void)
         }
         else if((current_p->offset ==MHL_RCHANGE_INT )&&(current_p->payload.data[0]==MHL_INT_DCAP_CHG ))
         {
-	      mutex_lock(&cbus_cmd_bind_mutex);	//                  
+	      mutex_lock(&cbus_cmd_bind_mutex);	// kibum.lee@lge.com
             next_p = current_p->next;
             cbus_cmd_head->next = next_p;
             next_p->prev = cbus_cmd_head;
-	      mutex_unlock(&cbus_cmd_bind_mutex);	//                  
+	      mutex_unlock(&cbus_cmd_bind_mutex);	// kibum.lee@lge.com
 		
             kfree(current_p);
 
@@ -1852,11 +1828,11 @@ void cbus_cmd_done(void)
             break;
     }
 
-    mutex_lock(&cbus_cmd_bind_mutex);	//                  
+    mutex_lock(&cbus_cmd_bind_mutex);	// kibum.lee@lge.com
     next_p = current_p->next;
     cbus_cmd_head->next = next_p;
     next_p->prev = cbus_cmd_head;
-    mutex_unlock(&cbus_cmd_bind_mutex);	//                  
+    mutex_unlock(&cbus_cmd_bind_mutex);	// kibum.lee@lge.com
 
     kfree(current_p);
     if(next_p == cbus_cmd_tail)
@@ -1890,10 +1866,7 @@ void cbus_cmd_put_workqueue(cbus_cmd_node* node_p)
         return ;
     }
     
-    //                                
-    // MOD : lockup issue
-    //dev = (cbus_send_cmd_type*)kmalloc(sizeof(cbus_send_cmd_type), GFP_KERNEL);
-    dev = (cbus_send_cmd_type*)kmalloc(sizeof(cbus_send_cmd_type), GFP_ATOMIC);
+    dev = (cbus_send_cmd_type*)kzalloc(sizeof(cbus_send_cmd_type), GFP_ATOMIC);
 
     if (dev == NULL) 
     {
@@ -1903,8 +1876,6 @@ void cbus_cmd_put_workqueue(cbus_cmd_node* node_p)
 
     SII_DEV_DBG("*** send:%x, cmd:%x, offset:%x data[0]:%x data[1]:%x \n", 
         node_p->cmd_send, node_p->command, node_p->offset, node_p->payload.data[0],node_p->payload.data[1]); 
-  
-    memset(dev, 0x00, sizeof(cbus_send_cmd_type));
   
     node_p->cmd_send = TRUE;
     dev->command = node_p->command;
@@ -1933,7 +1904,7 @@ void delete_all_cbus_cmd(void)
     cbus_cmd_node *p;
     cbus_cmd_node *s;
 
-  mutex_lock(&cbus_cmd_bind_mutex);	//                  
+  mutex_lock(&cbus_cmd_bind_mutex);	// kibum.lee@lge.com
     p = cbus_cmd_head->next;
 
     while(p != cbus_cmd_tail)
@@ -1947,7 +1918,7 @@ void delete_all_cbus_cmd(void)
     cbus_cmd_head->next = cbus_cmd_tail;
     cbus_cmd_tail->prev = cbus_cmd_head;
 
-  mutex_unlock(&cbus_cmd_bind_mutex);	//                  
+  mutex_unlock(&cbus_cmd_bind_mutex);	// kibum.lee@lge.com
     return;
 }
 
@@ -1960,20 +1931,15 @@ void cbus_cmd_bind(u8 command, u8 offset, u8* data, u16 data_lenth, bool priorit
     cbus_cmd_node *s;
     SII_LOG_FUNCTION_NAME_ENTRY;
 
-    new_node = (cbus_cmd_node*)kmalloc(sizeof(cbus_cmd_node), GFP_KERNEL);
+    new_node = (cbus_cmd_node*)kzalloc(sizeof(cbus_cmd_node), GFP_KERNEL);
 
     if (new_node == NULL) 
     {
         SII_DEV_DBG_ERROR("new_node == NULL)\n"); 
         return;
     }
-
     mutex_lock(&cbus_cmd_bind_mutex);
 	
-    //                                
-    // ADD : init data    
-    memset(new_node, 0x00, sizeof(cbus_cmd_node));
-
     if(priority)
     {
         SII_DEV_DBG("CBUS command urgent priority \n");
@@ -2050,13 +2016,13 @@ void cbus_cmd_bind(u8 command, u8 offset, u8* data, u16 data_lenth, bool priorit
 
 
 
-//                                
+// wooho47.jung@lge.com 2011.11.11
 // MOD : wrong used work queue function.
 // mismatch the dev address pointer.
 //static void cbus_cmd_send(void* _dev)
 static void cbus_cmd_send(struct work_struct *work)    
 {
-    //                                
+    // wooho47.jung@lge.com 2011.11.11
     // MOD : wrong used work queue function.
     // mismatch the dev address pointer.
     //cbus_send_cmd_type *dev = (cbus_send_cmd_type *)_dev;
@@ -2067,7 +2033,7 @@ static void cbus_cmd_send(struct work_struct *work)
 
     SII_LOG_FUNCTION_NAME_ENTRY;
     
-    //                                
+    // wooho47.jung@lge.com 2011.11.11
     // ADD : null defense     
     if((!dev) || (mscCmdInProgress))
     {
@@ -2659,12 +2625,12 @@ static void InitCBusRegs (void)
 // CTS 6.3.1.1
 //	I2C_WriteByte(PAGE_CBUS_0XC8, 0x83, (u8)(322 >>   8));	// CDF check
 //	I2C_WriteByte(PAGE_CBUS_0XC8, 0x84, (u8)(322 & 0xFF));	// CDF check
-//                                                                     
+// LGE_CHANGE_S [sungho.jung@lge.com] 2012-05-08,  CTS 3.2.6.2, 6.3.1.1
 //	I2C_WriteByte(PAGE_CBUS_0XC8, 0x83, 0x0);
 //	I2C_WriteByte(PAGE_CBUS_0XC8, 0x84, 0x0);
 	I2C_WriteByte(PAGE_CBUS_0XC8, 0x83, 0x02); // ADOPTER_ID_H 612 = 0x264
 	I2C_WriteByte(PAGE_CBUS_0XC8, 0x84, 0x64); // ADOPTER_ID_L 612 = 0x264
-//                                                                     
+// LGE_CHANGE_E [sungho.jung@lge.com] 2012-05-08,  CTS 3.2.6.2, 6.3.1.1
 
 	I2C_WriteByte(PAGE_CBUS_0XC8, 0x85, MHL_DEV_VID_LINK_SUPPRGB444);
 	I2C_WriteByte(PAGE_CBUS_0XC8, 0x86, MHL_DEV_AUD_LINK_2CH);
@@ -2672,10 +2638,10 @@ static void InitCBusRegs (void)
 	I2C_WriteByte(PAGE_CBUS_0XC8, 0x88, MHL_LOGICAL_DEVICE_MAP);
 
 //	I2C_WriteByte(PAGE_CBUS_0XC8, 0x89, 0);	// bandwidth 0 -> 5	// CDF check		// not for source
-//                                                            
+// LGE_CHANGE_S [sungho.jung@lge.com] 2012-05-08,  CTS 3.2.6.2
 //	I2C_WriteByte(PAGE_CBUS_0XC8, 0x89, 5);
 	I2C_WriteByte(PAGE_CBUS_0XC8, 0x89, 0xf); // BANDWIDTH 0x5 --> 0xf
-//                                                            
+// LGE_CHANGE_E [sungho.jung@lge.com] 2012-05-08,  CTS 3.2.6.2
 	
 	I2C_WriteByte(PAGE_CBUS_0XC8, 0x8A, (MHL_FEATURE_RCP_SUPPORT | MHL_FEATURE_RAP_SUPPORT |MHL_FEATURE_SP_SUPPORT));
 
@@ -2695,7 +2661,7 @@ static void InitCBusRegs (void)
     regval = (regval | 0x0C);
     I2C_WriteByte(PAGE_CBUS_0XC8,REG_CBUS_LINK_CONTROL_2, regval);
 
-//                           
+/// kibum.lee@lge.com comment
 ///    // Clear legacy bit on Wolverine TX.
 ///    regval = I2C_ReadByte(PAGE_CBUS_0XC8, REG_MSC_TIMEOUT_LIMIT);
 ///    regval &= ~MSC_TIMEOUT_LIMIT_MSB_MASK;
@@ -2718,7 +2684,7 @@ static void InitCBusRegs (void)
 //
 //
 ///////////////////////////////////////////////////////////////////////////
-//                             
+// old driver kibum.lee@lge.com
 //SA_TX_Page1_Primary -> PAGE_1_0x7A
 //SA_TX_HDMI_RX_Primary -> PAGE_2_0x92
 //SA_TX_Page0_Primary -> PAGE_0_0X72
@@ -2874,7 +2840,7 @@ static void WriteInitialRegisterValues (void)
 
 	I2C_WriteByte(PAGE_0_0X72, 0x91, 0xA5);		
 	I2C_WriteByte(PAGE_0_0X72, 0x94, 0x77);			
-	//                                                                                                     
+	//I2C_WriteByte(PAGE_0_0X72, 0x94, 0x75);		// recognition rate up // kibum.lee@lge.com  from simg patch
 
 	I2C_WriteByte(PAGE_CBUS_0XC8, 0x31, I2C_ReadByte(PAGE_CBUS_0XC8, 0x31) | 0x0c);
 	I2C_WriteByte(PAGE_0_0X72, 0xA5, 0xA0); 
@@ -2941,7 +2907,7 @@ void sii9244_mhl_tx_int(void)
 
     memset(&mhl_reciever_cap, 0x00, sizeof(mhl_rx_cap_type));
 
-    //                                
+    // wooho47.jung@lge.com 2011.11.11
     // ADD : for mem leak & null defense
     if(cbus_cmd_head && cbus_cmd_tail)
     {
@@ -2949,13 +2915,13 @@ void sii9244_mhl_tx_int(void)
         delete_all_cbus_cmd();
     }
 
-    mutex_lock(&cbus_cmd_bind_mutex);	//                  
-    //                                
+    mutex_lock(&cbus_cmd_bind_mutex);	// kibum.lee@lge.com
+    // wooho47.jung@lge.com 2011.11.11
     // ADD : for mem leak & null defense
     if(cbus_cmd_head)
         kfree(cbus_cmd_head);
 
-    //                                
+    // wooho47.jung@lge.com 2011.11.11
     // ADD : for mem leak & null defense    
     if(cbus_cmd_tail)
         kfree(cbus_cmd_tail);    
@@ -2970,7 +2936,7 @@ void sii9244_mhl_tx_int(void)
 
     cbus_cmd_head->cmd_send = 0;
     cbus_cmd_tail->cmd_send = 0;
-    mutex_unlock(&cbus_cmd_bind_mutex);	//                  
+    mutex_unlock(&cbus_cmd_bind_mutex);	// kibum.lee@lge.com
 
     WriteInitialRegisterValues();
 
@@ -2986,11 +2952,11 @@ void sii9244_mhl_tx_int(void)
 EXPORT_SYMBOL(sii9244_mhl_tx_int);
 
 
-//                  
+// kibum.lee@lge.com
 void sii9244_driver_init(void)
 {
 	SII_DEV_DBG(" sii9244_driver_init\n" );
-	//                                      
+	//for CTS 3.3.14.3 	// kibum.lee@lge.com
   	init_timer(&simg_timer);
   	simg_timer.function = simg_timer_handler;
 	

@@ -41,6 +41,14 @@
 #include <linux/elfcore.h>
 #include <plat/remoteproc.h>
 
+#define SENSOR_POWER_OFF
+
+#ifdef SENSOR_POWER_OFF
+// Sensor Power off for recovery
+#include <linux/gpio.h>
+// Sensor Power off for recovery
+#endif
+
 /* list of available remote processors on this board */
 static LIST_HEAD(rprocs);
 static DEFINE_SPINLOCK(rprocs_lock);
@@ -88,10 +96,10 @@ static ssize_t rproc_format_trace_buf(char __user *userbuf, size_t count,
 		} else
 			return num_copied;
 print_beg:
-	/*                                        
-                                                
-                                
-  */
+	/* LGE_SJIT 2012-01-25 [dojip.kim@lge.com]
+	 * can not access the trace buffer out of range
+	 * so need to verify 'i < size'
+	 */
 	for (i = 0; i < w_pos && i < size && buf[i]; i++)
 		;
 
@@ -1125,7 +1133,7 @@ static void rproc_loader_cont(const struct firmware *fw, void *context)
 	u64 bootaddr = 0;
 	struct fw_header *image;
 	struct fw_section *section;
-	int left, ret = -EINVAL;
+	int left, ret;
 
 	if (!fw) {
 		dev_err(dev, "%s: failed to load %s\n", __func__, fwfile);
@@ -1147,7 +1155,7 @@ static void rproc_loader_cont(const struct firmware *fw, void *context)
 		goto out;
 	}
 
-	dev_dbg(dev, "BIOS image version is %d\n", image->version);
+	dev_info(dev, "BIOS image version is %d\n", image->version);
 
 	rproc->header = kzalloc(image->header_len, GFP_KERNEL);
 	if (!rproc->header) {
@@ -1172,10 +1180,6 @@ static void rproc_loader_cont(const struct firmware *fw, void *context)
 
 	left = fw->size - sizeof(struct fw_header) - image->header_len;
 
-	/* event currently used to bump the remoteproc to max freq
-	 * while booting.  */
-	_event_notify(rproc, RPROC_PRELOAD, NULL);
-
 	ret = rproc_process_fw(rproc, section, left, &bootaddr);
 	if (ret) {
 		dev_err(dev, "Failed to process the image: %d\n", ret);
@@ -1189,8 +1193,6 @@ out:
 complete_fw:
 	/* allow all contexts calling rproc_put() to proceed */
 	complete_all(&rproc->firmware_loading_complete);
-	if (ret)
-		_event_notify(rproc, RPROC_LOAD_ERROR, NULL);
 }
 
 static int rproc_loader(struct rproc *rproc)
@@ -1300,6 +1302,13 @@ struct rproc *rproc_get(const char *name)
 	struct rproc *rproc, *ret = NULL;
 	struct device *dev;
 	int err;
+#ifdef SENSOR_POWER_OFF     
+    // Sensor Power off for recovery
+    u32 gpio_id;    
+    int gpio_num[3] = {24, 15, 22}; // sensor power gpio
+    int gpioRet, i;
+    // Sensor Power off for recovery
+#endif
 
 	rproc = __find_rproc_by_name(name);
 	if (!rproc) {
@@ -1340,6 +1349,23 @@ struct rproc *rproc_get(const char *name)
 	init_completion(&rproc->firmware_loading_complete);
 
 	dev_info(dev, "powering up %s\n", name);
+
+#ifdef SENSOR_POWER_OFF 
+    // Sensor Power off for recovery
+    for (i = 0; i < 3; i++) {
+        gpio_id = gpio_num[i];
+        gpio_free(gpio_id);
+        gpioRet = gpio_request(gpio_id, "ducati recovery");
+        if (!gpioRet) {
+            printk("Sensor power off gpio%d request success\n", gpio_id);
+            gpio_direction_output(gpio_id, 0);
+            gpio_free(gpio_id);
+        } else {
+            printk("Sensor power off gpio%d request fail %d\n", gpio_id, ret);
+        }
+    }
+    //Sensor Power off for recovery
+#endif
 
 	err = rproc_loader(rproc);
 	if (err) {

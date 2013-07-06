@@ -16,7 +16,7 @@
 #include <linux/platform_device.h>
 #include <linux/reboot.h>
 #include <linux/notifier.h>
-/*                                                                */
+/* LGE_SJIT 2011-12-20 [dojip.kim@lge.com] add for __raw_writel() */
 #include <linux/io.h>
 
 #include <mach/hardware.h>
@@ -34,10 +34,10 @@ static int omap_reboot_notifier_call(struct notifier_block *this,
 	if (!sar_base)
 		return notifier_from_errno(-ENOMEM);
 
-	/*                                        
-                                               
-  */
-#if defined(CONFIG_LGE_HANDLE_PANIC)
+	/* LGE_SJIT 2011-12-20 [dojip.kim@lge.com]
+	 * Handle the boot reason on lge crash handler
+	 */
+#if defined(CONFIG_LGE_HANDLE_PANIC) && !defined(CONFIG_MACH_LGE_COSMO)
 	if (code == SYS_RESTART)
 		__raw_writel(0, sar_base + OMAP_REBOOT_REASON_OFFSET);
 	else if (code == SYS_POWER_OFF)

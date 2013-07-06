@@ -41,6 +41,7 @@
 #define TSPDRV_ENABLE_AMP                   _IO(TSPDRV_MAGIC_NUMBER & 0xFF, 3)
 #define TSPDRV_DISABLE_AMP                  _IO(TSPDRV_MAGIC_NUMBER & 0xFF, 4)
 #define TSPDRV_GET_NUM_ACTUATORS            _IO(TSPDRV_MAGIC_NUMBER & 0xFF, 5)
+#define TSPDRV_ENABLE_TIMED_AMP             _IO(TSPDRV_MAGIC_NUMBER & 0xFF, 6)
 #define VIBE_MAX_DEVICE_NAME_LENGTH			64
 #define SPI_HEADER_SIZE                     3   /* DO NOT CHANGE - SPI buffer header size */
 #define VIBE_OUTPUT_SAMPLE_SIZE             50  /* DO NOT CHANGE - maximum number of samples */
@@ -86,7 +87,7 @@ typedef struct
 
 /* Kernel Debug Macros */
 #ifdef __KERNEL__
-    #if 1
+    #ifdef VIBE_DEBUG
         #define DbgOut(_x_) printk _x_
     #else   /* VIBE_DEBUG */
         #define DbgOut(_x_)
@@ -105,15 +106,15 @@ typedef struct
     #endif /* defined(VIBE_RECORD) && defined(VIBE_DEBUG) */
 #endif  /* __KERNEL__ */
 
-    /*                                        
-                                                                 
-                       
-                    
-                
-                
+    /* LGE_SJIT 2011-12-01 [dojip.kim@lge.com]
+     * from tspdrv.c so making it as platform-indenpendent driver
+     *  int gpio_enable
+     *  int pwm_port
+     *  int freq
+     *  int duty
      */
-    /*                                                                        */
-    /*                                                                     */
+    /* LGE_SJIT 2011-11-30 [dojip.kim@lge.com] support for timed output class */
+    /* GE_CHANGE [jaekyung.oh@lge.com] 2011-09-04, [P940] For Rev.C TSPDEV */
     struct pwm_vib_data {
 	    int (*power)(bool on);
 	    int gpio_enable;

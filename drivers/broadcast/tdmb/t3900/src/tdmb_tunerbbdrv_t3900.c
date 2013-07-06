@@ -58,8 +58,8 @@ typedef enum t3900_service_type
 	T3900_DMB = 2,
 	T3900_VISUAL =3,
 	T3900_DATA = 4,
-	T3900_ENSQUERY = 6,	/*           */
-	T3900_BLT_TEST = 9, /*           */
+	T3900_ENSQUERY = 6,	/* LGE Added */
+	T3900_BLT_TEST = 9, /* LGE Added */
 	T3900_SERVICE_MAX
 }t3900_service_type;
 
@@ -200,7 +200,7 @@ int8 tunerbb_drv_t3900_get_ber(struct broadcast_tdmb_sig_info *dmb_bb_info)
 	
 	INTERFACE_STATUS_CHECK(TDMB_RFBB_DEV_ADDR);
 	pInfo = INC_GET_STRINFO(TDMB_RFBB_DEV_ADDR);
-
+	
 	if(T3900_DAB == serviceType)
 	{
 		svc_type = 1;
@@ -260,7 +260,7 @@ int8 tunerbb_drv_t3900_get_ber(struct broadcast_tdmb_sig_info *dmb_bb_info)
 		if(unCER <= aunAntTable[unLoop][1]) {
 			unRefAntLevel = aunAntTable[unLoop][0];
 			break ;
-		}
+	}
 	}
 
 	/* These bleow routines are for DMB case not DAB */

@@ -25,16 +25,35 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/lge/leds_keypad.h>
+#ifdef CONFIG_LGE_HANDLE_PANIC
+//mo2haewoon.you@lge.com => [START]  HIDDEN_RESET
+#include <linux/jiffies.h>
+#include <linux/workqueue.h>
+#include <linux/delay.h>
+//mo2haewoon.you@lge.com <= [END]
+#endif
 
 static int keypad_gpio;
 static int use_hold_key = 0;
 static int hold_key_gpio;
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+//mo2haewoon.you@lge.com => [START]  HIDDEN_RESET	
+extern int lge_hidden_reset_mode;
+int hidden_check=1;
+//mo2haewoon.you@lge.com <= [END]
+#endif
+
 struct keypad_led_data {
 	struct led_classdev keypad_led_class_dev;
+#ifdef CONFIG_LGE_HANDLE_PANIC
+//mo2haewoon.you@lge.com => [START]  HIDDEN_RESET	
+struct delayed_work hidden_reset_led_delayed_work;
+//mo2haewoon.you@lge.com <= [END]	
+#endif
 };
 #if defined(CONFIG_MAX8971_CHARGER)&&  defined(CONFIG_MACH_LGE_P2_DCM)
-/*                                                             */
+/* LGE_CHANGE_S, dukwung.kim, 2012-03-20, TEST CODE LED ON/OFF */
 int pw_led_on_off=1;
 int cause_of_pw_pressed=0;
 void set_pw_led_on_off(int value)
@@ -42,14 +61,14 @@ void set_pw_led_on_off(int value)
 	printk(KERN_ERR ">>>>>>> set_pw_led_on_off PW_LED: %d, pw_led_on_off: %d>>>>>>>>>>>>\n", value, pw_led_on_off);
 	if(value == PW_LED_ON && pw_led_on_off == 0)
 	{
-		printk(KERN_ERR ">>>>>>> SYSFS_LED ON!>>>>>>>>>>>>\n");
+		//printk(KERN_ERR ">>>>>>> SYSFS_LED ON!>>>>>>>>>>>>\n");
 		gpio_set_value(hold_key_gpio, 1);
 		pw_led_on_off = 1;
 		return ;
 	}
 	else if(value == PW_LED_OFF && pw_led_on_off == 1 && cause_of_pw_pressed!=1)
 	{
-		printk(KERN_ERR " SYSFS_LED OFF!\n");
+	//	printk(KERN_ERR " SYSFS_LED OFF!\n");
 		gpio_set_value(hold_key_gpio, 0);
 		pw_led_on_off = 0;
 		return ;
@@ -59,42 +78,62 @@ void set_pw_led_on_off(int value)
 }
 EXPORT_SYMBOL(set_pw_led_on_off);
 
-/*                                                             */
+/* LGE_CHANGE_S, dukwung.kim, 2012-03-20, TEST CODE LED ON/OFF */
 #endif
 static void keypad_led_store(struct led_classdev *led_cdev,
 				enum led_brightness value)
 {
-	/*                                                                                 */
+	/* 20120224 sangjae.han@lge.com Add sysfile to maintain the backlight on[LGE_START]*/
 	if(led_cdev->br_maintain_trigger == 1){
 		printk(KERN_ERR "[pwr_led]: br_maintain_on trigger is on!\n");
 		return;
 		}
-	/*                                                                               */
+	/* 20120224 sangjae.han@lge.com Add sysfile to maintain the backlight on[LGE_END]*/
 
-	if (value == 127) {
-		printk(KERN_INFO "FRONT_LED: SYSFS_LED On!\n");
-		gpio_set_value(keypad_gpio, 1);
-
-	} else if(value == 255 || value == 15){
-		printk(KERN_INFO "ALL_LED: SYSFS_LED On!\n");
-		gpio_set_value(keypad_gpio, 1);
-		if(use_hold_key)
-			gpio_set_value(hold_key_gpio, 1);
-#if defined(CONFIG_MAX8971_CHARGER)&&  defined(CONFIG_MACH_LGE_P2_DCM)
-		pw_led_on_off = 1;
-		cause_of_pw_pressed = 1;
-#endif
-	} else {
-		printk(KERN_INFO "ALL_LED: SYSFS_LED Off!");
-		gpio_set_value(keypad_gpio, 0);
-		if(use_hold_key)
-			gpio_set_value(hold_key_gpio, 0);
-#if defined(CONFIG_MAX8971_CHARGER)&&  defined(CONFIG_MACH_LGE_P2_DCM)
-		pw_led_on_off = 0;
-		cause_of_pw_pressed = 0;
-#endif
+#ifdef CONFIG_LGE_HANDLE_PANIC
+//mo2haewoon.you@lge.com => [START]  HIDDEN_RESET
+	if( (lge_hidden_reset_mode == 1) && ( hidden_check == 1) )
+	{
+		// LED off
 	}
+	else		
+	{
+		if (value != 0 && value < 255) {
+			//printk(KERN_INFO "FRONT_LED: SYSFS_LED On!\n");
+			gpio_set_value(keypad_gpio, 1);
+
+		} else if(value == 255){
+		//	printk(KERN_INFO "ALL_LED: SYSFS_LED On!\n");
+			gpio_set_value(keypad_gpio, 1);
+			if(use_hold_key)
+				gpio_set_value(hold_key_gpio, 1);
+#if defined(CONFIG_MAX8971_CHARGER)&&  defined(CONFIG_MACH_LGE_P2_DCM)
+			pw_led_on_off = 1;
+			cause_of_pw_pressed = 1;
+#endif
+		} else {
+			//printk(KERN_INFO "ALL_LED: SYSFS_LED Off!\n");
+			gpio_set_value(keypad_gpio, 0);
+			if(use_hold_key)
+				gpio_set_value(hold_key_gpio, 0);
+#if defined(CONFIG_MAX8971_CHARGER)&&  defined(CONFIG_MACH_LGE_P2_DCM)
+			pw_led_on_off = 0;
+			cause_of_pw_pressed = 0;
+#endif
+	         }
+         }
+//mo2haewoon.you@lge.com <= [END]
+#endif
 }
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+//mo2haewoon.you@lge.com => [START]  HIDDEN_RESET
+static void hidden_reset_check_delayed_work(struct work_struct *work)
+{
+    hidden_check = 0;
+}
+//mo2haewoon.you@lge.com <= [END]
+#endif
 
 static int __devinit keypad_led_probe(struct platform_device *pdev)
 {
@@ -118,7 +157,7 @@ static int __devinit keypad_led_probe(struct platform_device *pdev)
 	}
 	gpio_direction_output(keypad_gpio, 0); 
 
-	/*                                                        */
+	/* 20110418 kyungtae.oh@lge.com for Power LED [LGE_START] */
 	if (use_hold_key) {
 		ret = gpio_request(hold_key_gpio, "pwr_leds_gpio");
 		if(ret){
@@ -127,7 +166,7 @@ static int __devinit keypad_led_probe(struct platform_device *pdev)
 		}
 		gpio_direction_output(hold_key_gpio, 0);
 	}
-	/*                                                      */
+	/* 20110418 kyungtae.oh@lge.com for Power LED [LGE_END] */
 
 	info = kzalloc(sizeof(struct keypad_led_data), GFP_KERNEL);
 	if (info == NULL) {
@@ -135,9 +174,16 @@ static int __devinit keypad_led_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	//mo2haewoon.you@lge.com => [START]  HIDDEN_RESET
+	INIT_DELAYED_WORK(&info->hidden_reset_led_delayed_work, hidden_reset_check_delayed_work);
+        schedule_delayed_work(&info->hidden_reset_led_delayed_work, msecs_to_jiffies(45000));	
+	//mo2haewoon.you@lge.com <= [END]
+#endif
+
 	platform_set_drvdata(pdev, info);
 
-	/*                                                              */
+	/* LGE_SJIT 2011-12-05 [dojip.kim@lge.com] set by platform_data */
 	if (pdata->name)
 		info->keypad_led_class_dev.name = pdata->name;
 	else

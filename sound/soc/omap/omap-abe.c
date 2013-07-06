@@ -176,21 +176,12 @@ int omap_abe_set_dl1_output(int output)
 		break;
 	case OMAP_ABE_DL1_HEADSET_HP:
 	case OMAP_ABE_DL1_EARPIECE:
-#if 0 //Ti Orig
+#ifdef CONFIG_MACH_LGE_COSMO
+		gain = GAIN_0dB; //MO2_COSMO_SKT_ICS, mo2sujin.kim,120723  GAIN_M1dB;
+#else
 		gain = GAIN_M1dB;
-#else
-#if (  defined(CONFIG_MACH_LGE_P2_P940) || defined(CONFIG_MACH_LGE_P2_SU540) ||  defined(CONFIG_MACH_LGE_P2_KU5400) ||   defined(CONFIG_MACH_LGE_P2_LU5400)  ||  defined(CONFIG_MACH_LGE_P2_DCM)  )
-                gain = GAIN_0dB;
-#else
-		gain = GAIN_M1dB;  // U2 model (P760, P768, P769)
-#endif
 #endif
 		break;
-#if !defined(CONFIG_SND_OMAP_SOC_ABE_DL2)
-	case OMAP_ABE_DL1_HANDSFREE:
-		gain = GAIN_M7dB;
-		break;
-#endif
 	case OMAP_ABE_DL1_NO_PDM:
 		gain = GAIN_0dB;
 		break;
@@ -207,22 +198,13 @@ EXPORT_SYMBOL(omap_abe_set_dl1_output);
 
 static int omap_abe_dl1_enabled(struct omap_abe_data *abe_priv)
 {
-	int dl1;
-
 	/* DL1 path is common for PDM_DL1, BT_VX_DL and MM_EXT_DL */
-	dl1 = omap_abe_port_is_enabled(abe_priv->abe,
+	return omap_abe_port_is_enabled(abe_priv->abe,
 				abe_priv->port[OMAP_ABE_BE_PORT_PDM_DL1]) +
 		omap_abe_port_is_enabled(abe_priv->abe,
 				abe_priv->port[OMAP_ABE_BE_PORT_BT_VX_DL]) +
 		omap_abe_port_is_enabled(abe_priv->abe,
 				abe_priv->port[OMAP_ABE_BE_PORT_MM_EXT_DL]);
-
-#if !defined(CONFIG_SND_OMAP_SOC_ABE_DL2)
-	dl1 += omap_abe_port_is_enabled(abe_priv->abe,
-				abe_priv->port[OMAP_ABE_BE_PORT_PDM_DL2]);
-#endif
-
-	return dl1;
 }
 
 static void mute_be(struct snd_soc_pcm_runtime *be,
@@ -249,16 +231,8 @@ static void mute_be(struct snd_soc_pcm_runtime *be,
 			}
 			break;
 		case OMAP_ABE_DAI_PDM_DL2:
-#if defined(CONFIG_SND_OMAP_SOC_ABE_DL2)
 			abe_mute_gain(GAINS_DL2, GAIN_LEFT_OFFSET);
 			abe_mute_gain(GAINS_DL2, GAIN_RIGHT_OFFSET);
-#else
-			if (omap_abe_dl1_enabled(abe_priv) == 1) {
-				abe_mute_gain(GAINS_DL1, GAIN_LEFT_OFFSET);
-				abe_mute_gain(GAINS_DL1, GAIN_RIGHT_OFFSET);
-				abe_mute_gain(MIXSDT, MIX_SDT_INPUT_DL1_MIXER);
-			}
-#endif
 			break;
 		case OMAP_ABE_DAI_PDM_VIB:
 		case OMAP_ABE_DAI_MODEM:
@@ -313,14 +287,8 @@ static void unmute_be(struct snd_soc_pcm_runtime *be,
 			abe_unmute_gain(MIXSDT, MIX_SDT_INPUT_DL1_MIXER);
 			break;
 		case OMAP_ABE_DAI_PDM_DL2:
-#if defined(CONFIG_SND_OMAP_SOC_ABE_DL2)
 			abe_unmute_gain(GAINS_DL2, GAIN_LEFT_OFFSET);
 			abe_unmute_gain(GAINS_DL2, GAIN_RIGHT_OFFSET);
-#else
-			abe_unmute_gain(GAINS_DL1, GAIN_LEFT_OFFSET);
-			abe_unmute_gain(GAINS_DL1, GAIN_RIGHT_OFFSET);
-			abe_unmute_gain(MIXSDT, MIX_SDT_INPUT_DL1_MIXER);
-#endif
 			break;
 		case OMAP_ABE_DAI_PDM_VIB:
 			break;
@@ -930,20 +898,6 @@ static void playback_trigger(struct snd_pcm_substream *substream,
 	}
 }
 
-static int omap_abe_hwrule_period_step(struct snd_pcm_hw_params *params,
-					struct snd_pcm_hw_rule *rule)
-{
-	struct snd_interval *period_size = hw_param_interval(params,
-				     SNDRV_PCM_HW_PARAM_PERIOD_SIZE);
-	unsigned int rate = params_rate(params);
-
-	/* 44.1kHz has the same iteration number as 48kHz */
-	rate = (rate == 44100) ? 48000 : rate;
-
-	/* ABE requires chunks of 250us worth of data */
-	return snd_interval_step(period_size, 0, rate / 4000);
-}
-
 static int omap_abe_dai_startup(struct snd_pcm_substream *substream,
 			struct snd_soc_dai *dai)
 {
@@ -972,17 +926,6 @@ static int omap_abe_dai_startup(struct snd_pcm_substream *substream,
 			dev_err(abe_priv->modem_dai->dev, "failed to open DAI %d\n", ret);
 			return ret;
 		}
-	} else {
-		/*
-		 * Period size must be aligned with the Audio Engine
-		 * processing loop which is 250 us long
-		 */
-		snd_pcm_hw_rule_add(substream->runtime, 0,
-				SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
-				omap_abe_hwrule_period_step,
-				NULL,
-				SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
-				SNDRV_PCM_HW_PARAM_RATE, -1);
 	}
 
 	return ret;
@@ -1003,7 +946,6 @@ static int omap_abe_dai_hw_params(struct snd_pcm_substream *substream,
 
 	dma_data = &omap_abe_dai_dma_params[dai->id][substream->stream];
 
-	//                                                                          
 	/* Reset DMA info that may have been overridden */
 	dma_data->port_addr = 0L;
 	dma_data->set_threshold = NULL;
@@ -1012,27 +954,19 @@ static int omap_abe_dai_hw_params(struct snd_pcm_substream *substream,
 
 	switch (params_channels(params)) {
 	case 1:
-//                                                                    
-        if( (dai->id) == ABE_FRONTEND_DAI_MODEM ) {
-            format.samp_format = MONO_MSB;
-        } else {
-//                                                                  
-#if 0 // Ti orig
-			if (params_format(params) == SNDRV_PCM_FORMAT_S16_LE)
-				format.samp_format = MONO_16_16;
-			else
-				format.samp_format = MONO_MSB;
-#else
+#ifdef CONFIG_MACH_LGE_U2
+		//LGE_BSP_S  seungdae.goh@lge.com 2012-05-30  Ti Modem I/F [START_LGE]
+		if( (dai->id) == ABE_FRONTEND_DAI_MODEM ) {
+			format.samp_format = MONO_MSB;
+		} else
+		//LGE_BSP_E  seungdae.goh@lge.com 2012-05-30  Ti Modem I/F [END_LGE]
+#endif
 		if (params_format(params) == SNDRV_PCM_FORMAT_S16_LE) {
 			format.samp_format = MONO_RSHIFTED_16;
 			dma_data->data_type = OMAP_DMA_DATA_TYPE_S16;
 		} else {
 			format.samp_format = MONO_MSB;
 		}
-#endif
-//                                                                    
-		}
-//                                                                  
 		break;
 	case 2:
 		if (params_format(params) == SNDRV_PCM_FORMAT_S16_LE)
@@ -1124,12 +1058,12 @@ static int omap_abe_dai_hw_params(struct snd_pcm_substream *substream,
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 
 			/* Vx_DL connection to McBSP 2 ports */
-			//                                                                                       
+			//LGE_D1_BSP_ICS_S  seungdae.goh@lge.com 2012-03-07  bug fix stereo --> mono  [START_LGE]
 			if( params_channels(params) == 1 )
 			    format.samp_format = MONO_RSHIFTED_16;
 			else
 			    format.samp_format = STEREO_RSHIFTED_16;
-			//                                                                                     
+			//LGE_D1_BSP_ICS_E  seungdae.goh@lge.com 2012-03-07  bug fix stereo --> mono  [END_LGE]
 
 
 			abe_connect_serial_port(VX_DL_PORT, &format, MCBSP2_RX);
@@ -1137,12 +1071,12 @@ static int omap_abe_dai_hw_params(struct snd_pcm_substream *substream,
 		} else {
 
 			/* Vx_UL connection to McBSP 2 ports */
-			//                                                                                       
+			//LGE_D1_BSP_ICS_S  seungdae.goh@lge.com 2012-03-07  bug fix stereo --> mono  [START_LGE]
 			if( params_channels(params) == 1 )
 			    format.samp_format = MONO_RSHIFTED_16;
 			else
 			    format.samp_format = STEREO_RSHIFTED_16;
-			//                                                                                     
+			//LGE_D1_BSP_ICS_E  seungdae.goh@lge.com 2012-03-07  bug fix stereo --> mono  [END_LGE]
 
 			abe_connect_serial_port(VX_UL_PORT, &format, MCBSP2_TX);
 			abe_read_port_address(VX_UL_PORT, &dma_params);
@@ -1444,10 +1378,10 @@ static struct snd_soc_dai_driver omap_abe_dai[] = {
 		},
 		.capture = {
 			.stream_name = "MultiMedia1 Capture",
-			.channels_min = 1, //                                                
-			.channels_max = 6,
+			.channels_min = 2,
+			.channels_max = 8,
 			.rates = SNDRV_PCM_RATE_48000,
-			.formats = OMAP_ABE_FORMATS, //                                                                                                         
+			.formats = OMAP_ABE_FORMATS,
 		},
 		.ops = &omap_abe_dai_ops,
 	},
@@ -1472,16 +1406,14 @@ static struct snd_soc_dai_driver omap_abe_dai[] = {
 			.stream_name = "Voice Playback",
 			.channels_min = 1,
 			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
-				 SNDRV_PCM_RATE_48000,
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
 			.formats = OMAP_ABE_FORMATS,
 		},
 		.capture = {
 			.stream_name = "Voice Capture",
 			.channels_min = 1,
 			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
-				 SNDRV_PCM_RATE_48000,
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
 			.formats = OMAP_ABE_FORMATS,
 		},
 		.ops = &omap_abe_dai_ops,

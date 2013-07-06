@@ -85,6 +85,8 @@ static const char * const dss_generic_clk_source_names[] = {
 	[OMAP_DSS_CLK_SRC_DSI_PLL_HSDIV_DISPC]	= "DSI_PLL_HSDIV_DISPC",
 	[OMAP_DSS_CLK_SRC_DSI_PLL_HSDIV_DSI]	= "DSI_PLL_HSDIV_DSI",
 	[OMAP_DSS_CLK_SRC_FCK]			= "DSS_FCK",
+	[OMAP_DSS_CLK_SRC_DSI2_PLL_HSDIV_DISPC]			= "DSI2_PLL_HSDIV_DISPC",
+	[OMAP_DSS_CLK_SRC_DSI2_PLL_HSDIV_DSI]			= "DSI2_PLL_HSDIV_DSI",	
 };
 
 static inline void dss_write_reg(const struct dss_reg idx, u32 val)
@@ -356,11 +358,11 @@ void dss_select_dsi_clk_source(int dsi_module,
 		BUG();
 	}
 
-/*                                                              */
+/* LGE_SJIT_S 2011-11-02 [choongryeol.lee@lge.com] support DSI2 */
 if(dsi_module==1)
 	REG_FLD_MOD(DSS_CONTROL, b, 10, 10);  /* DSI2_CLK_SWITCH */
 else
-/*                                                               */
+/* LGE_SJIT_E 2011-11-02 [choongryeol.lee@lge.com] suppourt DSI2 */
 	REG_FLD_MOD(DSS_CONTROL, b, 1, 1);	/* DSI1_CLK_SWITCH */
 
 	dss.dsi_clk_source[dsi_module] = clk_src;

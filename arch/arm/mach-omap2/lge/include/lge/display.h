@@ -24,4 +24,4 @@ struct lge_dss_info {
 	unsigned ext_te_gpio;
 };
 
-#endif /*                      */
+#endif /* __LGE_PLAT_DISPLAY_H */

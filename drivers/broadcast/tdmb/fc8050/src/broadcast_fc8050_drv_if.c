@@ -37,7 +37,7 @@ int broadcast_drv_if_power_on(void)
 		gpMPI_Buffer = (uint8*)&gpMPI_Array[0];
 #endif // FC8050_USES_STATIC_BUFFER
 	}
-//                    
+//LGE_BROADCAST_I_0907
 	if(tunerbb_drv_fc8050_is_on() == TRUE)
 	{
 		printk("tdmb_fc8050_power_on state true\n");
@@ -46,7 +46,7 @@ int broadcast_drv_if_power_on(void)
 		tunerbb_drv_fc8050_power_off();
 
 	}	
-//                    
+//LGE_BROADCAST_I_0907
 	retval = tunerbb_drv_fc8050_power_on();
 
 	if(retval == TRUE)
@@ -78,7 +78,7 @@ int broadcast_drv_if_open(void)
 {
 	int8 res = ERROR;
 	boolean retval = FALSE;
-	
+
 	retval = tunerbb_drv_fc8050_init();
 
 	if(retval == TRUE)
@@ -100,10 +100,10 @@ int broadcast_drv_if_close(void)
 		retval = tunerbb_drv_fc8050_stop();
 	}
 	
-	if(retval == TRUE)
-	{
-		res = OK;
-	}
+		if(retval == TRUE)
+		{
+			res = OK;
+		}
 
 	return res;
 }
@@ -139,6 +139,7 @@ int broadcast_drv_if_detect_sync(int op_mode)
 	{
 		rc = OK;
 	}
+
 	return rc;
 }
 
@@ -153,6 +154,7 @@ int broadcast_drv_if_get_sig_info(struct broadcast_tdmb_sig_info *dmb_bb_info)
 	{
 		rc = OK;
 	}		
+
 	return rc;
 }
 

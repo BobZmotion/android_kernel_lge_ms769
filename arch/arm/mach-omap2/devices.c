@@ -24,10 +24,6 @@
 #include <asm/mach/map.h>
 #include <asm/pmu.h>
 
-#ifdef CONFIG_OMAP4_DPLL_CASCADING
-#include <mach/omap4-common.h>
-#endif
-
 #include <plat/tc.h>
 #include <plat/board.h>
 #include <plat/mcbsp.h>
@@ -575,7 +571,7 @@ static int omap_mcspi_init(struct omap_hwmod *oh, void *unused)
 	char *name = "omap2_mcspi_slave";
 #else
 	char *name = "omap2_mcspi";
-#endif /*                      */
+#endif /* CONFIG_LGE_SPI_SLAVE */
 	struct omap2_mcspi_platform_config *pdata;
 	static int spi_num;
 	struct omap2_mcspi_dev_attr *mcspi_attrib = oh->dev_attr;
@@ -615,10 +611,10 @@ static int omap_mcspi_init(struct omap_hwmod *oh, void *unused)
 		pdata->mode = OMAP2_MCSPI_MASTER;		//from L-02D
 		pdata->dma_mode = 1;					//from L-02D
 		pdata->fifo_depth = 0;					//from L-02D
-#else /*                      */
+#else /* CONFIG_LGE_BROADCAST */
 		pdata->num_cs = 4;
 		pdata->force_cs_mode = 1;
-#endif /*                      */
+#endif /* CONFIG_LGE_BROADCAST */
 
 		break;
 
@@ -655,7 +651,7 @@ static int omap_mcspi_init(struct omap_hwmod *oh, void *unused)
 	else{
 		pdata->regs_data = (unsigned short*)omap2_reg_map;
 	}		
-#endif	/*                      */	
+#endif	/* CONFIG_LGE_SPI_SLAVE */	
 	spi_num++;
 	od = omap_device_build(name, spi_num, oh, pdata,
 				sizeof(*pdata),	omap_mcspi_latency,
@@ -968,24 +964,6 @@ static struct omap_device_pm_latency omap_gpu_latency[] = {
 	},
 };
 
-#ifdef CONFIG_OMAP4_DPLL_CASCADING
-int omap_device_scale_gpu(struct device *req_dev, struct device *target_dev,
-			unsigned long rate)
-{
-	unsigned long freq = 0;
-
-	/* find lowest frequency */
-	opp_find_freq_ceil(target_dev, &freq);
-
-	if (rate > freq)
-		omap4_dpll_cascading_blocker_hold(target_dev);
-	else
-		omap4_dpll_cascading_blocker_release(target_dev);
-
-	return omap_device_scale(req_dev, target_dev, rate);
-}
-#endif
-
 static void omap_init_gpu(void)
 {
 	struct omap_hwmod *oh;
@@ -1014,11 +992,8 @@ static void omap_init_gpu(void)
 		pr_err("omap_init_gpu: Platform data memory allocation failed\n");
 		return;
 	}
-#ifdef CONFIG_OMAP4_DPLL_CASCADING
-	pdata->device_scale = omap_device_scale_gpu;
-#else
+
 	pdata->device_scale = omap_device_scale;
-#endif
 	pdata->device_enable = omap_device_enable;
 	pdata->device_idle = omap_device_idle;
 	pdata->device_shutdown = omap_device_shutdown;

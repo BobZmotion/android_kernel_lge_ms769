@@ -25,12 +25,5 @@ config FB_OMAP2_NUM_FBS
 	default 3
 	depends on FB_OMAP2
 	help
-	  select the number of framebuffers created. omap2/3 has 3 overlays
+	  Select the number of framebuffers created. OMAP2/3 has 3 overlays
 	  so normally this would be 3.
-
-config INVERT_COLOR
-	bool "Support color invert"
-	default n
-	depends on FB_OMAP2
-	help
-		Support reverse, hue, saturation color setting for accessibility

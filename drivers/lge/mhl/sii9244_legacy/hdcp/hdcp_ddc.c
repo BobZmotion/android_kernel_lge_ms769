@@ -32,7 +32,7 @@ static int hdcp_suspend_resume_auto_ri(enum ri_suspend_resume state)
 
 	DBG("hdcp_suspend_resume_auto_ri() state=%s", state == AUTO_RI_SUSPEND ? "SUSPEND" : "RESUME");
 
-    //                                
+    // wooho47.jung@lge.com 2011.11.05
     // DEL : no need delay
 	//msleep(10);  // by Joshua(must be set for delay of DDC)
 
@@ -180,10 +180,10 @@ static int hdcp_start_ddc_transfer(mddc_type *mddc_cmd, u8 operation)
 
 	if (hdcp.pending_disable)
 		goto ddc_abort;
-//                                                                           
+// LGE_CHANGE_S [jh.koo kibum.lee] 2011-09-08, for hdcp certification at P940
 	RD_REG_32(hdcp.hdmi_wp_base_addr + HDMI_IP_CORE_SYSTEM,
 		  HDMI_IP_CORE_SYSTEM__DDC_STATUS);
-//                                                                           
+// LGE_CHANGE_E [jh.koo kibum.lee] 2011-09-08, for hdcp certification at P940
 
 #ifdef _9032_AUTO_RI_
 	/* Re-enable Auto Ri */
@@ -197,7 +197,7 @@ ddc_error:
 	return -HDCP_DDC_ERROR;
 
 ddc_abort:
-    //                                
+    // wooho47.jung@lge.com 2011.11.05
     // ADD : apply Linux_27.G.5_HDCP patch for HDCP
     //hdcp_ddc_abort();
 	RD_REG_32(hdcp.hdmi_wp_base_addr + HDMI_IP_CORE_SYSTEM,

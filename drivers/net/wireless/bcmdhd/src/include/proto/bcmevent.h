@@ -23,7 +23,7 @@
  *
  * Dependencies: proto/bcmeth.h
  *
- * $Id: bcmevent.h 363350 2012-10-17 08:29:23Z $
+ * $Id: bcmevent.h 320583 2012-03-12 15:09:36Z $
  *
  */
 
@@ -185,14 +185,9 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 #define WLC_E_ASSOC_RESP_IE 		88
 #define WLC_E_ASSOC_RECREATED	89	
 #define WLC_E_ACTION_FRAME_RX_NDIS	90	
-#define WLC_E_AUTH_REQ		91	
+#define WLC_E_AUTH_REQ	91		
 #define WLC_E_TDLS_PEER_EVENT 	92	
-#define WLC_E_SPEEDY_RECREATE_FAIL	93	
-#define WLC_E_SERVICE_FOUND             102     
-#define WLC_E_GAS_FRAGMENT_RX   103     
-#define WLC_E_GAS_COMPLETE              104     
-#define WLC_E_LAST                      105     
-
+#define WLC_E_LAST			93	
 
 
 typedef struct {
@@ -218,9 +213,6 @@ extern const int		bcmevent_names_size;
 #define WLC_E_STATUS_11HQUIET		11	
 #define WLC_E_STATUS_SUPPRESS		12	
 #define WLC_E_STATUS_NOCHANS		13	
-#ifdef BCMCCX
-#define WLC_E_STATUS_CCXFASTRM		14	
-#endif 
 #define WLC_E_STATUS_CS_ABORT		15	
 #define WLC_E_STATUS_ERROR		16	
 
@@ -253,21 +245,11 @@ extern const int		bcmevent_names_size;
 #define WLC_E_RSN_MISMATCH		8	
 #define WLC_E_PRUNE_NO_COMMON_RATES	9	
 #define WLC_E_PRUNE_BASIC_RATES		10	
-#ifdef BCMCCX
-#define WLC_E_PRUNE_CCXFAST_PREVAP	11	
-#endif 
 #define WLC_E_PRUNE_CIPHER_NA		12	
 #define WLC_E_PRUNE_KNOWN_STA		13	
-#ifdef BCMCCX
-#define WLC_E_PRUNE_CCXFAST_DROAM	14	
-#endif 
 #define WLC_E_PRUNE_WDS_PEER		15	
 #define WLC_E_PRUNE_QBSS_LOAD		16	
 #define WLC_E_PRUNE_HOME_AP		17	
-#ifdef BCMCCX
-#define WLC_E_PRUNE_AP_BLOCKED		18	
-#define WLC_E_PRUNE_NO_DIAG_SUPPORT	19	
-#endif 
 
 
 #define WLC_E_SUP_OTHER			0	

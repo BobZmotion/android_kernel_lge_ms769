@@ -64,7 +64,7 @@
 
 #define CONFIG_SPI_DEBUG
 //#define CONFIG_EARLY_SUSPEND_TEST
-//                                                                              
+//#define SPI_LOG_ENABLE_SHIM /* 20110310 dongyu.gwak@lge.com SPI Log Disable*/	
 
 #define SPI_DEBUG_PRINT(format, args...)  printk(format , ## args)
 //#define SPI_DEBUG_PRINT(format, args...) do{}while(0)
@@ -157,7 +157,7 @@ void dump_atcmd(char *data)
 	SPI_DEBUG_PRINT("\n");
 }
 
-/*                                                                            */
+/* LG_FW : 20110227 dongyu.gwak@lge.com --------------------------------------*/
 /* Simple Dump*/
 void dump_spi_simple(char *data) 
 {
@@ -178,7 +178,7 @@ void dump_spi_simple(char *data)
 
 
 #define OMAP_MODEM_WAKE 121 // P2_CDMA REV.B
-//                                                           
+//#define OMAP_MODEM_WAKE 39 //gpio_65 AP_SLEEP_CHK [LGE-SPI]
 /* ################################################################################################################ */
 
 /* Structure used to store private data */
@@ -267,11 +267,11 @@ static irqreturn_t ifx_spi_handle_srdy_irq(int irq, void *handle);
 static void ifx_spi_handle_work(struct work_struct *work);
 
 //#define ETJO_DUMP
-//                                                                                     
+//#define LGE_DUMP_SPI_BIFFUER /* 20110310 dongyu.gwak@lge.com Enable Dump SPI Buffer*/
 /*---------------------------------------------------------------------------*/
 
 static void dump_spi_buffer(const unsigned char *txt, const unsigned char *buf, int count);
-/*                                                                           */
+/* E2_4Gr : 20110721 et.jo@lge.com ------------------------------------------*/
 /* Smart Dump */
 #ifdef ETJO_DUMP
 void dump_spi_smart(const struct ifx_spi_data *spi_data)
@@ -349,13 +349,13 @@ static ssize_t spi_proc_write(struct file *filp, const char *buf, size_t len, lo
 	{
 		case '1':
 			log_enable_flag = 1;
-		//                                                                                         
+		//	printk(KERN_INFO "[SPI_MDM6600] LGE: P2 SPI Write Reg. = 0x%X, Value 0x%X\n", reg, val);
 			printk(KERN_INFO "[SPI_MDM6600] LGE: P2 SPI log_enable = %d\n", log_enable_flag);
 			break;
 		
 		case '0':
 				log_enable_flag = 0;
-			//                                                                                         
+			//	printk(KERN_INFO "[SPI_MDM6600] LGE: P2 SPI Write Reg. = 0x%X, Value 0x%X\n", reg, val);
 				printk(KERN_INFO "[SPI_MDM6600] LGE: P2 SPI log_enable = %d\n", log_enable_flag);
 				break;
 		default :
@@ -534,13 +534,13 @@ ifx_spi_write(struct tty_struct *tty, const unsigned char *buf, int count)
 	}
 
 /*
-                                
-                                                       
-     
-                                        
-      
+#ifdef CONFIG_LGE_SPI_MODE_SLAVE
+	queue_work(spi_data->ifx_wq, &spi_data->ifx_work);    
+#else
+	ifx_spi_set_mrdy_signal(spi_data, 1);  
+#endif
 
-                                        
+	SPI_DEBUG_PRINT("%s : ", __FUNCTION__);
 */
 	
 	ifx_spi_buffer_initialization(spi_data);	
@@ -552,7 +552,7 @@ ifx_spi_write(struct tty_struct *tty, const unsigned char *buf, int count)
 
 
 //	omap_pm_set_max_sdma_lat(&pm_qos_handle_for_spi,-1);
-//                                                                                                                 
+//	omap_pm_set_min_bus_tput(&(spi_data->spi->dev),OCP_INITIATOR_AGENT, 0);	//LGE_CHANGE Song Won jong 200MHz L3 clk
 	//gpio_set_value(127 ,0);
 	
     ret = spi_data->ifx_ret_count;
@@ -713,7 +713,7 @@ static int ifx_spi_probe(struct spi_device *spi)
 
 
 //	printk("!!!!!!!!!!!!!!!!!!!!ifx_spi_ap_ready [gpio_direction_output after] !!!!!!!!!!!!!!!!!!!!\n");	
-	//                                                                                
+	// LGE_UPDATE_S [eungbo.shim@lge.com] -- CP??????O AP SLEEP ??E??AAO??a A??CN CODE
 	if (gpio_request(OMAP_MODEM_WAKE, "ap sleep check") < 0) {
 		printk(KERN_ERR "can't get synaptics pen down GPIO\n");
 		return -EIO;
@@ -726,7 +726,7 @@ static int ifx_spi_probe(struct spi_device *spi)
 	gpio_direction_output(OMAP_MODEM_WAKE, 0);
 	gpio_set_value(OMAP_MODEM_WAKE,0);
 #endif
-	//             
+	// LGE_UPDATE_E
 #ifdef WAKE_LOCK_RESUME
 		wake_lock_init(&spi_data->wake_lock, WAKE_LOCK_SUSPEND, "mspi_wake");
 #endif
@@ -736,10 +736,10 @@ static int ifx_spi_probe(struct spi_device *spi)
 		printk(KERN_ERR "can't get synaptics pen down GPIO\n");
 		return;
 	}
-	//                                                                                          
+	// LGE_UPDATE_S [eungbo.shim@lge.com] -- CP notify to AP -> You can't start SPI Transaction.
 	gpio_direction_output(127, 0);
 	gpio_set_value(127,0);
-	//             
+	// LGE_UPDATE_E
 #endif
 	
 	spi->irq = OMAP_GPIO_IRQ(spi_data->srdy_gpio);
@@ -764,11 +764,11 @@ static int ifx_spi_probe(struct spi_device *spi)
 	spi_data->early_suspend.resume = ifx_spi_late_resume;
 	register_early_suspend(&spi_data->early_suspend);
 #endif
-//                                                 
+// LGE_UPDATE_S eungbo.shim@lge.com -- EBS 20110919
 #if defined(EBS_TEST_FS)
 	create_ril_spi_proc_file();
 #endif 
-//                                                 
+// LGE_UPDATE_E eungbo.shim@lge.com -- EBS 20110919
 
 	printk("OMAP2_MCSPI_probe [END] \n");
 	return status;
@@ -789,11 +789,11 @@ ifx_spi_remove(struct spi_device *spi)
 		kfree(spi_data);
 	}          
 	spi_data_table[spi->master->bus_num - 1] = NULL;
-//                                                 
+// LGE_UPDATE_S eungbo.shim@lge.com -- EBS 20110919
 #if defined(EBS_TEST_FS)
 	remove_ril_spi_proc_file();
 #endif 
-//                                                 
+// LGE_UPDATE_E eungbo.shim@lge.com -- EBS 20110919
 	return 0;
 }
 
@@ -830,7 +830,7 @@ static int
 ifx_spi_suspend(struct spi_device *spi, pm_message_t mesg)
 {
 //#ifdef SPI_LOG_ENABLE_SHIM
-  //                                                                           
+  //  printk("[LGE-SPI] ifx_spi_suspend modem_chk = %d \n",gpio_get_value(65));
 //#endif
  //   gpio_direction_output(OMAP_MODEM_WAKE,0);
   //  gpio_set_value(OMAP_MODEM_WAKE,0);
@@ -849,7 +849,7 @@ static int
 ifx_spi_resume(struct spi_device *spi)
 {
 //#ifdef SPI_LOG_ENABLE_SHIM
-//                                                                            
+//    printk("[LGE-SPI] ifx_spi_resume modem_chk = %d \n",gpio_get_value(65));
 //#endif
  //   gpio_direction_output(OMAP_MODEM_WAKE,1);
    // gpio_set_value(OMAP_MODEM_WAKE,1);
@@ -1138,7 +1138,7 @@ ifx_spi_tty_callback( struct ifx_spi_data *spi_data)
 
 #ifdef SPI_LOG_ENABLE_SHIM
 //		SPI_DEBUG_PRINT("SPI RX : ");
-/*                                                                            */
+/* LG_FW : 20110227 dongyu.gwak@lge.com --------------------------------------*/
 /* Simple Dump*/
 //		dump_atcmd(spi_data->ifx_rx_buffer+IFX_SPI_HEADER_SIZE+2) ;
  //   dump_spi_simple(spi_data->ifx_rx_buffer);
@@ -1165,18 +1165,18 @@ ifx_spi_send_and_receive_data(struct ifx_spi_data *spi_data)
 #ifdef SPI_LOG_ENABLE_SHIM
 //	printk("[OMAP_SPI_WRITE] SPI READ & WRITE -----------------[START] \n");
 	
-	//                                                                                              
+	//gpio_set_value(65 ,0);printk(KERN_ERR "[LGE-SPI] gpio 65 to LOW  = %d\n", gpio_get_value(65));
 #endif
 	                   
 	status = ifx_spi_sync_read_write(spi_data, IFX_SPI_MAX_BUF_SIZE+IFX_SPI_HEADER_SIZE); /* 4 bytes for header */                       
 
 #ifdef SPI_LOG_ENABLE_SHIM
 
-	//                                                                                              
+	//gpio_set_value(65 ,1);printk(KERN_ERR "[LGE-SPI] gpio 65 to HIGH = %d\n", gpio_get_value(65));
 //	printk("[OMAP_SPI_WRITE] SPI READ & WRITE -----------------[END] \n");
 //	printk("seqNo : %lu. \n", seq_no++);
 //	SPI_DEBUG_PRINT("SPI TX : ");
-/*                                                                            */
+/* LG_FW : 20110227 dongyu.gwak@lge.com --------------------------------------*/
 /* Simple Dump*/
 //	dump_atcmd(spi_data->ifx_tx_buffer+IFX_SPI_HEADER_SIZE+2) ;
 // 	dump_spi_simple(spi_data->ifx_tx_buffer);
@@ -1345,7 +1345,7 @@ ifx_spi_handle_srdy_irq(int irq, void *handle)
 #ifdef	WAKE_LOCK_RESUME
 		if(&spi_data_table[3]->wake_lock)
 		{
-			wake_lock_timeout(&spi_data_table[3]->wake_lock, 5);	//                                                                   
+			wake_lock_timeout(&spi_data_table[3]->wake_lock, 5);	//20101203-1, syblue.lee@lge.com, change 3 to 1 for power consumption
 		}
 #endif		
 
@@ -1360,10 +1360,10 @@ ifx_spi_handle_srdy_irq(int irq, void *handle)
 
 	return IRQ_HANDLED; 
 }
-//                                                      
+// <EBS> [LGE_UPDATE_S eungbo.shim@lge.com  2009-04-08 ]
 // TODO: 1) ifx_master_initiated_transfer = 1; -->WHEN THE SPI WRITE function calls
 // TODO: 2) ifx_master_initiated_transfer = 0; -->Default 
-//                                                      
+// [LGE_UPDATE_E eungbo.shim@lge.com  2009-04-08 ] <EBS>
 static void 
 ifx_spi_handle_work(struct work_struct *work)
 {
@@ -1404,7 +1404,7 @@ ifx_spi_handle_work(struct work_struct *work)
 	printk("[IFX_SPI_WRITE] - CP - [S] \n");
 #endif
 //	omap_pm_set_max_sdma_lat(&pm_qos_handle_for_spi,10);
-//                                                                                                                      
+//	omap_pm_set_min_bus_tput(&(spi_data->spi->dev),OCP_INITIATOR_AGENT, 800000);	//LGE_CHANGE Song Won jong 200MHz L3 clk
 
 	ifx_spi_buffer_initialization(spi_data);	
 	//ifx_spi_setup_transmission(spi_data);
@@ -1413,7 +1413,7 @@ ifx_spi_handle_work(struct work_struct *work)
 	//mutex_lock(&mspi_tx_rx_mutex);
 	ifx_spi_receive_data(spi_data);
 //	omap_pm_set_max_sdma_lat(&pm_qos_handle_for_spi,-1);
-//                                                                                                   
+//	omap_pm_set_min_bus_tput(&(spi_data->spi->dev),OCP_INITIATOR_AGENT, 0);	//LGE_CHANGE 200MHz L3 clk
 
 	
 #ifdef SPI_LOG_ENABLE_SHIM

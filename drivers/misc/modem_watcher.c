@@ -33,9 +33,9 @@
 #include <linux/string.h>
 
 #include <linux/lge/mdm_watcher.h>
-//                                                                                  
+//LGE_CHANGE  RIP-11133 : added CP coredump feature : byeonggeun.kim@lge.com [START]
 #include <linux/rtc.h>
-//                                                                                
+//LGE_CHANGE  RIP-11133 : added CP coredump feature : byeonggeun.kim@lge.com [END]
 
 struct mdm_watcher_drv_event {
 	unsigned int irq;
@@ -43,14 +43,16 @@ struct mdm_watcher_drv_event {
 	int delay;
 	unsigned int code; /* key code to upper layer */
 #if !defined(CONFIG_LGE_SPI_SLAVE)
-	unsigned int irq_srdy;//               
-	unsigned int irq_mrdy;//               
+	unsigned int irq_srdy;//hak.lee@lge.com
+	unsigned int irq_mrdy;//hak.lee@lge.com
 	unsigned int code_srdy;
 	unsigned int code_mrdy;
-	//                                                                                     
+#ifdef CONFIG_MACH_LGE_U2
+	// RIP-41061 : handling interrupt for at-channel ready : byeonggeun.kim@lge.com [START]
 	unsigned int irq_modem_send;
 	unsigned int code_modem_send;
-	//                                                                                   
+	// RIP-41061 : handling interrupt for at-channel ready : byeonggeun.kim@lge.com [END]
+#endif
 #endif
 };
 
@@ -101,7 +103,8 @@ static irqreturn_t mdm_watcher_interrupt(int irq, void *dev_id)
 			handler->event_type = MDM_AUTO_SHUTDOWN_MRDY;
 			delay = handler->auto_shutdown.delay;
 		}
-		//                                                                                     
+#ifdef CONFIG_MACH_LGE_U2
+		// RIP-41061 : handling interrupt for at-channel ready : byeonggeun.kim@lge.com [START]
 		else if(irq == handler->halt.irq_modem_send){
 			handler->event_type = MDM_HALT_MODEM_SEND;
 			delay = handler->halt.delay;
@@ -110,7 +113,8 @@ static irqreturn_t mdm_watcher_interrupt(int irq, void *dev_id)
 			handler->event_type = MDM_AUTO_SHUTDOWN_MODEM_SEND;
 			delay = handler->auto_shutdown.delay;
 		}
-		//                                                                                   
+		// RIP-41061 : handling interrupt for at-channel ready : byeonggeun.kim@lge.com [END]
+#endif
 #endif
 		else
 			dev_err(&handler->input->dev, "wrong irq number\n");
@@ -153,13 +157,13 @@ static void mdm_watcher_work_func(struct work_struct *work)
 		container_of(delayed_work, struct mdm_watcher_data, delayed_work);
 	int verified;
 	int i;
-	//                                                                                   
+	//LGE_CHANGE  RIP-11133 : added CP coredump feature : byeonggeun.kim@lge.com [START]	
 	/*
 	int ret;
 	struct timespec ts;
 	struct rtc_time tm;
 	*/
-	//                                                                                
+	//LGE_CHANGE  RIP-11133 : added CP coredump feature : byeonggeun.kim@lge.com [END]
 	if (handler->enable) {
 		unsigned int code = 0;
 		/* TODO: get and check state? */
@@ -183,21 +187,24 @@ static void mdm_watcher_work_func(struct work_struct *work)
 			case MDM_AUTO_SHUTDOWN_MRDY:
 				code = handler->auto_shutdown.code_mrdy; 
 				break;
-			//                                                                                      
+#ifdef CONFIG_MACH_LGE_U2
+
+			// RIP-41061 : handling interrupt for at-channel ready : byeonggeun.kim@lge.com [START]	
 			case MDM_HALT_MODEM_SEND:
 				code = handler->halt.code_modem_send; 
 				break;
 			case MDM_AUTO_SHUTDOWN_MODEM_SEND:
 				code = handler->auto_shutdown.code_modem_send; 
 				break;
-			//                                                                                   
+			// RIP-41061 : handling interrupt for at-channel ready : byeonggeun.kim@lge.com [END]
+#endif
 #endif
 			default:
 				dev_err(&handler->input->dev, "wrong event type\n");
 		}
 
 #if defined(CONFIG_LGE_SPI_SLAVE)
-		//                                                                                 
+		//LGE_RIL_CHANGE   [P2_Ics] CP Crash pin 26->56 for p2_lgu_kr :hyunh0.cho  [START] 
 		verified = i = 0;
 		
 		printk("modem watcher : check start MDM_FLAG\n");
@@ -222,7 +229,7 @@ static void mdm_watcher_work_func(struct work_struct *work)
 				printk("mdm_watcher: modem fatal\n"); 
 			}	
 #else   
-        //                                                                                           
+        //LGE_CHANGE   RIP-11146 : [P2] handling wrong CP Crash  IRQ : byeonggeun.kim@lge.com [START]
    		//if(gpio_get_value(26)) {    // crash_int
 		//if(gpio_get_value(26) || gpio_get_value(119)||gpio_get_value(120)) {// ipc_srdy, ipc_mrdy
 		if(gpio_get_value(26) || gpio_get_value(119)||gpio_get_value(120) || gpio_get_value(122)) {	// modem_send : RIP-41061
@@ -233,25 +240,25 @@ static void mdm_watcher_work_func(struct work_struct *work)
 			handler->event_type = MDM_EVENT_MAX;
 			printk("mdm_watcher: report event %u\n", code);
 /*
-                                                                                       
-                       
-                                  
+			//LGE_CHANGE  RIP-11133 : added CP coredump feature : byeonggeun.kim@lge.com [START]
+			getnstimeofday(&ts);
+			rtc_time_to_tm(ts.tv_sec, &tm);
 
-                                                            
-                                                                                                              
-                                                  
-   
-                                                         
-                                                                    
-   
-                                                                            
-                                                                 
-                                                                                     
+			printk(KERN_INFO "[CP CRASH] mdm_watcher_work_func()\n");
+			printk(KERN_INFO "(%d-%02d-%02d %02d:%02d:%02d.%09lu UTC)\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+				tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
+			
+			char* argv[] = {"/system/bin/ifx_coredump", "", NULL};
+			char *envp[] = { "HOME=/",	"PATH=/sbin:/bin:/system/bin",	NULL };
+			
+			printk(KERN_INFO "[CP CRASH] launch ifx_coredump process ret:%d\n", ret);
+			ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
+			//LGE_CHANGE  RIP-11133 : added CP coredump feature : byeonggeun.kim@lge.com [END]
 */			
 		} else {
 			printk(KERN_INFO "### Invaild #### - CP_CRASH_INT_N  is discarded \n");
 		}
-		 //                                                                                         
+		 //LGE_CHANGE   RIP-11146 : [P2] handling wrong CP Crash  IRQ : byeonggeun.kim@lge.com [END]
 
 	}
 }
@@ -372,7 +379,7 @@ static int mdm_watcher_probe(struct platform_device *pdev)
 		}
 
 #if !defined(CONFIG_LGE_SPI_SLAVE)
-		//                              
+		//hak.lee@lge.com srdy_interrupt
 		gpio_request(pdev_event->gpio_irq_srdy, event_name);
 		gpio_direction_input(pdev_event->gpio_irq_srdy);
 
@@ -421,7 +428,8 @@ static int mdm_watcher_probe(struct platform_device *pdev)
 					drv_event->irq_mrdy);
 			free_irq(drv_event->irq_mrdy, NULL);
 		}
-		//                                                                                     
+#ifdef CONFIG_MACH_LGE_U2
+		// RIP-41061 : handling interrupt for at-channel ready : byeonggeun.kim@lge.com [START]
 		//------------- modem send 
 		gpio_request(pdev_event->gpio_irq_modem_send, event_name);
 		gpio_direction_input(pdev_event->gpio_irq_modem_send);
@@ -447,7 +455,8 @@ static int mdm_watcher_probe(struct platform_device *pdev)
 					drv_event->irq_modem_send);
 			free_irq(drv_event->irq_modem_send, NULL);
 		}
-		//                                                                                   
+		// RIP-41061 : handling interrupt for at-channel ready : byeonggeun.kim@lge.com [END]
+#endif
 #endif	
 	}
 
@@ -505,12 +514,14 @@ static int mdm_watcher_remove(struct platform_device *pdev)
 		free_irq(handler->halt.irq_mrdy, NULL);
 	if (!handler->auto_shutdown.irq_mrdy)
 		free_irq(handler->auto_shutdown.irq_mrdy, NULL);
-	//                                                                                     
+#ifdef CONFIG_MACH_LGE_U2
+	// RIP-41061 : handling interrupt for at-channel ready : byeonggeun.kim@lge.com [START]
 	if (!handler->halt.irq_modem_send)
 		free_irq(handler->halt.irq_modem_send, NULL);
 	if (!handler->auto_shutdown.irq_modem_send)
 		free_irq(handler->auto_shutdown.irq_modem_send, NULL);
-	//                                                                                   
+	// RIP-41061 : handling interrupt for at-channel ready : byeonggeun.kim@lge.com [END]
+#endif
 #endif
 	
 	input_unregister_device(handler->input);
@@ -532,12 +543,14 @@ static int mdm_watcher_remove(struct platform_device *pdev)
 		gpio_free(irq_to_gpio(handler->halt.irq_mrdy));
 	if (!handler->auto_shutdown.irq_mrdy)
 		gpio_free(irq_to_gpio(handler->auto_shutdown.irq_mrdy));
-	//                                                                                     
+#ifdef CONFIG_MACH_LGE_U2
+	// RIP-41061 : handling interrupt for at-channel ready : byeonggeun.kim@lge.com [START]
 	if (!handler->halt.irq_modem_send)
 		gpio_free(irq_to_gpio(handler->halt.irq_modem_send));
 	if (!handler->auto_shutdown.irq_modem_send)
 		gpio_free(irq_to_gpio(handler->auto_shutdown.irq_modem_send));
-	//                                                                                   
+	// RIP-41061 : handling interrupt for at-channel ready : byeonggeun.kim@lge.com [END]
+#endif
 #endif
 	return ret;
 }

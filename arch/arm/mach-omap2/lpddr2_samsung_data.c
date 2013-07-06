@@ -132,5 +132,5 @@ struct lpddr2_device_info samsung_4G_S4 = {
 	.type		= LPDDR2_TYPE_S4,
 	.density	= LPDDR2_DENSITY_4Gb,
 	.io_width	= LPDDR2_IO_WIDTH_32,
-	.emif_ddr_selfrefresh_cycles = 262144, //                                                                           
+	.emif_ddr_selfrefresh_cycles = 262144, // LGE_SJIT 2011-12-2 [jongrak.kwon@lge.com] resolving SDRAM performance loss
 };

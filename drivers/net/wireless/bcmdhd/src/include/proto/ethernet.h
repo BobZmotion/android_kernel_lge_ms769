@@ -24,7 +24,7 @@
  * $Id: ethernet.h 309193 2012-01-19 00:03:57Z $
  */
 
-#ifndef _NET_ETHERNET_H_	  
+#ifndef _NET_ETHERNET_H_	      
 #define _NET_ETHERNET_H_
 
 #ifndef _TYPEDEFS_H_
@@ -94,7 +94,7 @@
 		((uint8 *)ea)[5] = ((mgrp_ip) >>  0) & 0xff;	\
 }
 
-#ifndef __INCif_etherh   
+#ifndef __INCif_etherh       
 
 BWL_PRE_PACKED_STRUCT struct ether_header {
 	uint8	ether_dhost[ETHER_ADDR_LEN];

@@ -1403,17 +1403,11 @@ int jbd2_journal_stop(handle_t *handle)
 	 * pointer again.
 	 */
 	tid = transaction->t_tid;
-#if defined(CONFIG_MACH_LGE)
-	read_lock(&journal->j_state_lock);
-#endif
 	if (atomic_dec_and_test(&transaction->t_updates)) {
 		wake_up(&journal->j_wait_updates);
 		if (journal->j_barrier_count)
 			wake_up(&journal->j_wait_transaction_locked);
 	}
-#if defined(CONFIG_MACH_LGE)
-	read_unlock(&journal->j_state_lock);
-#endif
 
 	if (wait_for_commit)
 		err = jbd2_log_wait_commit(journal, tid);
@@ -1908,8 +1902,6 @@ zap_buffer_unlocked:
 	clear_buffer_mapped(bh);
 	clear_buffer_req(bh);
 	clear_buffer_new(bh);
-	clear_buffer_delay(bh);
-	clear_buffer_unwritten(bh);
 	bh->b_bdev = NULL;
 	return may_free;
 }

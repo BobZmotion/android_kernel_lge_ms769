@@ -37,8 +37,8 @@ static int test_alarm_set = 0;
 static struct rtc_device *rtc = NULL;
 struct wake_lock test_wake_lock;
 
-/*                                                   
-                    
+/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com] 2012-02-06
+ * use android alarm
  */
 #define USE_ANDROID_ALARM	1
 
@@ -349,9 +349,9 @@ static int __devexit suspend_autotest_remove(struct platform_device *pdev)
 }
 
 static const struct dev_pm_ops suspend_autotest_dev_pm_ops = {
-	/*                                        
-                                    
-  */
+	/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com]
+	 * do suspend before irq is diabled
+	 */
 	//.suspend_noirq = suspend_autotest_suspend,
 	.suspend = suspend_autotest_suspend,
 	.resume = suspend_autotest_resume,

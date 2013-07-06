@@ -932,6 +932,7 @@ void usbhs_wakeup()
 void __init usbhs_init(const struct usbhs_omap_board_data *pdata)
 {
 }
+
 #endif
 
 

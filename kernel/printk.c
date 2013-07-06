@@ -786,7 +786,7 @@ static int have_callable_console(void)
  * See the vsnprintf() documentation for format string extensions over C99.
  */
 
-/*                                                                  */
+/* LGE_SJIT devin.kim 11-11-2011, for debugging (should be removed) */
 #ifdef CONFIG_OMAP_UART4_EARLY_PRINTK
 extern void early_console_printk(const char *fmt, va_list args);
 #endif
@@ -806,7 +806,7 @@ asmlinkage int printk(const char *fmt, ...)
 #endif
 	va_start(args, fmt);
 #ifdef CONFIG_OMAP_UART4_EARLY_PRINTK
-	/*                                                                  */
+	/* LGE_SJIT devin.kim 11-11-2011, for debugging (should be removed) */
 	early_console_printk(fmt, args);
 	/* */
 #endif

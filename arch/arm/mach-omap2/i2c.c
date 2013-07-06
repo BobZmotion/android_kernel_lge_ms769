@@ -36,7 +36,7 @@
 
 void __init omap2_i2c_mux_pins(int bus_id)
 {
-/*                                                                                            */
+/* LGE_CHANGE_S [seungho1.park@lge.com] 2011-09-14, dont need to init mux again in LGE board. */
 #if !defined(CONFIG_MACH_LGE)
 	char mux_name[sizeof("i2c2_scl.i2c2_scl")];
 
@@ -49,7 +49,7 @@ void __init omap2_i2c_mux_pins(int bus_id)
 	sprintf(mux_name, "i2c%i_sda.i2c%i_sda", bus_id, bus_id);
 	omap_mux_init_signal(mux_name, OMAP_PIN_INPUT);
 #endif
-/*                                         */
+/* LGE_CHANGE_E [seungho1.park@lge.com] ,  */
 }
 
 /**

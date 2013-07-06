@@ -30,10 +30,10 @@ struct lbee9qmb_platform_data {
 	int gpio_pwr;
 	int active_low;
 	int delay;
-//                                                              
+// LGE_SJIT_S 11/18/2011 [mohamed.khadri@lge.com] BT UART Enable
         int (*chip_enable) (void);
         int (*chip_disable) (void);
-//                                                              
+// LGE_SJIT_E 11/18/2011 [mohamed.khadri@lge.com] BT UART Enable
 };
 
 #endif

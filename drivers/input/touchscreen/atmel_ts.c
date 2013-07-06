@@ -1286,7 +1286,7 @@ static int __devinit ts_probe(struct i2c_client *client,
 		goto err_free_object;
 
 
-	/*                                                         */
+	/* LGE_SJIT 2011-11-17 [dojip.kim@lge.com] add trigger low */
 	error = request_irq(client->irq, ts_interrupt,
 			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_LOW,
 			client->dev.driver->name, data);
@@ -1422,7 +1422,7 @@ static void ts_late_resume(struct early_suspend *h)
 }
 #endif
 
-/*                                                                   */
+/* LGE_SJIT 2011-11-17, [dojip.kim@lge.com] add 'atmel_mxt_ts' as id */
 static const struct i2c_device_id ts_id[] = {
 	{ "qt602240_ts", 0 },
 	{ "atmel_mxt_ts", 0 },

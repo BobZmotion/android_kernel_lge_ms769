@@ -19,12 +19,12 @@
 #include <plat/mux.h>
 #include <plat/omap_device.h>
 
-/*                                                 */
+/* LGE_SJIT_S 2011-09-27 [choongryeol.lee@lge.com] */
 #ifdef CONFIG_TIWLAN_SDIO
 #include <linux/mmc/sdio_ids.h>
 #include <linux/mmc/sdio_func.h>
 #endif
-/*                                                 */
+/* LGE_SJIT_E 2011-09-27 [choongryeol.lee@lge.com] */
 
 #if defined(CONFIG_MMC_OMAP_HS_VMMC_AUTO_OFF)
 #include <linux/i2c/twl.h>
@@ -34,7 +34,7 @@
 #include "hsmmc.h"
 #include "control.h"
 
-#if defined(CONFIG_LGE_BCM433X_PATCH)
+#if defined(CONFIG_LGE_BCM432X_PATCH)
 #define SDIO_VENDOR_ID_BROADCOM          0x2d0
 #define SDIO_DEVICE_ID_BROADCOM_4330     0x4330
 #endif
@@ -119,11 +119,11 @@ static void omap_hsmmc1_after_set_reg(struct device *dev, int slot,
 			reg |= OMAP2_PBIASLITEVMODE0;
 		omap_ctrl_writel(reg, control_pbias_offset);
 	} else {
-		/*                                                     
-                                                            
-    
-                                           
-   */
+		/* LGE_SJIT 2011-11-28 [dojip.kim@lge.com] from P940 GB
+		 * LGE_CHANGE_S [james.jang@lge.com] 2011-07-19, from p930
+		 *
+		 * Leak the current 40mA on the off state
+		 */
 #if defined(CONFIG_MMC_OMAP_HS_VMMC_AUTO_OFF)
 		reg = omap_ctrl_readl(control_pbias_offset);
 		reg &= ~(OMAP2_PBIASSPEEDCTRL0 | OMAP2_PBIASLITEPWRDNZ0 |
@@ -230,10 +230,10 @@ static inline void omap_hsmmc_mux(struct omap_mmc_platform_data *mmc_controller,
 	if ((mmc_controller->slots[0].switch_pin > 0) && \
 		(mmc_controller->slots[0].switch_pin < OMAP_MAX_GPIO_LINES))
 	#if defined(CONFIG_MACH_LGE_U2_P760) || defined(CONFIG_MACH_LGE_U2_P768)	
-		if (system_rev == 1/*         */){
+		if (system_rev == 1/*LGE_PCB_A*/){
 			omap_mux_init_gpio(mmc_controller->slots[0].switch_pin,
 						OMAP_PIN_INPUT_PULLDOWN);
-		}else if(system_rev == 2/*         */){
+		}else if(system_rev == 2/*LGE_PCB_B*/){
 			omap_mux_init_gpio(mmc_controller->slots[0].switch_pin,
 					OMAP_PIN_INPUT_PULLUP);
 		}		
@@ -315,7 +315,7 @@ static inline void omap_hsmmc_mux(struct omap_mmc_platform_data *mmc_controller,
 	}
 }
 
-/*                                                 */
+/* LGE_SJIT_S 2011-09-27 [choongryeol.lee@lge.com] */
 #ifdef CONFIG_TIWLAN_SDIO
 static struct sdio_embedded_func wifi_func_array[] = {
         {
@@ -330,7 +330,7 @@ static struct sdio_embedded_func wifi_func_array[] = {
 
 static struct embedded_sdio_data omap_wifi_emb_data = {
         .cis    = {
-#if defined(CONFIG_LGE_BCM433X_PATCH)    // CSC_
+#if defined(CONFIG_LGE_BCM432X_PATCH)
                 .vendor         = SDIO_VENDOR_ID_BROADCOM,      //0x2d0,        /* SDIO_VENDOR_ID_BRCM */
                 .device         = SDIO_DEVICE_ID_BROADCOM_4330,       /* SDIO_DEVICE_ID_BCM4330 */
 #else
@@ -360,7 +360,7 @@ static struct embedded_sdio_data omap_wifi_emb_data = {
         .num_funcs = 2, 
 };
 #endif
-/*                                                 */
+/* LGE_SJIT_E 2011-09-27 [choongryeol.lee@lge.com] */
 
 static int __init omap_hsmmc_pdata_init(struct omap2_hsmmc_info *c,
 					struct omap_mmc_platform_data *mmc)
@@ -381,7 +381,7 @@ static int __init omap_hsmmc_pdata_init(struct omap2_hsmmc_info *c,
 								c->mmc, 1);
 	mmc->slots[0].name = hc_name;
 
-/*                                                 */
+/* LGE_SJIT_S 2011-09-27 [choongryeol.lee@lge.com] */
 #ifdef CONFIG_TIWLAN_SDIO
     if (c->mmc == CONFIG_TIWLAN_MMC_CONTROLLER) {
         mmc->slots[0].mmc_data.embedded_sdio = &omap_wifi_emb_data;
@@ -391,7 +391,7 @@ static int __init omap_hsmmc_pdata_init(struct omap2_hsmmc_info *c,
         mmc->slots[0].card_detect = &omap_wifi_status;
     }
 #endif
-/*                                                 */
+/* LGE_SJIT_E 2011-09-27 [choongryeol.lee@lge.com] */
 
 	mmc->nr_slots = 1;
 	mmc->slots[0].caps = c->caps;
@@ -407,6 +407,11 @@ static int __init omap_hsmmc_pdata_init(struct omap2_hsmmc_info *c,
 
 	mmc->slots[0].remux = c->remux;
 	mmc->slots[0].init_card = c->init_card;
+//#ifdef CONFIG_MACH_LGE_COSMO
+#ifdef CONFIG_MACH_LGE_MMC_COVER
+	if (c->sd_cover)
+	mmc->slots[0].sd_cover = c->sd_cover;
+#endif
 
 	if (c->cover_only)
 		mmc->slots[0].cover = 1;
@@ -426,9 +431,9 @@ static int __init omap_hsmmc_pdata_init(struct omap2_hsmmc_info *c,
 	if (c->vcc_aux_disable_is_sleep)
 		mmc->slots[0].vcc_aux_disable_is_sleep = 1;
 
-	/*                                        
-                                                                
-  */
+	/* LGE_SJIT 2012-01-09 [dojip.kim@lge.com]
+	 * no suspend. Some drivers don't use pm on MMC (eg. BRCM WiFi)
+	 */
 	if (c->no_suspend)
 		mmc->slots[0].no_suspend = 1;
 
@@ -508,7 +513,7 @@ static int __init omap_hsmmc_pdata_init(struct omap2_hsmmc_info *c,
 		mmc->slots[0].before_set_reg = NULL;
 		mmc->slots[0].after_set_reg = NULL;
 #ifdef CONFIG_TIWLAN_SDIO
-#if defined(CONFIG_LGE_BCM433X_PATCH)
+#if defined(CONFIG_LGE_BCM432X_PATCH)
                         mmc->slots[0].ocr_mask  = MMC_VDD_30_31;
 #else
                         if (machine_is_omap_4430sdp())
@@ -561,6 +566,7 @@ void __init omap_init_hsmmc(struct omap2_hsmmc_info *hsmmcinfo, int ctrl_nr)
 		pr_err("%s fails!\n", __func__);
 		goto done;
 	}
+	
 	omap_hsmmc_mux(mmc_data, (ctrl_nr - 1));
 
 	name = "omap_hsmmc";
@@ -621,18 +627,18 @@ void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 			OMAP4_SDMMC1_PUSTRENGTH_GRP1_MASK);
 		reg &= ~(OMAP4_SDMMC1_PUSTRENGTH_GRP2_MASK |
 			OMAP4_SDMMC1_PUSTRENGTH_GRP3_MASK);
-		/*                                        
-                                                          
-   */
+		/* LGE_SJIT 2011-11-25 [dojip.kim@lge.com]
+		 * USBC1_ICUSB is not related to MMC. So DO NOT touch it
+		 */
 		reg |= (/*OMAP4_USBC1_DR0_SPEEDCTRL_MASK|*/
 			OMAP4_SDMMC1_DR1_SPEEDCTRL_MASK |
 			OMAP4_SDMMC1_DR2_SPEEDCTRL_MASK);
 		omap4_ctrl_pad_writel(reg, control_mmc1);
-		/*                                        
-                                                            
-    
-                                           
-   */
+		/* LGE_SJIT 2011-11-28 [dojip.kim@lge.com]
+		 * LGE_CHANGE_S [james.jang@lge.com] 2011-07-19, from p940
+		 *
+		 * Leak the current 40mA on the off state
+		 */
 #if defined(CONFIG_MMC_OMAP_HS_VMMC_AUTO_OFF)
 		reg = omap4_ctrl_pad_readl(control_pbias_offset);
 		reg &= ~(OMAP4_MMC1_PBIASLITE_PWRDNZ_MASK | \

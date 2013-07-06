@@ -33,7 +33,7 @@ struct omap2_hsmmc_info mmc[] = {
 		.gpio_cd	=	40,
 		.gpio_wp	=	-EINVAL,
 		.nonremovable	=	false,
-		.ocr_mask	=	MMC_VDD_30_31,
+		.ocr_mask	=	MMC_VDD_32_33,
 #ifdef CONFIG_PM_RUNTIME
 		.power_saving	=	true,
 #endif
@@ -44,9 +44,9 @@ struct omap2_hsmmc_info mmc[] = {
 		.gpio_cd	=	-EINVAL,
 		.gpio_wp	=	-EINVAL,
 		.ocr_mask	=	MMC_VDD_165_195,
-		/*                                        
-                               
-   */
+		/* LGE_SJIT 2012-01-09 [dojip.kim@lge.com]
+		 * WiFi doesn't use PM on MMC
+		 */
 		.no_suspend	=	true,
 	},
 	{}	/* Terminator */

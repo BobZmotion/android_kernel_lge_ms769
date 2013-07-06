@@ -49,7 +49,9 @@
 #define CHARGER_TYPE_HOST		0x5
 #define CHARGER_TYPE_PC			0x6
 #define USB2PHY_CHGDETECTED		BIT(13)
-#define USB2PHY_RESTARTCHGDET		BIT(15)
+#ifndef CONFIG_MACH_LGE_CX2
+#define USB2PHY_RESTARTCHGDET BIT(15)
+#endif
 #define USB2PHY_DISCHGDET		BIT(30)
 
 static struct clk *phyclk, *clk48m, *clk32k;
@@ -64,7 +66,9 @@ static void __iomem *hsotg_base;
 
 int omap4430_phy_init(struct device *dev)
 {
+#ifndef CONFIG_MACH_LGE_CX2
 	u32 usb2phycore;
+#endif
 	ctrl_base = ioremap(OMAP443X_SCM_BASE, SZ_1K);
 #ifdef CONFIG_OMAP4_HSOTG_ED_CORRECTION
 	hsotg_base = ioremap(OMAP44XX_HSUSB_OTG_BASE, SZ_16K);
@@ -81,10 +85,12 @@ int omap4430_phy_init(struct device *dev)
 	/* Power down the phy */
 	__raw_writel(PHY_PD, ctrl_base + CONTROL_DEV_CONF);
 
-	/* Disable charger detection by default */
+#ifndef CONFIG_MACH_LGE_CX2
+/* Disable charger detection by default */
 	usb2phycore = omap4_ctrl_pad_readl(CONTROL_USB2PHYCORE);
 	usb2phycore |= USB2PHY_DISCHGDET;
-	omap4_ctrl_pad_writel(usb2phycore, CONTROL_USB2PHYCORE);
+	omap4_ctrl_pad_writel(usb2phycore, CONTROL_USB2PHYCORE);	
+#endif
 
 	if (!dev) {
 		iounmap(ctrl_base);
@@ -212,14 +218,21 @@ int omap4_charger_detect(void)
 	u32 usb2phycore = 0;
 	u32 chargertype = 0;
 
-	/* enable charger detection and restart it */
+	/* enable charger detection and restart it */ 
+#ifdef CONFIG_MACH_LGE_CX2
+	omap4430_phy_power(NULL, 0, 1);
+#endif
+
 	usb2phycore = omap4_ctrl_pad_readl(CONTROL_USB2PHYCORE);
 	usb2phycore &= ~USB2PHY_DISCHGDET;
+
+#ifndef CONFIG_MACH_LGE_CX2
 	usb2phycore |= USB2PHY_RESTARTCHGDET;
 	omap4_ctrl_pad_writel(usb2phycore, CONTROL_USB2PHYCORE);
 	mdelay(2);
 	usb2phycore = omap4_ctrl_pad_readl(CONTROL_USB2PHYCORE);
-	usb2phycore &= ~USB2PHY_RESTARTCHGDET;
+	usb2phycore &= ~USB2PHY_RESTARTCHGDET;	
+#endif
 	omap4_ctrl_pad_writel(usb2phycore, CONTROL_USB2PHYCORE);
 
 	timeout = jiffies + msecs_to_jiffies(500);
@@ -248,12 +261,15 @@ int omap4_charger_detect(void)
 		pr_info("PS/2 detected!\n");
 		break;
 	default:
-		pr_err("Unknown charger detected! %d\n", chargertype);
+		pr_err(KERN_ERR"Unknown charger detected! %d\n", chargertype);
 	}
-
+#ifndef CONFIG_MACH_LGE_CX2
 	usb2phycore = omap4_ctrl_pad_readl(CONTROL_USB2PHYCORE);
 	usb2phycore |= USB2PHY_DISCHGDET;
 	omap4_ctrl_pad_writel(usb2phycore, CONTROL_USB2PHYCORE);
+#else
+	omap4430_phy_power(NULL, 0, 0);
+#endif
 
 	return charger;
 }
@@ -300,8 +316,12 @@ int omap4430_phy_suspend(struct device *dev, int suspend)
 		/* Enable the internel phy clcoks */
 		omap4430_phy_set_clk(dev, 1);
 		/* power on the phy */
-		if (__raw_readl(ctrl_base + CONTROL_DEV_CONF) & PHY_PD)
+		if (__raw_readl(ctrl_base + CONTROL_DEV_CONF) & PHY_PD) {
 			__raw_writel(~PHY_PD, ctrl_base + CONTROL_DEV_CONF);
+#ifdef CONFIG_MACH_LGE_CX2
+			mdelay(300);
+#endif
+		}
 
 		/* restore the context */
 		__raw_writel(usbotghs_control, ctrl_base + USBOTGHS_CONTROL);

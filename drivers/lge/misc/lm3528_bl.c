@@ -12,7 +12,7 @@
  #else
  #define DEBUG_MSG(args...)
  #endif
- 
+
 
 static int	old_brightness	=	-1;
 
@@ -47,7 +47,7 @@ static ssize_t brightness_store(struct device* dev,
 
 	if (old_brightness == brightness) // No need to change the brightness
 		goto	exit;
-
+	
 	if (brightness == 0) {	// Zero-Brightness, Turn off LM3528
 		lm3528_set_hwen(&pdata->private, pdata->gpio_hwen, 0);
 		old_brightness	=	brightness;
@@ -71,9 +71,9 @@ static ssize_t brightness_store(struct device* dev,
 	lm3528_set_bmain(&pdata->private, brightness);
 
 	old_brightness	=	brightness;
-
+	
 exit:
-	return	count;
+		return	count;
 }
 
 static DEVICE_ATTR(brightness, 0664, brightness_show, brightness_store);
@@ -139,12 +139,12 @@ static const struct i2c_device_id lm3528bl_ids[] = {
 };
 
 static struct i2c_driver lm3528bl_driver = {
-	.probe		= lm3528bl_probe,
+	.probe		=	lm3528bl_probe,
 	.remove		= __devexit_p(lm3528bl_remove),
-	.id_table	= lm3528bl_ids,
+	.id_table	=	lm3528bl_ids,
 	.driver = {
-		.name	= LM3528_I2C_NAME,
-		.owner	= THIS_MODULE,
+		.name	=	LM3528_I2C_NAME,
+		.owner	=	THIS_MODULE,
 	},
 };
 

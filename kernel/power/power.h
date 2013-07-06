@@ -189,7 +189,7 @@ static inline bool valid_state(suspend_state_t state) { return false; }
 extern void suspend_test_start(void);
 extern void suspend_test_finish(const char *label);
 #else /* !CONFIG_PM_TEST_SUSPEND */
-/*                                                                    */
+/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com] suspend autotest (demigod) */
 #ifdef CONFIG_LGE_SUSPEND_AUTOTEST
 extern void suspend_test_start(void);
 extern void suspend_test_finish(const char *label);

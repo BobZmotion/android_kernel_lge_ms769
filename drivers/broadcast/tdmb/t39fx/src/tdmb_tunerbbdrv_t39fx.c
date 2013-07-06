@@ -36,7 +36,7 @@ extern INC_UINT16			m_unIntCtrl;
 extern PLL_MODE			m_ucPLL_Mode;
 extern INC_DPD_MODE		m_ucDPD_Mode;
 extern INC_UINT32 			g_uiKOREnsembleFullFreq[MAX_KOREABAND_FULL_CHANNEL];
-extern INC_UINT16 m_ucRFTbl;  /*                                           */
+extern INC_UINT16 m_ucRFTbl;  /*LGE ADD for Selecting RF Table(39F0, 39F1) */
 
 
 /* ----------------------------------------------------------
@@ -58,8 +58,8 @@ typedef enum t39fx_service_type
 	T39FX_DMB = 2,
 	T39FX_VISUAL =3,
 	T39FX_DATA = 4,
-	T39FX_ENSQUERY = 6,	/*           */
-	T39FX_BLT_TEST = 9, /*           */
+	T39FX_ENSQUERY = 6,	/* LGE Added */
+	T39FX_BLT_TEST = 9, /* LGE Added */
 	T39FX_SERVICE_MAX
 }t39fx_service_type;
 

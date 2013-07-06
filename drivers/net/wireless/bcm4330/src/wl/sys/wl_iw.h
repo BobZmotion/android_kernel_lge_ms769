@@ -98,7 +98,7 @@ typedef struct wl_iw_extra_params {
 #else
 #define WL_COMBO_SCAN           (SIOCIWFIRSTPRIV+29)
 #define WL_AP_SPARE3            (SIOCIWFIRSTPRIV+31)
-#endif /*                          */
+#endif /* CONFIG_LGE_BCM432X_PATCH */
 #define 		G_SCAN_RESULTS 8*1024
 #define 		WE_ADD_EVENT_FIX	0x80
 #define          G_WLAN_SET_ON	0

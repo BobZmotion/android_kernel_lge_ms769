@@ -58,8 +58,8 @@
  * (and associated registers).
  */
 
-/*                                        
-                              
+/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com]
+ * below is defined by kconfig
  */
 //#define CONFIG_TWL6030_BCI_BATTERY
 #define DRIVER_NAME			"twl"
@@ -680,8 +680,7 @@ add_regulator(int num, struct regulator_init_data *pdata,
  */
 
 static int
-add_children(struct twl4030_platform_data *pdata, unsigned long features,
-		unsigned long errata)
+add_children(struct twl4030_platform_data *pdata, unsigned long features)
 {
 	struct device	*child;
 	unsigned sub_chip_id;
@@ -705,7 +704,6 @@ add_children(struct twl4030_platform_data *pdata, unsigned long features,
 	}
 	if (twl_has_bci() && pdata->bci) {
 		pdata->bci->features = features;
-		pdata->bci->errata = errata;
 		child = add_child(1, "twl6030_bci",
 				pdata->bci, sizeof(*pdata->bci),
 				false,
@@ -1107,10 +1105,10 @@ add_children(struct twl4030_platform_data *pdata, unsigned long features,
 			return PTR_ERR(child);
 #endif
 
-		/*                                                  
-    
-                                                             
-   */
+		/* LGE_SJIT 2011-11-16 [dojip.kim@lge.com] from p940
+		 *
+		 * ORIG: [yehan.ahn@lge.com] 2011-06-09, add regen1, regen2
+		 */
 #if defined(CONFIG_MACH_LGE)
 		child = add_regulator(TWL6030_REG_REGEN1, pdata->regen1,
 					features);
@@ -1343,8 +1341,6 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	struct twl4030_platform_data	*pdata = client->dev.platform_data;
 	u8 temp;
 	int ret = 0, features;
-	unsigned long errata = 0;
-	u8 twlrev;
 
 	if (!pdata) {
 		dev_dbg(&client->dev, "no platform data?\n");
@@ -1375,9 +1371,9 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 				dev_err(&client->dev,
 					"can't attach client %d\n", i);
 				status = -ENOMEM;
-				/*                                        
-                       
-     */
+				/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com]
+				 * fix memory leaks
+				 */
 #ifdef CONFIG_MACH_LGE
 				goto err_i2c_register_device;
 #else
@@ -1410,18 +1406,6 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		twl_i2c_read_u8(TWL_MODULE_USB, &temp, USB_PRODUCT_ID_LSB);
 		if (temp == 0x32)
 			features |= TWL6032_SUBCLASS;
-
-		twl_i2c_read_u8(TWL6030_MODULE_ID2, &twlrev,
-				TWL6030_REG_JTAGVERNUM);
-
-		/*
-		 * Check for the errata implementation
-		 * Errata ProDB00119490 present only in the TWL6032 ES1.1
-		 */
-		if (features & TWL6032_SUBCLASS) {
-			if (twlrev == 1)
-				errata |= TWL6032_ERRATA_DB00119490;
-		}
 	}
 
 	/* load power event scripts */
@@ -1446,9 +1430,9 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		}
 
 		if (status < 0)
-			/*                                        
-                      
-    */
+			/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com]
+			 * fix memory leaks
+			 */
 #ifdef CONFIG_MACH_LGE
 			goto err_init_irq;
 #else
@@ -1468,11 +1452,11 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		twl_i2c_write_u8(TWL4030_MODULE_INTBR, temp, REG_GPPUPDCTR1);
 	}
 
-	status = add_children(pdata, features, errata);
+	status = add_children(pdata, features);
 
-	/*                                        
-                    
-  */
+	/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com]
+	 * fix memory leaks
+	 */
 #ifdef CONFIG_MACH_LGE
 	if (status < 0)
 		goto err_add_children;

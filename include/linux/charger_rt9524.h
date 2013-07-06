@@ -22,7 +22,7 @@
 #define CHG_STATUS_N_OMAP 		51
 
 //#define DEBUG
-//                                                                            
+// LGE_CHANGE [euiseop.shin@lge.com] 2011-04-13, LGE_P940, Bring in Cosmo.--->
 #define OMAP_SEND				122  //for fuel gauge reset on CP.
 
 
@@ -46,10 +46,22 @@
 
 #define RECHARGING_BAT_SOC_CON		97
 
-//                                                                                                                        
+// LGE_CHANGE_S [byoungcheol.lee@lge.com]  2011-07-07, From cosmo. cause discharging while Not complete charging process. 
 #define RECHARGING_BAT_VOLT_LOW		4185
 #define RECHARGING_BAT_VOLT_HIGH	4216
-//                                                                                                                        
+// LGE_CHANGE_E [byoungcheol.lee@lge.com]  2011-07-07, From cosmo. cause discharging while Not complete charging process. 
+
+#ifdef CONFIG_MACH_LGE_CX2
+#define TEMP_CHANGE_CHARGING_MODE      450   //nthyunjin.yang for change the charging mode according battery temperature
+#define CAMCODING_CPU_TEMP_CHANGE_CHARGING_START       735   //555 -> 735
+#define CAMCODING_CPU_TEMP_CHANGE_CHARGING_STOP       730   //550 -> 730
+#define STREAMING_CPU_TEMP_CHANGE_CHARGING_START       775   //600 -> 775
+#define STREAMING_CPU_TEMP_CHANGE_CHARGING_STOP       770   //595 -> 770
+#define CPU_TEMP_RECHARGING_START_SOC 2
+#define CPU_TEMP_RECHARGING_STOP_SOC 3
+#define CPU_TEMP_RECHARGING_FIRST_START_SOC 10
+#define CPU_TEMP_RECHARGING_FIRST_STOP_SOC 11
+#endif
 
 #if 0
 typedef enum {
@@ -121,7 +133,7 @@ extern void charging_ic_set_ta_mode(void);
 extern void charging_ic_set_usb_mode(void);
 extern void charging_ic_set_factory_mode(void);
 extern void charging_ic_deactive(void);
-//                                                                        
+// LGE_CHANGE [euiseop.shin@lge.com] 2011-04-13, LGE_P940, Bring in Cosmo.
 int get_temp(void);
 
 typedef enum {
@@ -130,7 +142,7 @@ typedef enum {
 }charger_fsm_cause;
 void charger_fsm(charger_fsm_cause reason);
 
-//                                               
+// [jongho3.lee@lge.com] export temperature func.
 int twl6030battery_temperature(void);
 int get_bat_soc(void);
 struct delayed_work* get_charger_work(void);
@@ -139,3 +151,7 @@ void charger_schedule_delayed_work(struct delayed_work *work, unsigned long dela
 
 /// max17043 fuel gauge..
 void set_boot_charging_mode(int charging_mode);
+
+#ifdef CONFIG_MACH_LGE_CX2 //nthyunjin.yang 12015 for cpufreq test
+extern int cpufreq_temp_ctrl_value;
+#endif

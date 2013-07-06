@@ -69,9 +69,9 @@ static ssize_t power_supply_show_property(struct device *dev,
 	static char *capacity_level_text[] = {
 		"Unknown", "Critical", "Low", "Normal", "High", "Full"
 	};
-	/*                                                            
-                             
- */
+	/* [ICS][POWER]_S juya.kim@lge.com - 2012-02-03 GB src mergerd
+	* Set charger_mode sys file.
+	*/
 #ifdef CONFIG_MACH_LGE
 	static char *charger_mode_text[] = {
 		"stop", "ups", "ac", "usb", "factory"
@@ -107,9 +107,9 @@ static ssize_t power_supply_show_property(struct device *dev,
 		return sprintf(buf, "%s\n", technology_text[value.intval]);
 	else if (off == POWER_SUPPLY_PROP_CAPACITY_LEVEL)
 		return sprintf(buf, "%s\n", capacity_level_text[value.intval]);
-	/*                                                            
-                             
- */
+	/* [ICS][POWER]_S juya.kim@lge.com - 2012-02-03 GB src mergerd
+	* Set charger_mode sys file.
+	*/
 #ifdef CONFIG_MACH_LGE
 	else if (off == POWER_SUPPLY_PROP_CHARGER_MODE)
 		return sprintf(buf, "%s\n", charger_mode_text[value.intval]);
@@ -130,10 +130,10 @@ static ssize_t power_supply_store_property(struct device *dev,
 	const ptrdiff_t off = attr - power_supply_attrs;
 	union power_supply_propval value;
 	long long_val;
-	/*                                                            
-                             
-                    
- */
+	/* [ICS][POWER]_S juya.kim@lge.com - 2012-02-03 GB src mergerd
+	* Set charger_mode sys file.
+	* support char type
+	*/
 #ifdef CONFIG_MACH_LGE
 	if (off == POWER_SUPPLY_PROP_CHARGER_MODE) {
 		value.strval = buf;
@@ -203,8 +203,8 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(time_to_empty_avg),
 	POWER_SUPPLY_ATTR(time_to_full_now),
 	POWER_SUPPLY_ATTR(time_to_full_avg),
-/*                                          
-                                        
+/* LGE_CHANGE_S [jongho3.lee@lge.com] ?-?-?,
+ * add writable attribute gauge_control.
  */
 #if defined(CONFIG_MACH_LGE)
 	POWER_SUPPLY_ATTR(pmic_soc),
@@ -213,12 +213,12 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(gauge_control_count),
 	POWER_SUPPLY_ATTR(charger_mode),
 	POWER_SUPPLY_ATTR(temp_control),
-	/*                                            
-                                    
- */
+	/* LGE_CHANGE [wonhui.lee@lge.com] 2011-08-20,
+	 * add to check BATT TEMP ADC value
+	*/
 	POWER_SUPPLY_ATTR(batt_temp_adc),
 #if defined(CONFIG_MAX8971_CHARGER)
-	POWER_SUPPLY_ATTR(batt_current_adc),    /*                                                                                         */
+	POWER_SUPPLY_ATTR(batt_current_adc),    /* LGE_CHANGE [dukwung.kim@lge.com] 2011-09-16, add to check BATT charger current ADC value*/
 	POWER_SUPPLY_ATTR(temp_charger_adc),
 	POWER_SUPPLY_ATTR(temp_parm_adc),
 	POWER_SUPPLY_ATTR(temp_charger_C),
@@ -227,7 +227,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(temp_low_C),
 #endif
 #endif
-/*                                          */
+/* LGE_CHANGE_E [jongho3.lee@lge.com] ?-?-? */
 	POWER_SUPPLY_ATTR(type),
 	/* Properties of type `const char *' */
 	POWER_SUPPLY_ATTR(model_name),
@@ -257,32 +257,32 @@ static mode_t power_supply_attr_is_visible(struct kobject *kobj,
 			if (psy->property_is_writeable &&
 			    psy->property_is_writeable(psy, property) > 0) {
 				mode |= S_IWUSR;
-				/*                                 
-                                                
-     */
+				/* LGE_CHANGE [jongho3.lee@lge.com]
+				 * it should be writable by only ril group..
+				 */
 #ifdef CONFIG_MACH_LGE
 				mode |= S_IRUSR | S_IRGRP | S_IWGRP | S_IROTH;
 #endif
 
-				/*                                             
-                     
-                                  
-     */
-				/*                                            
-                                      
-     */
-#if 0 //                        
-				/*                                            
-                                                    
-     */
-				/*                                            
-                                      
-     */
+				/* [ICS][POWER]_S juya.kim@lge.com - 2012-02-03
+				 * GB src mergerd
+				 * REASON : To pass Google CTS
+				 */
+				/* LGE_CHANGE [wonhui.lee@lge.com] 2011-10-04,
+				 * remove other's write permission
+				 */
+#if 0 //defined(CONFIG_MACH_LGE)
+				/* LGE_CHANGE [wonhui.lee@lge.com] 2011-08-08,
+				 * add write permission to others for AT%FUELRST
+				 */
+				/* LGE_CHANGE [wonhui.lee@lge.com] 2011-09-06,
+				 * change sysfs path for AT%CHARGE
+				 */
 
-				/*                                     
-                                            
-                                
-     */
+				/* LGE_CHANGE [byoungcheol.lee@lge.com]
+				 * 2011-08-17, Added condition to change
+				 * property of temp_control.
+				 */
 				if ((property == POWER_SUPPLY_PROP_GAUGE_CONTROL)
 					||(property == POWER_SUPPLY_PROP_CHARGER_MODE)
 					||(property == POWER_SUPPLY_PROP_CHARGER_TEMP_CONTROL))

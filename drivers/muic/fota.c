@@ -40,8 +40,8 @@
 //TIME INFORMATION ADD. 2011-05-02 eunae.kim
 #include <linux/rtc.h>
 
-/*                                        
-                                   
+/* LGE_SJIT 2012-02-07 [dojip.kim@lge.com]
+ * FIXME: redesign gpio definitions
  */
 #if defined ( TARGET_CARRIER_LGU )
 #define GPIO_MDM_PWR_ON	22
@@ -129,21 +129,31 @@ int status;
    fota_ebl_download();
 */
 	pr_info("%s: FOTA_proc_excute in  \n", __func__);
-	
+
+#ifndef CONFIG_MACH_LGE_CX2	
    	if( gpio_request( GPIO_MDM_PWR_ON, "mdm_pwr_on" ) != 0 )
 		pr_info("TS0710: %s : Warning : GPIO_MDM_PWR_ON may EBUSY\n", __func__);
 	if( gpio_request( GPIO_MDM_RESET, "reset_mdm" ) != 0 )
 		pr_info("TS0710: %s : Warning : GPIO_MDM_RESET may EBUSY\n", __func__);
+#endif
 		
 	gpio_direction_output( GPIO_MDM_PWR_ON, GPIO_LOW );
 	gpio_direction_output( GPIO_MDM_RESET,	GPIO_LOW );
 	pr_info("###** MODEM_RESET: Current Reset, %d\n", gpio_get_value(GPIO_MDM_RESET));
 	pr_info("###** MODEM_RESET: Current Power, %d\n", gpio_get_value(GPIO_MDM_PWR_ON));	
+#ifndef CONFIG_MACH_LGE_CX2	
 	msleep(200);
+#else
+	msleep(500);
+#endif
 
 	gpio_set_value( GPIO_MDM_PWR_ON, GPIO_HIGH );
 	pr_info("###** MODEM_RESET: After Set High of Power, %d\n", gpio_get_value(GPIO_MDM_PWR_ON));
+#ifndef CONFIG_MACH_LGE_CX2	
 	msleep(400);
+#else
+	msleep(500);
+#endif
 
 	gpio_set_value( GPIO_MDM_RESET, GPIO_HIGH );
 	pr_info("###** MODEM_RESET: After Set High of Reset, %d\n", gpio_get_value(GPIO_MDM_RESET));
@@ -202,7 +212,9 @@ int status;
 	printk("%s: MODEM_GPIO_PWRON_SW high+ [CP POWER]: pin %d\n", __func__, status);
 
 	usif_switch_ctrl(0);
-	usif_switch_none(0); //USIF can't switch
+/* for compile error : Not defined TARGET_CARRIER_LGU 
+    usif_switch_none(0); //USIF can't switch
+*/
 	printk("%s: CP Reset OUT\n", __func__);
 #endif
 }

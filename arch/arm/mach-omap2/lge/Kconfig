@@ -12,7 +12,7 @@ endif
 
 choice
         prompt "Choose LPDDR2 Size"
-        depends on MACH_LGE_IFF || MACH_LGE_P2 || MACH_LGE_U2
+        depends on MACH_LGE_IFF || MACH_LGE_P2 || MACH_LGE_U2 || MACH_LGE_CX2
         default MACH_LGE_LPDDR2_1GB
 
 config MACH_LGE_LPDDR2_1GB
@@ -47,6 +47,19 @@ config LGE_WORKAROUND_PWRBUTTON_BATLOW
 
 	  Say 'Y' if you want to use this workaround
 
+config LGE_WORKAROUND_IGNORE_WAKEUP_GPIOS
+	bool "Ignore wakeup gpios"
+	default n
+	help
+	  Omap has some problem of gpio interrupt lost in offmode.
+	  So omap-gpio use the I/O pad wakeup as workaround for that bug.
+	  However it has side effect that by enabling it causes spurious
+	  wakeup events when system is in offmode.
+
+	  This is for ignoring I/O pad wakeup which is not intended to wakeup
+	  the system
+
+	  Say 'Y' if you want to use this workaround
 endmenu
 
 ## LGE_SJIT_S 09/28/2011 [mohamed.khadri@lge.com] Enabled Bluetooth Related configuration

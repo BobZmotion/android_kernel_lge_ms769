@@ -14,8 +14,8 @@
 #include <lge/common.h>
 #include <lge/board.h>
 
-/*                                        
-                                                              
+/* LGE_SJIT 2012-01-18 [dojip.kim@lge.com]
+ * Ignore gpios as these are not intended to wakeup the system
  */
 unsigned long lge_get_no_pad_wakeup_gpios(int bank_id)
 {

@@ -22,14 +22,14 @@
 #include <lge/common.h>
 #include <lge/board.h>
 #include <linux/input/touch_synaptics_rmi4_i2c.h>
-/*                                                 
-                        */
+/* LGE_CHANGE_S [sungchull.kim@lge.com] 2011-06-13,
+  added cdc_tcxo to i2c */
 #include <linux/cdc_tcxo.h>
-/*                                                 */
+/* LGE_CHANGE_E [sungchull.kim@lge.com] 2011-06-13 */
 #include <linux/lge/apds9900.h>
 #include <linux/fuel_gauge_max17043.h>
 
-//                                                                                         
+// LGE_CHANGE_S [seungmoon.lee@lge.com] 2011-07-19, general power control for device driver
 
 int device_power_control(char* reg_id, int on){
 	static struct regulator *device_regulator = NULL;
@@ -54,13 +54,13 @@ int device_power_control(char* reg_id, int on){
 int vibrator_power_control(bool on){
 	return device_power_control("vib_power", on);
 }
-//                                                
+// LGE_CHANGE_E [seungmoon.lee@lge.com] 2011-07-19
 
 /* PMIC(TWL6030) I2C platform_data */
 static struct regulator_consumer_supply lghdk_vmmc_supply[] = {
 	{
 		.supply = "vmmc",
-		.dev_name = "omap_hsmmc.0", //                                                                 
+		.dev_name = "omap_hsmmc.0", // LGE_SJIT 2011-08-30 [jongrak.kwon@lge.com] Change for Kernel 3.0
 	},
 };
 
@@ -89,7 +89,7 @@ static struct regulator_consumer_supply lghdk_vdac_supply[] = {
 static struct regulator_init_data lghdk_vmmc = {
 	.constraints = {
 		.min_uV			= 1200000,
-		.max_uV			= 3300000,	//                                                                 
+		.max_uV			= 3300000,	// LGE_SJIT 2011-08-30 [jongrak.kwon@lge.com] Match the constraint 
 		.apply_uV		= true,
 		.valid_modes_mask	= REGULATOR_MODE_NORMAL
 					| REGULATOR_MODE_STANDBY,
@@ -190,7 +190,7 @@ static struct regulator_init_data lghdk_vaux1 = {
 					| REGULATOR_CHANGE_MODE
 					| REGULATOR_CHANGE_STATUS,
 
-		.always_on = true, /*                                                                                 */
+		.always_on = true, /* LGE_SJIT 2011-09-28 [choongryeol.lee@lge.com] To prevent turn off during bootup */
 	},
 };
 
@@ -221,7 +221,7 @@ static struct regulator_init_data lghdk_vaux3 = {
 	.num_consumer_supplies = 1,
 	.consumer_supplies = lghdk_cam2_supply,
 };
-//                                                                         
+// LGE_CHANGE_S [seungmoon.lee@lge.com] 2011-07-19, Regulator initilization
 
 #define TWL6030_REGULATOR_DEVICE(_id, _minmv, _maxmv, _always_on)		\
 	static struct regulator_init_data twl6030_##_id##_data = {		\
@@ -240,7 +240,7 @@ static struct regulator_init_data lghdk_vaux3 = {
 		.consumer_supplies = twl6030_##_id##_supply,			\
 	};
 TWL6030_REGULATOR_DEVICE(vusim, 3000000, 3000000, 0);	// Vibrator
-//                                                                         
+// LGE_CHANGE_E [seungmoon.lee@lge.com] 2011-07-19, Regulator initilization
 
 
 static struct twl4030_madc_platform_data lghdk_gpadc_data = {
@@ -297,14 +297,14 @@ static struct twl4030_codec_data twl6040_codec = {
 	.irq_base		= TWL6040_CODEC_IRQ_BASE,
 };
 
-//                                                                                       
+// LGE_SJIT_S 11/18/2011 [mohamed.khadri@lge.com] CLK32K enabled by default for WLAN SDIO
 static struct regulator_init_data p940_clk32kg = {
         .constraints = {
                 .valid_ops_mask = REGULATOR_CHANGE_STATUS,
                 .always_on              = true,
         },
 };
-//                                                                                       
+// LGE_SJIT_E 11/18/2011 [mohamed.khadri@lge.com] CLK32K enabled by default for WLAN SDIO
 
 static struct twl4030_platform_data lghdk_twldata = {
 	.irq_base	= TWL6030_IRQ_BASE,
@@ -313,9 +313,9 @@ static struct twl4030_platform_data lghdk_twldata = {
 	/* Regulators */
 	.vmmc		= &lghdk_vmmc,
 	.vpp		= &lghdk_vpp,
-	//                                                                           
+	// LGE_CHANGE_S [seungmoon.lee@lge.com] 2011-07-19, change vibrator regulator
 	.vusim		= &twl6030_vusim_data,
-	//                                                                           
+	// LGE_CHANGE_E [seungmoon.lee@lge.com] 2011-07-19, change vibrator regulator
 	.vana		= &lghdk_vana,
 	.vcxio		= &lghdk_vcxio,
 	.vdac		= &lghdk_vdac,
@@ -323,9 +323,9 @@ static struct twl4030_platform_data lghdk_twldata = {
 	.vaux1		= &lghdk_vaux1,
 	.vaux2		= &lghdk_vaux2,
 	.vaux3		= &lghdk_vaux3,
-//                                                                                       
+// LGE_SJIT_S 11/18/2011 [mohamed.khadri@lge.com] CLK32K enabled by default for WLAN SDIO
 	.clk32kg        = &p940_clk32kg,
-//                                                                                       
+// LGE_SJIT_E 11/18/2011 [mohamed.khadri@lge.com] CLK32K enabled by default for WLAN SDIO
 	.usb		= &omap4_usbphy_data,
 	.madc		= &lghdk_gpadc_data,
 	.bci		= &lghdk_bci_data,
@@ -335,8 +335,8 @@ static struct twl4030_platform_data lghdk_twldata = {
 };
 
 
-/*                                                 
-                        */
+/* LGE_CHANGE_S [sungchull.kim@lge.com] 2011-06-13,
+  added cdc_tcxo to i2c */
 static struct cdc_tcxo_platform_data lghdk__cdc_data = {
 	.buf = {
 		CDC_TCXO_REQ4INT | CDC_TCXO_REQ1INT |
@@ -350,7 +350,7 @@ static struct cdc_tcxo_platform_data lghdk__cdc_data = {
 
 		0 },
 };
-/*                                                 */
+/* LGE_CHANGE_E [sungchull.kim@lge.com] 2011-06-13 */
 
 static struct synaptics_ts_platform_data synaptics_t1320_ts_platform_data[] = {
 	{
@@ -412,9 +412,9 @@ static struct lm3559_platform_data	lm3559_pdata = {
 
 /* Sensor I2C platform_data */
 
-/*                                          
-                              
-                                                                               
+/* jaekyung.oh@lge.com 2011.02.12 Start -->[
+    MPU3050 Board configration
+    if you wanna config ".orientation" value for your board, please mail to me.
 */
 #if defined(CONFIG_MPU_SENSORS_MPU3050) || defined(CONFIG_SENSORS_MPU3050_MODULE)
 #include <linux/mpu.h>
@@ -458,16 +458,16 @@ static struct mpu3050_platform_data  mpu_pdata = {
     },
 };
 #endif
-/*                                        */
+/* jaekyung.oh@lge.com 2011.02.12 End <--]*/
 
-/*                                                  */
+/* LGE_CHANGE_S [seungho1.park@lge.com] 2011-11-18, */
 #if defined(CONFIG_CHARGER_MAX8971)
 #include <linux/max8971.h>
 #endif
-/*                                         */
+/* LGE_CHANGE_E [seungho1.park@lge.com] ,  */
 
-/*                                        
-                                        
+/* LGE_SJIT 2011-12-02 [dojip.kim@lge.com]
+ * define the platform_data for APDS9900
  */
 static struct apds9900_platform_data apds9900_pdata = {
 	.atime    = 0xdb, // minimum ALS integration time
@@ -490,7 +490,7 @@ static struct apds9900_platform_data apds9900_pdata = {
 	.ldo_gpio = 104,
 };
 
-/*                                                                    */
+/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] add max17043 platform_data */
 static struct max17043_platform_data max17043_pdata = {
 	.gpio_alert = GPIO_GAUGE_INT,
 	.rcomp = RCOMP_BL44JN,
@@ -504,13 +504,13 @@ static struct i2c_board_info i2c_1_info[] __initdata = {
 		.irq = OMAP44XX_IRQ_SYS_1N,
 		.platform_data = &lghdk_twldata,
 	},
-/*                                                 
-                        */
+/* LGE_CHANGE_S [sungchull.kim@lge.com] 2011-06-13,
+  added cdc_tcxo to i2c */
 	{
 		I2C_BOARD_INFO("cdc_tcxo_driver", 0x6c),
 		.platform_data = &lghdk__cdc_data,
 	},
-/*                                                 */
+/* LGE_CHANGE_E [sungchull.kim@lge.com] 2011-06-13 */
 };
 
 /* i2c_2_info */
@@ -528,14 +528,14 @@ static struct i2c_board_info i2c_2_info[] __initdata = {
 		.platform_data	=	&lm3528_pdata,
 	},
 #endif
-//                                                
+//LGE_CHANGES_START_jaekyung.oh@lge.com 2011.06.20
 #if defined(CONFIG_BACKLIGHT_LM3530)
 	{
 		I2C_BOARD_INFO(LM3530_I2C_NAME,  LM3530_I2C_ADDR),
 		.platform_data	=	&lm3530_pdata,
 	},
 #endif
-//                                              
+//LGE_CHANGES_END_jaekyung.oh@lge.com 2011.06.20
 	{
 		I2C_BOARD_INFO("lgdp4512_barrierA", 0x74),		
 	},
@@ -548,7 +548,7 @@ static struct i2c_board_info i2c_2_info[] __initdata = {
 		.platform_data	=	&lm3559_pdata,
 	},
 #endif	
-	/*                                                                    */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] add max17043 platform_data */
 	{
 		I2C_BOARD_INFO("max17043_i2c",  0x36),
 		.platform_data = &max17043_pdata,
@@ -577,14 +577,14 @@ static struct i2c_board_info i2c_3_info[] __initdata = {
 	},
 #endif
 
-/*                                                  */
+/* LGE_CHANGE_S [seungho1.park@lge.com] 2011-11-21, */
 #if defined(CONFIG_CHARGER_MAX8971)
 	{
 		I2C_BOARD_INFO(MAX8971_I2C_NAME,  0x35),
 		.irq = GPIO_CHARGER_INT,
 	},
 #endif
-/*                                         */
+/* LGE_CHANGE_E [seungho1.park@lge.com] ,  */
 
 #if defined(CONFIG_LG_FW_STC3105_FUEL_GAUGE)
 	{
@@ -597,7 +597,7 @@ static struct i2c_board_info i2c_3_info[] __initdata = {
 
 /* i2c_4_info */
 static struct i2c_board_info i2c_4_info[] __initdata = {
-/*                                           */
+/* jaekyung.oh@lge.com 2011.02.12 Start -->[ */
 #if defined(CONFIG_MPU_SENSORS_MPU3050) || defined(CONFIG_SENSORS_MPU3050_MODULE)
 	{
 		 I2C_BOARD_INFO(SENSOR_MPU_NAME, 0x68),
@@ -611,16 +611,16 @@ static struct i2c_board_info i2c_4_info[] __initdata = {
 		.platform_data = &apds9900_pdata,
 	},
 #endif
-/*                                           */
+/* jaekyung.oh@lge.com 2011.02.12 End   <--] */
 #ifdef CONFIG_PN544_NFC
-/*                                                      */
+/*dongjoon.kim@lge.com 2011.06.07 NFC C2 bring-up[START]*/
         {
                 I2C_BOARD_INFO("pn544", NFC_I2C_SLAVE_ADDR),
                 .type = "pn544",
                 .irq = OMAP_GPIO_IRQ(NFC_GPIO_IRQ),
                 .platform_data = &nfc_pdata,
         },
-/*                                                    */
+/*dongjoon.kim@lge.com 2011.06.07 NFC C2 bring-up[END]*/
 #endif
 };
 

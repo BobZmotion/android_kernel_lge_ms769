@@ -96,12 +96,12 @@ static ssize_t gps_gpio_poweron_store(struct device *dev,
 #if defined(CONFIG_P940_GPS_LNA_SD_USE)
 	gpio_set_value(pdata->lna_sd, value);
 #endif
-//                                                                       
+// LGE_SJIT_S 12/21/2011 [mohamed.khadri@lge.com] GPS UART Enable/Disable
 	if(value)
 		pdata->uart_enable();
 	else
 		pdata->uart_disable();
-//                                                                       
+// LGE_SJIT_E 12/21/2011 [mohamed.khadri@lge.com] GPS UART Enable/Disable
 	return size;
 }
 
@@ -131,7 +131,7 @@ static int __devinit gps_gpio_probe(struct platform_device *pdev)
 		pr_err("%s: failed to request GPIO_%d\n", __func__, pdata->reset_n);
 		goto err_gpio_reset_req;
 	}
-	//                                                                            
+	// LGE_SJIT 01/26/2012 [mohamed.khadri@lge.com] Configure for initial out high
 	gpio_direction_output(pdata->reset_n, 1);
 
 #if defined(CONFIG_P940_GPS_LNA_SD_USE)

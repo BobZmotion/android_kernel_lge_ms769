@@ -178,13 +178,13 @@ static struct omap_dss_device hdmi_device = {
 		.hdmi	= {
 			.regn	= 15,
 			.regm2	= 1,
-//                                                                                                 
+// LGE_CHANGE_S [sungho.jung@lge.com] 2012-02-21, HDMI PLL supports maximum pixel clock of 148.5MHz
 #if 1
 			.max_pixclk_khz = 75000, // Max is 75 Mhz
 #else
 			.max_pixclk_khz = 148500,// Max is 148.5 Mhz
 #endif
-//                                              
+// LGE_CHANGE_E [sungho.jung@lge.com] 2012-02-21
 		},
 	},
 	.hpd_gpio = GPIO_HDMI_HPD,
@@ -231,11 +231,11 @@ int __init p940_dss_init(void)
 
 lge_machine_initcall(p940_dss_init);
 
-/*                                          
-                                                        
-                                                     
-                                                      
-                                                                          
+/* LGE_SJIT 2012-1-13 [jongrak.kwon@lge.com]
+ * Set the FB size to 10MB for upto three buffers for P2
+ * Set the FB size to 8MB for upto two buffers for P2
+ * Align_2M((Align_60K(800*4096) = 3317760) * 2) = 8MB
+ * => Three buffer requires framework support (current two buffer support)
  */
 #define FB_RAM_SIZE	(8*1024*1024) /* Align_60K (800 * 4096) * 2 */
 

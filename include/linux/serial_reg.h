@@ -363,3 +363,4 @@
 #define UART_OMAP_MDR1_DISABLE		0x07	/* Disable (default state) */
 
 #endif /* _LINUX_SERIAL_REG_H */
+

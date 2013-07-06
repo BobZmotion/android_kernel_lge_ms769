@@ -12,7 +12,7 @@ extern ST_TRANSMISSION		m_ucTransMode;
 extern PLL_MODE				m_ucPLL_Mode;
 extern INC_DPD_MODE			m_ucDPD_Mode;
 extern INC_UINT16			m_unIntCtrl;
-extern INC_UINT16            m_ucRFTbl;  /*                                */
+extern INC_UINT16            m_ucRFTbl;  /* LGE ADD for Selecting RF Table */
 
 
 extern void              INC_MUST_DELAY(INC_UINT16 uiDelay);
@@ -476,7 +476,7 @@ INC_UINT8 INC_READY(INC_UINT8 ucI2CID, INC_UINT32 ulFreq)
 		}
 	}
 
-	/*                                                                */
+	/* LGE modify for using one INC_RF_CTRL500.c  0 : T39F0, 1 : T39F1*/
 	if(INC_RF500_START(ucI2CID, ulFreq, m_ucRfBand, m_ucRFTbl) != INC_SUCCESS){
 		pInfo->nBbpStatus = ERROR_READY;
 		return INC_ERROR;
@@ -838,7 +838,7 @@ INC_UINT8 INC_CHANNEL_START(INC_UINT8 ucI2CID, ST_SUBCH_INFO* pChInfo)
 }
 
 
-/*                  */
+/* LGE ADD for Test */
 INC_UINT8 INC_RE_SYNCDETECTOR(INC_UINT8 ucI2CID, ST_SUBCH_INFO* pChInfo)
 {
 	INC_UINT16 wEnsemble;
@@ -965,7 +965,7 @@ INC_UINT8 INC_STATUS_CHECK(INC_UINT8 ucI2CID)
 	// INC_GET_PREBER(ucI2CID);
 	INC_GET_POSTBER(ucI2CID);
 	// INC_GET_RSSI(ucI2CID);
-	INC_GET_ANT_LEVEL(ucI2CID);  /*                    */
+	INC_GET_ANT_LEVEL(ucI2CID);  /* LGE use this value */
 
 	pInfo = INC_GET_STRINFO(ucI2CID);
 

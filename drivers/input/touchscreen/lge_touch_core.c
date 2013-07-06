@@ -20,7 +20,6 @@
 #include <linux/hrtimer.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
-#include <linux/input/mt.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
@@ -35,29 +34,30 @@
 #include <mach/gpio.h>
 
 #include <linux/input/lge_touch_core.h>
+#include <linux/lge/lge_input.h>
 
 struct lge_touch_data
 {
-	void*				h_touch;
-	atomic_t			next_work;
-	atomic_t			device_init;
+	void*			h_touch;
+	atomic_t		next_work;
+	atomic_t		device_init;
 	u8				work_sync_err_cnt;
 	u8				ic_init_err_cnt;
-	volatile int			curr_pwr_state;
-	int				int_pin_state;
-	struct i2c_client 		*client;
-	struct input_dev 		*input_dev;
-	struct hrtimer 			timer;
+	volatile int	curr_pwr_state;
+	struct i2c_client 			*client;
+	struct input_dev 			*input_dev;
+	struct hrtimer 				timer;
 	struct work_struct  		work;
-	struct delayed_work		work_init;
-	struct delayed_work		work_touch_lock;
+	struct delayed_work			work_init;
+	struct delayed_work			work_touch_lock;
 	struct work_struct  		work_fw_upgrade;
 	struct early_suspend		early_suspend;
 	struct touch_platform_data 	*pdata;
-	struct touch_data		ts_data;
+	struct touch_data			ts_data;
 	struct touch_fw_info		fw_info;
-	struct section_info		st_info;
-	struct kobject 			lge_touch_kobj;
+	struct fw_upgrade_info		fw_upgrade;
+	struct section_info			st_info;
+	struct kobject 				lge_touch_kobj;
 	struct ghost_finger_ctrl	gf_ctrl;
 	struct jitter_filter_info	jitter_filter;
 	struct accuracy_filter_info	accuracy_filter;
@@ -95,14 +95,26 @@ struct timeval t_debug[TIME_PROFILE_MAX];
 #define MAX_RETRY_COUNT			3
 #define MAX_GHOST_CHECK_COUNT	3
 
+//mo2haewoon.you@lge.com => [START]
+#if defined(COSMO_TOUCHKEY_RANGE_TRIM) || defined(CX2_TOUCHKEY_RANGE_TRIM)
+#define BTN_EDGE_WIDTH	373
+#define BTN_TRIM_WIDTH	60
+#endif
+//mo2haewoon.you@lge.com <= [END]
+
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 static void touch_early_suspend(struct early_suspend *h);
 static void touch_late_resume(struct early_suspend *h);
 #endif
 
 /* Auto Test interface for some model */
-struct lge_touch_data *touch_test_dev = NULL;
-EXPORT_SYMBOL(touch_test_dev);
+static struct lge_touch_data *touch_test_dev = NULL;
+
+#if defined(CONFIG_MACH_LGE_COSMO) || defined(CONFIG_MACH_LGE_CX2)
+//mo2haewoon.you@lge.com => [START]  keylock command
+extern int atcmd_keylock;
+//mo2haewoon.you@lge.com <= [END]
+#endif
 
 void Send_Touch( unsigned int x, unsigned int y)
 {
@@ -118,6 +130,11 @@ void Send_Touch( unsigned int x, unsigned int y)
 		input_sync(touch_test_dev->input_dev);
 
 		/* release */
+		input_report_abs(touch_test_dev->input_dev, ABS_MT_POSITION_X, x);
+		input_report_abs(touch_test_dev->input_dev, ABS_MT_POSITION_Y, y);
+		input_report_abs(touch_test_dev->input_dev, ABS_MT_PRESSURE, 0);
+		input_report_abs(touch_test_dev->input_dev, ABS_MT_WIDTH_MAJOR, 0);
+		input_report_abs(touch_test_dev->input_dev, ABS_MT_WIDTH_MINOR, 0);
 		input_mt_sync(touch_test_dev->input_dev);
 		input_sync(touch_test_dev->input_dev);
 	}
@@ -132,7 +149,12 @@ int get_touch_ts_fw_version(char *fw_ver)
 {
 	if (touch_test_dev)
 	{
-		sprintf(fw_ver, "%s", touch_test_dev->fw_info.ic_fw_version);
+#ifdef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200	/* seungbum.park@lge.com - 2012/06/11 - for synaptics 3200 series (S3203) and 7000 series */
+		sprintf(fw_ver, "%s", touch_test_dev->fw_info.config_id);
+#else
+		sprintf(fw_ver, "%d.0%d", touch_test_dev->fw_info.manufacturer_id,
+				touch_test_dev->fw_info.fw_rev);
+#endif
 		return 1;
 	}
 	else
@@ -292,78 +314,6 @@ static void time_profile_result(struct lge_touch_data *ts)
 }
 #endif
 
-/* touch_asb_input_report
- *
- * finger status report
- */
-static int touch_asb_input_report(struct lge_touch_data *ts, int status)
-{
-	u16 id = 0;
-	u8 total = 0;
-
-	if (status == FINGER_PRESSED) {
-		for (id = 0; id < ts->pdata->caps->max_id; id++) {
-			if (ts->pdata->role->key_type == TOUCH_SOFT_KEY
-					&& (ts->ts_data.curr_data[id].y_position
-						>= ts->pdata->caps->y_button_boundary))
-				continue;
-
-			if (ts->ts_data.curr_data[id].status == FINGER_PRESSED) {
-				input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
-						ts->ts_data.curr_data[id].x_position);
-
-				/* When a user's finger cross the boundary (from key to LCD),
-				    a ABS-event will change its y-position to edge of LCD, automatically.*/
-				if(ts->pdata->role->key_type == TOUCH_SOFT_KEY
-						&& ts->ts_data.curr_data[id].y_position < ts->pdata->caps->y_button_boundary
-						&& ts->ts_data.prev_data[id].y_position > ts->pdata->caps->y_button_boundary
-						&& ts->ts_data.prev_button.key_code != KEY_NULL)
-					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, ts->pdata->caps->y_button_boundary);
-				else
-					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
-						ts->ts_data.curr_data[id].y_position);
-
-				if (ts->pdata->caps->is_pressure_supported)
-					input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
-									 ts->ts_data.curr_data[id].pressure);
-				if (ts->pdata->caps->is_width_supported) {
-					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR,
-									 ts->ts_data.curr_data[id].width_major);
-					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MINOR,
-									 ts->ts_data.curr_data[id].width_minor);
-					input_report_abs(ts->input_dev, ABS_MT_ORIENTATION,
-									 ts->ts_data.curr_data[id].width_orientation);
-				}
-				if (ts->pdata->caps->is_id_supported)
-					input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, id);
-
-				input_mt_sync(ts->input_dev);
-
-				total++;
-
-				if (unlikely(touch_debug_mask & DEBUG_ABS))
-					TOUCH_INFO_MSG("<%d> pos[%4d,%4d] w_m[%2d] w_n[%2d] w_o[%2d] p[%3d]\n",
-							ts->pdata->caps->is_id_supported? id : 0,
-							ts->ts_data.curr_data[id].x_position,
-							ts->ts_data.curr_data[id].y_position,
-							ts->pdata->caps->is_width_supported?
-							ts->ts_data.curr_data[id].width_major: 0,
-							ts->pdata->caps->is_width_supported?
-							ts->ts_data.curr_data[id].width_minor: 0,
-							ts->pdata->caps->is_width_supported?
-							ts->ts_data.curr_data[id].width_orientation: 0,
-							ts->pdata->caps->is_pressure_supported ?
-							ts->ts_data.curr_data[id].pressure : 0);
-			} else {
-			}
-		}
-	} else if (status == FINGER_RELEASED) {
-		input_mt_sync(ts->input_dev);
-	}
-
-	return total;
-}
-
 /* release_all_ts_event
  *
  * When system enters suspend-state,
@@ -373,7 +323,7 @@ static void release_all_ts_event(struct lge_touch_data *ts)
 {
 	if (ts->pdata->role->key_type == TOUCH_HARD_KEY){
 		if (ts->ts_data.prev_total_num) {
-			touch_asb_input_report(ts, FINGER_RELEASED);
+			input_mt_sync(ts->input_dev);
 			if (likely(touch_debug_mask & (DEBUG_ABS | DEBUG_BASE_INFO)))
 				TOUCH_INFO_MSG("touch finger position released\n");
 		}
@@ -387,7 +337,7 @@ static void release_all_ts_event(struct lge_touch_data *ts)
 	}
 	else if (ts->pdata->role->key_type == VIRTUAL_KEY){
 		if (ts->ts_data.prev_total_num) {
-			touch_asb_input_report(ts, FINGER_RELEASED);
+			input_mt_sync(ts->input_dev);
 
 			if (likely(touch_debug_mask & (DEBUG_ABS | DEBUG_BASE_INFO)))
 				TOUCH_INFO_MSG("touch finger position released\n");
@@ -395,7 +345,7 @@ static void release_all_ts_event(struct lge_touch_data *ts)
 	}
 	else if (ts->pdata->role->key_type == TOUCH_SOFT_KEY){
 		if (ts->ts_data.state == ABS_PRESS) {
-			touch_asb_input_report(ts, FINGER_RELEASED);
+			input_mt_sync(ts->input_dev);
 
 			if (likely(touch_debug_mask & (DEBUG_ABS | DEBUG_BASE_INFO)))
 				TOUCH_INFO_MSG("touch finger position released\n");
@@ -408,7 +358,6 @@ static void release_all_ts_event(struct lge_touch_data *ts)
 	}
 
 	ts->ts_data.prev_total_num = 0;
-
 	input_sync(ts->input_dev);
 }
 
@@ -496,6 +445,7 @@ static void safety_reset(struct lge_touch_data *ts)
 
 	touch_power_cntl(ts, POWER_OFF);
 	touch_power_cntl(ts, POWER_ON);
+
 	msleep(ts->pdata->role->booting_delay);
 
 	if (ts->pdata->role->operation_mode)
@@ -512,8 +462,8 @@ static void safety_reset(struct lge_touch_data *ts)
  */
 static int touch_ic_init(struct lge_touch_data *ts)
 {
+	int int_pin = 0;
 	int next_work = 0;
-	ts->int_pin_state = 0;
 
 	if(unlikely(ts->ic_init_err_cnt >= MAX_RETRY_COUNT)){
 		TOUCH_ERR_MSG("Init Failed: Irq-pin has some unknown problems\n");
@@ -535,22 +485,26 @@ static int touch_ic_init(struct lge_touch_data *ts)
 
 	/* Interrupt pin check after IC init - avoid Touch lockup */
 	if(ts->pdata->role->operation_mode == INTERRUPT_MODE){
-		ts->int_pin_state = gpio_get_value(ts->pdata->int_pin);
+		int_pin = gpio_get_value(ts->pdata->int_pin);
 		next_work = atomic_read(&ts->next_work);
 
-		if(unlikely(ts->int_pin_state != 1 && next_work <= 0)){
+		if(unlikely(int_pin != 1 && next_work <= 0)){
 			TOUCH_INFO_MSG("WARN: Interrupt pin is low - next_work: %d, try_count: %d]\n",
 					next_work, ts->ic_init_err_cnt);
 			goto err_out_retry;
 		}
 	}
-
-	ts->gf_ctrl.count = 0;
-	ts->gf_ctrl.ghost_check_count = 0;
-	ts->gf_ctrl.saved_x = -1;
-	ts->gf_ctrl.saved_y = -1;
-
-	if(ts->gf_ctrl.probe){
+	
+	if(ts->gf_ctrl.stage & GHOST_STAGE_2){
+		ts->gf_ctrl.stage = GHOST_STAGE_2 | GHOST_STAGE_3; 
+		if(touch_device_func->ic_ctrl){
+			if(touch_device_func->ic_ctrl(ts->client, IC_CTRL_BASELINE, BASELINE_FIX) < 0){
+				TOUCH_ERR_MSG("IC_CTRL_BASELINE handling fail\n");
+				goto err_out_retry;
+			}
+		}
+	}
+	else {
 		ts->gf_ctrl.stage = GHOST_STAGE_1;
 		if(touch_device_func->ic_ctrl){
 			if(touch_device_func->ic_ctrl(ts->client, IC_CTRL_BASELINE, BASELINE_OPEN) < 0){
@@ -559,48 +513,25 @@ static int touch_ic_init(struct lge_touch_data *ts)
 			}
 		}
 	}
-	else{
-		if(ts->gf_ctrl.stage & GHOST_STAGE_2) {
-			ts->gf_ctrl.stage = GHOST_STAGE_1 | GHOST_STAGE_2 | GHOST_STAGE_4;
-			ts->gf_ctrl.ghost_check_count = MAX_GHOST_CHECK_COUNT - 1;
-			if(touch_device_func->ic_ctrl){
-				if(touch_device_func->ic_ctrl(ts->client, IC_CTRL_BASELINE, BASELINE_OPEN) < 0){
-					TOUCH_ERR_MSG("IC_CTRL_BASELINE handling fail\n");
-					goto err_out_retry;
-				}
-			}
-		}
-		else {
-			ts->gf_ctrl.stage = GHOST_STAGE_3;
-			if(touch_device_func->ic_ctrl){
-				if(touch_device_func->ic_ctrl(ts->client, IC_CTRL_BASELINE, BASELINE_FIX) < 0){
-					TOUCH_ERR_MSG("IC_CTRL_BASELINE handling fail\n");
-					goto err_out_retry;
-				}
-			}
-		}
-	}
 
 	if (unlikely(touch_debug_mask & (DEBUG_BASE_INFO | DEBUG_GHOST))){
-        TOUCH_INFO_MSG("%s %s(%s): FW ver[%s], force[%d]\n",
-                ts->pdata->maker, ts->fw_info.ic_fw_identifier,
-                ts->pdata->role->operation_mode?"Interrupt mode":"Polling mode",
-                ts->fw_info.ic_fw_version, ts->fw_info.fw_upgrade.fw_force_upgrade);
-        TOUCH_INFO_MSG("irq_pin[%d] next_work[%d] ghost_stage[0x%x]\n",
-				ts->int_pin_state, next_work, ts->gf_ctrl.stage);
+		TOUCH_INFO_MSG("%s %s(%s): ID[%d], FW rev[%d], f/u[%d]\n",
+				ts->pdata->maker, ts->fw_info.product_id,
+				ts->pdata->role->operation_mode?"Interrupt mode":"Polling mode",
+				ts->fw_info.manufacturer_id, ts->fw_info.fw_rev, ts->fw_upgrade.fw_force_upgrade);
+		TOUCH_INFO_MSG("irq_pin[%d] next_work[%d] ghost_stage[0x%x]\n",  
+				int_pin, next_work, ts->gf_ctrl.stage);
 	}
 
-	ts->gf_ctrl.probe = 0;
-
+	ts->gf_ctrl.count = 0;
+	ts->gf_ctrl.ghost_check_count = 0;
 	memset(&ts->ts_data, 0, sizeof(ts->ts_data));
-	memset(&ts->fw_info.fw_upgrade, 0, sizeof(ts->fw_info.fw_upgrade));
+	memset(&ts->fw_upgrade, 0, sizeof(ts->fw_upgrade));
 	ts->ic_init_err_cnt = 0;
 
 	ts->jitter_filter.id_mask = 0;
 	memset(ts->jitter_filter.his_data, 0, sizeof(ts->jitter_filter.his_data));
 	memset(&ts->accuracy_filter.his_data, 0, sizeof(ts->accuracy_filter.his_data));
-
-	ts->accuracy_filter.finish_filter = 0;
 
 	return 0;
 
@@ -619,8 +550,8 @@ err_out_critical:
 
 /* ghost_finger_solution
  *
- * GHOST_STAGE_1
- * - melt_mode.
+ * GHOST_STAGE_1 
+ * - melt_mode. 
  * - If user press and release their finger in 1 sec, STAGE_1 will be cleared. --> STAGE_2
  * - If there is no key-guard, ghost_finger_solution is finished.
  *
@@ -634,41 +565,21 @@ err_out_critical:
  * - when user release their finger, device re-scan the baseline.
  * - Then, GHOST_STAGE3 is cleared and ghost_finger_solution is finished.
  */
-#define ghost_sub(x, y)	(x > y ? x - y : y - x)
-
 int ghost_finger_solution(struct lge_touch_data *ts)
 {
-	u8	id = 0;
-
-	for (id = 0; id < ts->pdata->caps->max_id; id++){
-		if (ts->ts_data.curr_data[id].status == FINGER_PRESSED) {
-			break;
-		}
-	}
-
 	if(ts->gf_ctrl.stage & GHOST_STAGE_1){
-		if(ts->ts_data.total_num == 0 && ts->ts_data.curr_button.state == 0 && ts->ts_data.palm == 0){
+		if(ts->ts_data.total_num == 0 && ts->ts_data.curr_button.state == 0){
 			if(ts->gf_ctrl.count < ts->gf_ctrl.min_count || ts->gf_ctrl.count >= ts->gf_ctrl.max_count){
 				if(ts->gf_ctrl.stage & GHOST_STAGE_2)
 					ts->gf_ctrl.ghost_check_count = MAX_GHOST_CHECK_COUNT - 1;
 				else
 					ts->gf_ctrl.ghost_check_count = 0;
 			}
-			else{
-				if(ghost_sub(ts->gf_ctrl.saved_x, ts->gf_ctrl.saved_last_x) > ts->gf_ctrl.max_moved ||
-				   ghost_sub(ts->gf_ctrl.saved_y, ts->gf_ctrl.saved_last_y) > ts->gf_ctrl.max_moved)
-					ts->gf_ctrl.ghost_check_count = MAX_GHOST_CHECK_COUNT;
-				else
-					ts->gf_ctrl.ghost_check_count++;
-
-				if (unlikely(touch_debug_mask & DEBUG_GHOST))
-					TOUCH_INFO_MSG("ghost_stage_1: delta[%d/%d/%d]\n",
-						ghost_sub(ts->gf_ctrl.saved_x, ts->gf_ctrl.saved_last_x),
-						ghost_sub(ts->gf_ctrl.saved_y, ts->gf_ctrl.saved_last_y),
-						ts->gf_ctrl.max_moved);
+			else {
+				ts->gf_ctrl.ghost_check_count++;
 			}
 
-			if (unlikely(touch_debug_mask & DEBUG_GHOST || touch_debug_mask & DEBUG_BASE_INFO))
+			if (unlikely(touch_debug_mask & DEBUG_GHOST))
 				TOUCH_INFO_MSG("ghost_stage_1: ghost_check_count+[0x%x]\n", ts->gf_ctrl.ghost_check_count);
 
 			if(ts->gf_ctrl.ghost_check_count >= MAX_GHOST_CHECK_COUNT){
@@ -678,42 +589,28 @@ int ghost_finger_solution(struct lge_touch_data *ts)
 						return -1;
 				}
 				ts->gf_ctrl.stage &= ~GHOST_STAGE_1;
-				if (unlikely(touch_debug_mask & DEBUG_GHOST|| touch_debug_mask & DEBUG_BASE_INFO))
+				if (unlikely(touch_debug_mask & DEBUG_GHOST))
 					TOUCH_INFO_MSG("ghost_stage_1: cleared[0x%x]\n", ts->gf_ctrl.stage);
 				if(!ts->gf_ctrl.stage){
-					if (unlikely(touch_debug_mask & DEBUG_GHOST))
+					if (unlikely(touch_debug_mask & DEBUG_GHOST
+							|| touch_debug_mask & DEBUG_BASE_INFO))
 						TOUCH_INFO_MSG("ghost_stage_finished. (NON-KEYGUARD)\n");
 				}
 			}
 			ts->gf_ctrl.count = 0;
-			ts->gf_ctrl.saved_x = -1;
-			ts->gf_ctrl.saved_y = -1;
 		}
-		else if(ts->ts_data.total_num == 1 && ts->ts_data.curr_button.state == 0
-				&& ts->ts_data.curr_data[id].id == 0 && ts->ts_data.palm == 0){
-			if(ts->gf_ctrl.saved_x == -1 && ts->gf_ctrl.saved_x == -1){
-				ts->gf_ctrl.saved_x = ts->ts_data.curr_data[id].x_position;
-				ts->gf_ctrl.saved_y = ts->ts_data.curr_data[id].y_position;
-			}
+		else if(ts->ts_data.total_num == 1 && ts->ts_data.curr_button.state == 0 && ts->ts_data.curr_data[0].id == 0){
 			ts->gf_ctrl.count++;
 			if (unlikely(touch_debug_mask & DEBUG_GHOST))
 				TOUCH_INFO_MSG("ghost_stage_1: int_count[%d/%d]\n", ts->gf_ctrl.count, ts->gf_ctrl.max_count);
 		}
-		else {
-			if (unlikely(touch_debug_mask & DEBUG_GHOST) && ts->gf_ctrl.count != ts->gf_ctrl.max_count)
-				TOUCH_INFO_MSG("ghost_stage_1: Not good condition. total[%d] button[%d] id[%d] palm[%d]\n",
-						ts->ts_data.total_num, ts->ts_data.curr_button.state,
-						ts->ts_data.curr_data[id].id, ts->ts_data.palm);
+		else
 			ts->gf_ctrl.count = ts->gf_ctrl.max_count;
-		}
 	}
 	else if(ts->gf_ctrl.stage & GHOST_STAGE_2){
 		if(ts->ts_data.total_num > 1 || (ts->ts_data.total_num == 1 && ts->ts_data.curr_button.state)){
-			ts->gf_ctrl.stage |= GHOST_STAGE_1;
 			ts->gf_ctrl.ghost_check_count = MAX_GHOST_CHECK_COUNT - 1;
-			ts->gf_ctrl.count = 0;
-			ts->gf_ctrl.saved_x = -1;
-			ts->gf_ctrl.saved_y = -1;
+			ts->gf_ctrl.stage |= GHOST_STAGE_1;
 			if(touch_device_func->ic_ctrl){
 				if(touch_device_func->ic_ctrl(ts->client, IC_CTRL_BASELINE, BASELINE_OPEN) < 0)
 					return -1;
@@ -725,63 +622,19 @@ int ghost_finger_solution(struct lge_touch_data *ts)
 		}
 	}
 	else if(ts->gf_ctrl.stage & GHOST_STAGE_3){
-		if(ts->ts_data.total_num == 0 && ts->ts_data.curr_button.state == 0 && ts->ts_data.palm == 0){
-			ts->gf_ctrl.ghost_check_count++;
-
-			if (unlikely(touch_debug_mask & DEBUG_GHOST || touch_debug_mask & DEBUG_BASE_INFO))
-				TOUCH_INFO_MSG("ghost_stage_3: ghost_check_count+[0x%x]\n", ts->gf_ctrl.ghost_check_count);
-
-			if(ts->gf_ctrl.ghost_check_count >= MAX_GHOST_CHECK_COUNT){
-				ts->gf_ctrl.stage &= ~GHOST_STAGE_3;
-				if (unlikely(touch_debug_mask & DEBUG_GHOST || touch_debug_mask & DEBUG_BASE_INFO))
-					TOUCH_INFO_MSG("ghost_stage_3: cleared[0x%x]\n", ts->gf_ctrl.stage);
-				if(!ts->gf_ctrl.stage){
-					if (unlikely(touch_debug_mask & DEBUG_GHOST))
-						TOUCH_INFO_MSG("ghost_stage_finished. (NON-KEYGUARD)\n");
-				}
-			}
-		}
-		else if(ts->ts_data.total_num == 1 && ts->ts_data.curr_button.state == 0
-				&& ts->ts_data.curr_data[id].id == 0 && ts->ts_data.palm == 0);
-		else{
-			ts->gf_ctrl.stage &= ~GHOST_STAGE_3;
-			ts->gf_ctrl.stage |= GHOST_STAGE_1;
-			ts->gf_ctrl.ghost_check_count = 0;
-			ts->gf_ctrl.count = 0;
-			ts->gf_ctrl.saved_x = -1;
-			ts->gf_ctrl.saved_y = -1;
-			if (touch_device_func->ic_ctrl) {
-				if(touch_device_func->ic_ctrl(ts->client, IC_CTRL_BASELINE, BASELINE_OPEN) < 0)
-					return -1;
-			}
-
-			if (unlikely(touch_debug_mask & DEBUG_GHOST)){
-				TOUCH_INFO_MSG("ghost_stage_3: Not good condition. total[%d] button[%d] id[%d] palm[%d]\n",
-						ts->ts_data.total_num, ts->ts_data.curr_button.state,
-						ts->ts_data.curr_data[id].id, ts->ts_data.palm);
-				TOUCH_INFO_MSG("ghost_stage_3: return to ghost_stage_1[0x%x]\n", ts->gf_ctrl.stage);
-			}
-		}
-	}
-	else if(ts->gf_ctrl.stage & GHOST_STAGE_4){
-		if(ts->ts_data.total_num == 0 && ts->ts_data.curr_button.state == 0 && ts->ts_data.palm == 0){
+		if(ts->ts_data.total_num == 0 && ts->ts_data.curr_button.state == 0){
 			if(touch_device_func->ic_ctrl){
 				if (touch_device_func->ic_ctrl(ts->client, IC_CTRL_BASELINE, BASELINE_REBASE) < 0)
 					return -1;
 			}
 			ts->gf_ctrl.stage = GHOST_STAGE_CLEAR;
-			if (unlikely(touch_debug_mask & DEBUG_GHOST || touch_debug_mask & DEBUG_BASE_INFO))
-				TOUCH_INFO_MSG("ghost_stage_4: cleared[0x%x]\n", ts->gf_ctrl.stage);
 			if (unlikely(touch_debug_mask & DEBUG_GHOST))
+				TOUCH_INFO_MSG("ghost_stage_3: cleared[0x%x]\n", ts->gf_ctrl.stage);
+			if (unlikely(touch_debug_mask & DEBUG_GHOST
+					|| touch_debug_mask & DEBUG_BASE_INFO))
 				TOUCH_INFO_MSG("ghost_stage_finished. (KEYGUARD)\n");
 		}
-
-		if (unlikely(touch_debug_mask & DEBUG_GHOST) && ts->ts_data.palm != 0)
-			TOUCH_INFO_MSG("ghost_stage_4: palm[%d]\n", ts->ts_data.palm);
 	}
-
-	ts->gf_ctrl.saved_last_x = ts->ts_data.curr_data[id].x_position;
-	ts->gf_ctrl.saved_last_y = ts->ts_data.curr_data[id].y_position;
 
 	return 0;
 }
@@ -810,29 +663,22 @@ static int check_direction(int x){
 		return 0;
 }
 
-int accuracy_filter_func(struct lge_touch_data *ts)
+static int accuracy_filter_func(struct lge_touch_data *ts)
 {
 	int delta_x = 0;
 	int delta_y = 0;
-	u8	id = 0;
-
-	for (id = 0; id < ts->pdata->caps->max_id; id++){
-		if (ts->ts_data.curr_data[id].status == FINGER_PRESSED) {
-			break;
-		}
-	}
 
 	// finish the accuracy_filter
 	if(ts->accuracy_filter.finish_filter == 1 &&
 	   (ts->accuracy_filter.his_data.count > ts->accuracy_filter.touch_max_count
 	    || ts->ts_data.total_num != 1
-	    || id != 0)){
+	    || ts->ts_data.curr_data[0].id != 0)){
 		ts->accuracy_filter.finish_filter = 0;
 		ts->accuracy_filter.his_data.count = 0;
 	}
 
-	delta_x = (int)ts->accuracy_filter.his_data.x - (int)ts->ts_data.curr_data[0].x_position;
-	delta_y = (int)ts->accuracy_filter.his_data.y - (int)ts->ts_data.curr_data[0].y_position;
+		delta_x = (int)ts->accuracy_filter.his_data.x - (int)ts->ts_data.curr_data[0].x_position;
+		delta_y = (int)ts->accuracy_filter.his_data.y - (int)ts->ts_data.curr_data[0].y_position;
 
 	// main algorithm
 	if (ts->accuracy_filter.finish_filter){
@@ -856,7 +702,7 @@ int accuracy_filter_func(struct lge_touch_data *ts)
 	}
 
 	// if 'delta' > delta_max or id != 0, remove the modify-value.
-	if(id != 0 ||
+	if(ts->ts_data.curr_data[0].id != 0 ||
 	   (ts->accuracy_filter.his_data.count != 1 &&
 	    (jitter_abs(delta_x) > ts->accuracy_filter.delta_max || jitter_abs(delta_y) > ts->accuracy_filter.delta_max))){
 		ts->accuracy_filter.his_data.mod_x = 0;
@@ -868,7 +714,7 @@ int accuracy_filter_func(struct lge_touch_data *ts)
 	   && ts->accuracy_filter.his_data.count == 0
 	   && ts->ts_data.total_num == 1
 	   && ts->accuracy_filter.his_data.prev_total_num == 0
-	   && id == 0){
+	   && ts->ts_data.curr_data[0].id == 0){
 		ts->accuracy_filter.finish_filter = 1;
 		memset(&ts->accuracy_filter.his_data, 0, sizeof(ts->accuracy_filter.his_data));
 	}
@@ -902,100 +748,79 @@ int accuracy_filter_func(struct lge_touch_data *ts)
 
 	return 0;
 }
-EXPORT_SYMBOL(accuracy_filter_func);
 
-int jitter_filter_func(struct lge_touch_data *ts)
+static int jitter_filter_func(struct lge_touch_data *ts)
 {
-	u16 id = 0;
+	int i = 0;
 	int jitter_count = 0;
 	u16 new_id_mask = 0;
 	u16 bit_mask = 0;
 	u16 bit_id = 1;
 	int curr_ratio = ts->pdata->role->jitter_curr_ratio;
 
-	if(ts->accuracy_filter.finish_filter)
-		return 0;
+	for(i=0; i<ts->ts_data.total_num; i++){
+		u16 id = ts->ts_data.curr_data[i].id;
+		u16 width = ts->ts_data.curr_data[i].width_major;
+		new_id_mask |= (1 << id);
 
-	for (id = 0; id < ts->pdata->caps->max_id; id++){
-		if (ts->ts_data.curr_data[id].status == FINGER_PRESSED) {
-			u16 width = ts->ts_data.curr_data[id].width_major;
-			new_id_mask |= (1 << id);
+		if(ts->jitter_filter.id_mask & (1 << id)){
+			int delta_x, delta_y;
+			int f_jitter = curr_ratio*width;
+			int adjust_x, adjust_y;
 
-			if(ts->jitter_filter.id_mask & (1 << id)){
-				int delta_x, delta_y;
-				int f_jitter = curr_ratio*width;
-				int adjust_x = 0;
-				int adjust_y = 0;
-				int adj_ratio = 0;
-				char adj_mode = 0;
+			if (ts->jitter_filter.adjust_margin > 0) {
+				adjust_x = (int)ts->ts_data.curr_data[i].x_position - (int)ts->jitter_filter.his_data[id].x;
+				adjust_y = (int)ts->ts_data.curr_data[i].y_position - (int)ts->jitter_filter.his_data[id].y;
 
-				if (ts->jitter_filter.adjust_margin > 0) {
-					adjust_x = (int)ts->ts_data.curr_data[id].x_position
-								- (int)ts->jitter_filter.his_data[id].x;
-					adjust_y = (int)ts->ts_data.curr_data[id].y_position
-								- (int)ts->jitter_filter.his_data[id].y;
+				if (jitter_abs(adjust_x) > ts->jitter_filter.adjust_margin) {
+					adjust_x = (int)ts->ts_data.curr_data[i].x_position + (adjust_x >> 2);
+					ts->ts_data.curr_data[i].x_position = check_boundary(adjust_x, ts->pdata->caps->x_max);
 				}
 
-				ts->ts_data.curr_data[id].x_position =
-						(ts->ts_data.curr_data[id].x_position + ts->jitter_filter.his_data[id].x) >> 1;
-				ts->ts_data.curr_data[id].y_position =
-						(ts->ts_data.curr_data[id].y_position + ts->jitter_filter.his_data[id].y) >> 1;
-
-				if (ts->jitter_filter.adjust_margin > 0) {
-					adj_ratio = (((width + 1) << 6) / (curr_ratio + 1))
-							+ (ts->jitter_filter.adjust_margin >> 3);
-					if (jitter_abs(adjust_x) > ts->jitter_filter.adjust_margin
-							|| jitter_abs(adjust_x) > adj_ratio
-							|| jitter_abs(adjust_y) > ts->jitter_filter.adjust_margin
-							|| jitter_abs(adjust_y) > adj_ratio) {
-						adjust_x = (int)ts->ts_data.curr_data[id].x_position + (adjust_x >> 2);
-						ts->ts_data.curr_data[id].x_position = check_boundary(adjust_x, ts->pdata->caps->x_max);
-
-						adjust_y = (int)ts->ts_data.curr_data[id].y_position + (adjust_y >> 2);
-						ts->ts_data.curr_data[id].y_position = check_boundary(adjust_y, ts->pdata->caps->y_max);
-
-						adj_mode = 1;
-					}
+				if (jitter_abs(adjust_y) > ts->jitter_filter.adjust_margin) {
+					adjust_y = (int)ts->ts_data.curr_data[i].y_position + (adjust_y >> 2);
+					ts->ts_data.curr_data[i].y_position = check_boundary(adjust_y, ts->pdata->caps->y_max);
 				}
-
-				delta_x = (int)ts->ts_data.curr_data[id].x_position - (int)ts->jitter_filter.his_data[id].x;
-				delta_y = (int)ts->ts_data.curr_data[id].y_position - (int)ts->jitter_filter.his_data[id].y;
-
-				ts->jitter_filter.his_data[id].delta_x = delta_x * curr_ratio
-						+ ((ts->jitter_filter.his_data[id].delta_x * (128 - curr_ratio)) >> 7);
-				ts->jitter_filter.his_data[id].delta_y = delta_y * curr_ratio
-						+ ((ts->jitter_filter.his_data[id].delta_y * (128 - curr_ratio)) >> 7);
-
-				if(unlikely(touch_debug_mask & DEBUG_JITTER)){
-					TOUCH_INFO_MSG("JitterFilter[%s]: <%d> p[%d,%d] h_p[%d,%d] w[%d] a_r[%d] d[%d,%d] h_d[%d,%d] f_j[%d]\n",
-							adj_mode?"fast":"norm", id, ts->ts_data.curr_data[id].x_position, ts->ts_data.curr_data[id].y_position,
-							ts->jitter_filter.his_data[id].x, ts->jitter_filter.his_data[id].y,
-							width, adj_ratio, delta_x, delta_y,
-							ts->jitter_filter.his_data[id].delta_x, ts->jitter_filter.his_data[id].delta_y, f_jitter);
-				}
-
-				if(jitter_abs(ts->jitter_filter.his_data[id].delta_x) <= f_jitter &&
-				   jitter_abs(ts->jitter_filter.his_data[id].delta_y) <= f_jitter)
-					jitter_count++;
 			}
+
+			ts->ts_data.curr_data[i].x_position = (ts->ts_data.curr_data[i].x_position + ts->jitter_filter.his_data[id].x) >> 1;
+			ts->ts_data.curr_data[i].y_position = (ts->ts_data.curr_data[i].y_position + ts->jitter_filter.his_data[id].y) >> 1;
+
+			delta_x = (int)ts->ts_data.curr_data[i].x_position - (int)ts->jitter_filter.his_data[id].x;
+			delta_y = (int)ts->ts_data.curr_data[i].y_position - (int)ts->jitter_filter.his_data[id].y;
+
+			ts->jitter_filter.his_data[id].delta_x = delta_x * curr_ratio
+					+ ((ts->jitter_filter.his_data[id].delta_x * (128 - curr_ratio)) >> 7);
+			ts->jitter_filter.his_data[id].delta_y = delta_y * curr_ratio
+					+ ((ts->jitter_filter.his_data[id].delta_y * (128 - curr_ratio)) >> 7);
+
+			if(unlikely(touch_debug_mask & DEBUG_JITTER)){
+				TOUCH_INFO_MSG("JitterFilter: <%d> pos[%d,%d] h_pos[%d,%d] delta[%d,%d] h_delta[%d,%d] j_fil[%d]\n",
+						id, ts->ts_data.curr_data[i].x_position, ts->ts_data.curr_data[i].y_position,
+						ts->jitter_filter.his_data[id].x, ts->jitter_filter.his_data[id].y, delta_x, delta_y,
+						ts->jitter_filter.his_data[id].delta_x, ts->jitter_filter.his_data[id].delta_y, f_jitter);
+			}
+
+			if(jitter_abs(ts->jitter_filter.his_data[id].delta_x) <= f_jitter &&
+			   jitter_abs(ts->jitter_filter.his_data[id].delta_y) <= f_jitter)
+				jitter_count++;
 		}
 	}
 
 	bit_mask = ts->jitter_filter.id_mask ^ new_id_mask;
 
-	for (id = 0, bit_id = 1; id < ts->pdata->caps->max_id; id++){
+	for(i=0, bit_id=1; i<MAX_FINGER; i++){
 		if ((ts->jitter_filter.id_mask & bit_id) && !(new_id_mask & bit_id)){
 			if(unlikely(touch_debug_mask & DEBUG_JITTER))
 				TOUCH_INFO_MSG("JitterFilter: released - id[%d] mask[0x%x]\n", bit_id, ts->jitter_filter.id_mask);
-			memset(&ts->jitter_filter.his_data[id], 0, sizeof(ts->jitter_filter.his_data[id]));
+			memset(&ts->jitter_filter.his_data[i], 0, sizeof(ts->jitter_filter.his_data[i]));
 		}
 		bit_id = bit_id << 1;
 	}
 
-	for (id = 0; id < ts->pdata->caps->max_id; id++){
-		if (ts->ts_data.curr_data[id].status == FINGER_PRESSED) {
-			ts->jitter_filter.his_data[id].pressure = ts->ts_data.curr_data[id].pressure;
-		}
+	for(i=0; i<ts->ts_data.total_num; i++){
+		u16 id = ts->ts_data.curr_data[i].id;
+		ts->jitter_filter.his_data[id].pressure = ts->ts_data.curr_data[i].pressure;
 	}
 
 	if(!bit_mask && ts->ts_data.total_num && ts->ts_data.total_num == jitter_count){
@@ -1005,18 +830,16 @@ int jitter_filter_func(struct lge_touch_data *ts)
 		return -1;
 	}
 
-	for (id = 0; id < ts->pdata->caps->max_id; id++){
-		if (ts->ts_data.curr_data[id].status == FINGER_PRESSED) {
-			ts->jitter_filter.his_data[id].x = ts->ts_data.curr_data[id].x_position;
-			ts->jitter_filter.his_data[id].y = ts->ts_data.curr_data[id].y_position;
-		}
+	for(i=0; i<ts->ts_data.total_num; i++){
+		u16 id = ts->ts_data.curr_data[i].id;
+		ts->jitter_filter.his_data[id].x = ts->ts_data.curr_data[i].x_position;
+		ts->jitter_filter.his_data[id].y = ts->ts_data.curr_data[i].y_position;
 	}
 
 	ts->jitter_filter.id_mask = new_id_mask;
 
 	return 0;
 }
-EXPORT_SYMBOL(jitter_filter_func);
 
 /* touch_init_func
  *
@@ -1046,191 +869,6 @@ static void touch_lock_func(struct work_struct *work_touch_lock)
 	ts->ts_data.state = DO_NOT_ANYTHING;
 }
 
-/* check_log_finger_changed
- *
- * Check finger state change for Debug
- */
-static void check_log_finger_changed(struct lge_touch_data *ts, u8 total_num)
-{
-	u16 tmp_p = 0;
-	u16 tmp_r = 0;
-	u16 id = 0;
-
-	if (ts->ts_data.prev_total_num != total_num) {
-		/* Finger added */
-		if (ts->ts_data.prev_total_num <= total_num) {
-			for(id=0; id < ts->pdata->caps->max_id; id++){
-				if (ts->ts_data.curr_data[id].status == FINGER_PRESSED
-						&& ts->ts_data.prev_data[id].status == FINGER_RELEASED) {
-					break;
-				}
-			}
-			TOUCH_INFO_MSG("%d finger pressed : <%d> x[%4d] y[%4d]\n",
-					total_num, id,
-					ts->ts_data.curr_data[id].x_position,
-					ts->ts_data.curr_data[id].y_position);
-		} else {
-		/* Finger subtracted */
-			TOUCH_INFO_MSG("%d finger pressed\n", total_num);
-		}
-	} if (ts->ts_data.prev_total_num == total_num && total_num == 1) {
-		/* Finger changed at one finger status - IC bug check */
-		for (id = 0, tmp_p = 0; id < ts->pdata->caps->max_id; id++){
-			/* find pressed */
-			if (ts->ts_data.curr_data[id].status == FINGER_PRESSED
-					&& ts->ts_data.prev_data[id].status == FINGER_RELEASED) {
-				tmp_p = id;
-			}
-			/* find released */
-			if (ts->ts_data.curr_data[id].status == FINGER_RELEASED
-					&& ts->ts_data.prev_data[id].status == FINGER_PRESSED) {
-				tmp_r = id;
-			}
-		}
-
-		if (tmp_p != tmp_r
-				&& (ts->ts_data.curr_data[tmp_p].status
-						!= ts->ts_data.prev_data[tmp_p].status)) {
-			TOUCH_INFO_MSG("%d finger changed : <%d -> %d> x[%4d] y[%4d]\n",
-						total_num, tmp_r, tmp_p,
-						ts->ts_data.curr_data[id].x_position,
-						ts->ts_data.curr_data[id].y_position);
-		}
-	}
-}
-
-/* check_log_finger_released
- *
- * Check finger state change for Debug
- */
-static void check_log_finger_released(struct lge_touch_data *ts)
-{
-	u16 id = 0;
-
-	for (id = 0; id < ts->pdata->caps->max_id; id++) {
-		if (ts->ts_data.prev_data[id].status == FINGER_PRESSED) {
-			break;
-		}
-	}
-
-	TOUCH_INFO_MSG("touch_release[%s] : <%d> x[%4d] y[%4d]\n",
-			ts->ts_data.palm?"Palm":"", id,
-			ts->ts_data.prev_data[id].x_position,
-			ts->ts_data.prev_data[id].y_position);
-}
-
-/* touch_work_pre_proc
- *
- * Pre-process work at touch_work
- */
-static int touch_work_pre_proc(struct lge_touch_data *ts)
-{
-	atomic_dec(&ts->next_work);
-	ts->ts_data.total_num = 0;
-	ts->int_pin_state = 0;
-
-	if(unlikely(ts->work_sync_err_cnt >= MAX_RETRY_COUNT)){
-		TOUCH_ERR_MSG("Work Sync Failed: Irq-pin has some unknown problems\n");
-		return -EIO;
-	}
-
-#ifdef LGE_TOUCH_TIME_DEBUG
-	do_gettimeofday(&t_debug[TIME_WORKQUEUE_START]);
-#endif
-
-	if (unlikely(touch_debug_mask & DEBUG_TRACE))
-		TOUCH_DEBUG_MSG("\n");
-
-	if (touch_device_func->data(ts->client, &ts->ts_data) < 0) {
-		TOUCH_ERR_MSG("get data fail\n");
-		return -EIO;
-	}
-
-	if(likely(ts->pdata->role->operation_mode == INTERRUPT_MODE))
-		ts->int_pin_state = gpio_get_value(ts->pdata->int_pin);
-
-	/* Ghost finger solution */
-	if (likely(ts->pdata->role->ghost_finger_solution_enable) && unlikely(ts->gf_ctrl.stage)){
-		if(ghost_finger_solution(ts)){
-			TOUCH_ERR_MSG("ghost_finger_solution was failed\n");
-			return -EIO;
-		}
-	}
-
-	/* Accuracy Solution */
-	if (likely(ts->pdata->role->accuracy_filter_enable)){
-		if (accuracy_filter_func(ts) < 0)
-			return -EAGAIN;;
-	}
-
-	/* Jitter Solution */
-	if (likely(ts->pdata->role->jitter_filter_enable)){
-		if (jitter_filter_func(ts) < 0)
-			return -EAGAIN;;
-	}
-
-	return 0;
-}
-
-/* touch_work_post_proc
- *
- * Post-process work at touch_work
- */
-static void touch_work_post_proc(struct lge_touch_data *ts, int post_proc)
-{
-	int next_work = 0;
-
-	if (post_proc >= WORK_POST_MAX)
-		return;
-
-	switch (post_proc) {
-	case WORK_POST_OUT:
-		if(likely(ts->pdata->role->operation_mode == INTERRUPT_MODE)){
-			next_work = atomic_read(&ts->next_work);
-
-			if(unlikely(ts->int_pin_state != 1 && next_work <= 0)){
-				TOUCH_INFO_MSG("WARN: Interrupt pin is low - next_work: %d, try_count: %d]\n",
-						next_work, ts->work_sync_err_cnt);
-				post_proc = WORK_POST_ERR_RETRY;
-				break;
-			}
-		}
-
-#ifdef LGE_TOUCH_TIME_DEBUG
-		do_gettimeofday(&t_debug[TIME_WORKQUEUE_END]);
-		if (next_work)
-			memset(t_debug, 0x0, sizeof(t_debug));
-		time_profile_result(ts);
-#endif
-
-		ts->work_sync_err_cnt = 0;
-		post_proc = WORK_POST_COMPLATE;
-		break;
-
-	case WORK_POST_ERR_RETRY:
-		ts->work_sync_err_cnt++;
-		atomic_inc(&ts->next_work);
-		queue_work(touch_wq, &ts->work);
-		post_proc = WORK_POST_COMPLATE;
-		break;
-
-	case WORK_POST_ERR_CIRTICAL:
-		ts->work_sync_err_cnt = 0;
-		safety_reset(ts);
-		touch_ic_init(ts);
-		post_proc = WORK_POST_COMPLATE;
-		break;
-
-	default:
-		post_proc = WORK_POST_COMPLATE;
-		break;
-	}
-
-	if (post_proc != WORK_POST_COMPLATE)
-		touch_work_post_proc(ts, post_proc);
-}
-
-
 /* touch_work_func_a
  *
  * HARD_TOUCH_KEY
@@ -1240,43 +878,82 @@ static void touch_work_func_a(struct work_struct *work)
 	struct lge_touch_data *ts =
 			container_of(work, struct lge_touch_data, work);
 	u8 report_enable = 0;
-	int ret = 0;
+	int int_pin = 0;
+	int next_work = 0;
 
-	ret = touch_work_pre_proc(ts);
-	if (ret == -EIO)
+	atomic_dec(&ts->next_work);
+
+	ts->ts_data.total_num =0;
+	if(unlikely(ts->work_sync_err_cnt >= MAX_RETRY_COUNT)){
+		TOUCH_ERR_MSG("Work Sync Failed: Irq-pin has some unknown problems\n");
 		goto err_out_critical;
-	else if (ret == -EAGAIN)
-		goto out;
+	}
+
+#ifdef LGE_TOUCH_TIME_DEBUG
+	do_gettimeofday(&t_debug[TIME_WORKQUEUE_START]);
+#endif
+
+	if (unlikely(touch_debug_mask & DEBUG_TRACE))
+		TOUCH_DEBUG_MSG("\n");
+
+	if (touch_device_func->data(ts->client, ts->ts_data.curr_data,
+			&ts->ts_data.curr_button, &ts->ts_data.total_num) < 0) {
+		TOUCH_ERR_MSG("get data fail\n");
+		goto err_out_critical;
+	}
+
+	if(likely(ts->pdata->role->operation_mode == INTERRUPT_MODE))
+		int_pin = gpio_get_value(ts->pdata->int_pin);
+
+	/* Ghost finger solution */
+	if (unlikely(ts->gf_ctrl.stage)){
+		if(ghost_finger_solution(ts)){
+			TOUCH_ERR_MSG("ghost_finger_solution was failed\n");
+			goto err_out_critical;
+		}
+	}
+
+	/* Accuracy Solution */
+	if (likely(ts->pdata->role->accuracy_filter_enable)){
+		if (accuracy_filter_func(ts) < 0)
+			goto out;
+	}
+
+	/* Jitter Solution */
+	if (likely(ts->pdata->role->jitter_filter_enable)){
+		if (jitter_filter_func(ts) < 0)
+			goto out;
+	}
 
 	/* Finger handle */
+//mo2haewoon.you@lge.com => [START]  keylock command
+#if defined(CONFIG_MACH_LGE_COSMO) || defined(CONFIG_MACH_LGE_CX2)
+	if ((ts->ts_data.state != TOUCH_ABS_LOCK) && (!atcmd_keylock)) {
+#else
 	if (ts->ts_data.state != TOUCH_ABS_LOCK) {
+#endif
+//mo2haewoon.you@lge.com <= [END]
 		if (!ts->ts_data.total_num) {
-			touch_asb_input_report(ts, FINGER_RELEASED);
+			input_mt_sync(ts->input_dev);
 			report_enable = 1;
 
-#ifdef CONFIG_MACH_LGE_U2	/*                                                                */
-			queue_delayed_work(touch_wq, &ts->work_touch_lock, msecs_to_jiffies(100));
-#else
 			queue_delayed_work(touch_wq, &ts->work_touch_lock, msecs_to_jiffies(200));
-#endif
 
 			if (likely(touch_debug_mask & (DEBUG_BASE_INFO | DEBUG_ABS))) {
 				if (ts->ts_data.prev_total_num)
-					check_log_finger_released(ts);
+					TOUCH_INFO_MSG("touch_release : x[%4d] y[%4d]\n",
+							ts->ts_data.prev_data[0].x_position, ts->ts_data.prev_data[0].y_position);
 			}
 
 			ts->ts_data.prev_total_num = 0;
-
-			/* Reset previous finger position data */
-			memset(&ts->ts_data.prev_data, 0x0, sizeof(ts->ts_data.prev_data));
-		} else if (ts->ts_data.total_num <= ts->pdata->caps->max_id) {
+		} else if (ts->ts_data.total_num <= MAX_FINGER) {
 			cancel_delayed_work_sync(&ts->work_touch_lock);
 
-			if (ts->gf_ctrl.stage == GHOST_STAGE_CLEAR || (ts->gf_ctrl.stage | GHOST_STAGE_1) || ts->gf_ctrl.stage == GHOST_STAGE_4)
+			if (ts->gf_ctrl.stage == GHOST_STAGE_CLEAR || ts->gf_ctrl.stage == GHOST_STAGE_3)
 				ts->ts_data.state = TOUCH_BUTTON_LOCK;
 
 			/* key button cancel */
-			if(ts->ts_data.prev_button.state == BUTTON_PRESSED && ts->ts_data.state == TOUCH_BUTTON_LOCK) {
+			if(ts->ts_data.prev_button.state == BUTTON_PRESSED) {
 				input_report_key(ts->input_dev, ts->ts_data.prev_button.key_code, BUTTON_CANCLED);
 
 				if (likely(touch_debug_mask & (DEBUG_BUTTON | DEBUG_BASE_INFO)))
@@ -1286,12 +963,49 @@ static void touch_work_func_a(struct work_struct *work)
 				memset(&ts->ts_data.prev_button, 0x0, sizeof(ts->ts_data.prev_button));
 			}
 
-			if (likely(touch_debug_mask & (DEBUG_BASE_INFO | DEBUG_ABS)))
-				check_log_finger_changed(ts, ts->ts_data.total_num);
+			if (likely(touch_debug_mask & (DEBUG_BASE_INFO | DEBUG_ABS))) {
+				if (ts->ts_data.prev_total_num != ts->ts_data.total_num)
+					TOUCH_INFO_MSG("%d finger pressed\n", ts->ts_data.total_num);
+			}
 
 			ts->ts_data.prev_total_num = ts->ts_data.total_num;
 
-			touch_asb_input_report(ts, FINGER_PRESSED);
+			while(ts->ts_data.total_num--) {
+				input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
+						ts->ts_data.curr_data[ts->ts_data.total_num].x_position);
+				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
+						ts->ts_data.curr_data[ts->ts_data.total_num].y_position);
+				if (ts->pdata->caps->is_pressure_supported)
+					input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
+									 ts->ts_data.curr_data[ts->ts_data.total_num].pressure);
+				if (ts->pdata->caps->is_width_supported) {
+					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR,
+									 ts->ts_data.curr_data[ts->ts_data.total_num].width_major);
+					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MINOR,
+									 ts->ts_data.curr_data[ts->ts_data.total_num].width_minor);
+					input_report_abs(ts->input_dev, ABS_MT_ORIENTATION,
+									 ts->ts_data.curr_data[ts->ts_data.total_num].width_orientation);
+				}
+				if (ts->pdata->caps->is_id_supported)
+					input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID,
+									 ts->ts_data.curr_data[ts->ts_data.total_num].id);
+				input_mt_sync(ts->input_dev);
+
+				if (unlikely(touch_debug_mask & DEBUG_ABS))
+					TOUCH_INFO_MSG("<%d> pos[%4d,%4d] w_m[%2d] w_n[%2d] w_o[%2d] p[%3d]\n",
+							ts->pdata->caps->is_id_supported?
+							ts->ts_data.curr_data[ts->ts_data.total_num].id : 0,
+							ts->ts_data.curr_data[ts->ts_data.total_num].x_position,
+							ts->ts_data.curr_data[ts->ts_data.total_num].y_position,
+							ts->pdata->caps->is_width_supported?
+							ts->ts_data.curr_data[ts->ts_data.total_num].width_major: 0,
+							ts->pdata->caps->is_width_supported?
+							ts->ts_data.curr_data[ts->ts_data.total_num].width_minor: 0,
+							ts->pdata->caps->is_width_supported?
+							ts->ts_data.curr_data[ts->ts_data.total_num].width_orientation: 0,
+							ts->pdata->caps->is_pressure_supported ?
+							ts->ts_data.curr_data[ts->ts_data.total_num].pressure : 0);
+			}
 			report_enable = 1;
 
 			memcpy(ts->ts_data.prev_data, ts->ts_data.curr_data, sizeof(ts->ts_data.curr_data));
@@ -1305,7 +1019,13 @@ static void touch_work_func_a(struct work_struct *work)
 	}
 
 	/* Button handle */
+//mo2haewoon.you@lge.com => [START]  keylock command
+#if defined(CONFIG_MACH_LGE_COSMO) || defined(CONFIG_MACH_LGE_CX2)
+	if ((ts->ts_data.state != TOUCH_BUTTON_LOCK) && (!atcmd_keylock)) {
+#else
 	if (ts->ts_data.state != TOUCH_BUTTON_LOCK) {
+#endif
+//mo2haewoon.you@lge.com <= [END]
 		/* do not check when there is no pressed button at error case
 		 * 	- if you check it, sometimes touch is locked becuase button pressed via IC error.
 		 */
@@ -1326,6 +1046,11 @@ static void touch_work_func_a(struct work_struct *work)
 					&& ts->ts_data.prev_button.state == BUTTON_RELEASED) {
 				/* button pressed */
 				cancel_delayed_work_sync(&ts->work_touch_lock);
+
+				if (ts->gf_ctrl.stage == GHOST_STAGE_CLEAR || ts->gf_ctrl.stage == GHOST_STAGE_3)
+					ts->ts_data.state = TOUCH_ABS_LOCK;
+
+				queue_delayed_work(touch_wq, &ts->work_touch_lock, msecs_to_jiffies(200));
 
 				input_report_key(ts->input_dev, ts->ts_data.curr_button.key_code, BUTTON_PRESSED);
 
@@ -1375,11 +1100,39 @@ static void touch_work_func_a(struct work_struct *work)
 	}
 
 out:
-	touch_work_post_proc(ts, WORK_POST_OUT);
+	if(likely(ts->pdata->role->operation_mode == INTERRUPT_MODE)){
+		next_work = atomic_read(&ts->next_work);
+
+		if(unlikely(int_pin != 1 && next_work <= 0)){
+			TOUCH_INFO_MSG("WARN: Interrupt pin is low - next_work: %d, try_count: %d]\n",
+					next_work, ts->work_sync_err_cnt);
+			goto err_out_retry;
+		}
+	}
+
+#ifdef LGE_TOUCH_TIME_DEBUG
+	do_gettimeofday(&t_debug[TIME_WORKQUEUE_END]);
+	if (next_work)
+		memset(t_debug, 0x0, sizeof(t_debug));
+	time_profile_result(ts);
+#endif
+
+	ts->work_sync_err_cnt = 0;
+
+	return;
+
+err_out_retry:
+	ts->work_sync_err_cnt++;
+	atomic_inc(&ts->next_work);
+	queue_work(touch_wq, &ts->work);
+
 	return;
 
 err_out_critical:
-	touch_work_post_proc(ts, WORK_POST_ERR_CIRTICAL);
+	ts->work_sync_err_cnt = 0;
+	safety_reset(ts);
+	touch_ic_init(ts);
+
 	return;
 
 }
@@ -1392,6 +1145,12 @@ static bool is_in_section(struct rect rt, u16 x, u16 y)
 static u16 find_button(const struct t_data data, const struct section_info sc)
 {
 	int i;
+//mo2haewoon.you@lge.com => [START]
+#if defined(COSMO_TOUCHKEY_RANGE_TRIM) || defined(CX2_TOUCHKEY_RANGE_TRIM)
+	int trim = data.x_position % BTN_EDGE_WIDTH;
+	int btn_range = data.x_position / BTN_EDGE_WIDTH;
+#endif
+//mo2haewoon.you@lge.com <= [END]
 
 	if (is_in_section(sc.panel, data.x_position, data.y_position))
 		return KEY_PANEL;
@@ -1401,12 +1160,29 @@ static u16 find_button(const struct t_data data, const struct section_info sc)
 			return sc.b_name[i];
 	}
 
+//mo2haewoon.you@lge.com => [START]
+#if defined(COSMO_TOUCHKEY_RANGE_TRIM) || defined(CX2_TOUCHKEY_RANGE_TRIM)
+	if((trim < BTN_TRIM_WIDTH && btn_range == 0) || (trim >( BTN_EDGE_WIDTH - BTN_TRIM_WIDTH) && (btn_range == (sc.b_num - 1))))
 	return KEY_BOUNDARY;
+	else
+		return 	sc.b_name[btn_range];
+#else
+	return KEY_BOUNDARY;
+#endif
+//mo2haewoon.you@lge.com <= [END]
+
 }
 
 static bool check_cancel(u16 button, u16 x, u16 y, const struct section_info sc)
 {
 	int i;
+	//mo2haewoon.you@lge.com => [START]
+#if defined(COSMO_TOUCHKEY_RANGE_TRIM) || defined(CX2_TOUCHKEY_RANGE_TRIM)
+	int trim = x % BTN_EDGE_WIDTH;
+	int btn_range = x / BTN_EDGE_WIDTH;
+#endif
+	//mo2haewoon.you@lge.com <= [END]
+	
 
 	for(i=0; i<sc.b_num; i++){
 		if (sc.b_name[i] == button)
@@ -1418,6 +1194,16 @@ static bool check_cancel(u16 button, u16 x, u16 y, const struct section_info sc)
 			return false;
 	}
 
+	//mo2haewoon.you@lge.com => [START]
+#if defined(COSMO_TOUCHKEY_RANGE_TRIM) || defined(CX2_TOUCHKEY_RANGE_TRIM)
+	if (!is_in_section(sc.panel, x, y)){
+		if((trim < BTN_TRIM_WIDTH && btn_range == 0) || (trim >( BTN_EDGE_WIDTH - BTN_TRIM_WIDTH) && (btn_range == (sc.b_num - 1))))
+			return true;
+		else
+			return	false;
+		}
+#endif
+	//mo2haewoon.you@lge.com <= [END]
 	return true;
 }
 
@@ -1433,14 +1219,52 @@ static void touch_work_func_b(struct work_struct *work)
 	u8  i;
 	u8 op_mode = OP_NULL;
 	u16 tmp_button = KEY_NULL;
-	u16 id = 0;
-	int ret = 0;
+	int int_pin = 0;
+	int next_work = 0;
 
-	ret = touch_work_pre_proc(ts);
-	if (ret == -EIO)
+	atomic_dec(&ts->next_work);
+
+	ts->ts_data.total_num =0;
+	if(unlikely(ts->work_sync_err_cnt >= MAX_RETRY_COUNT)){
+		TOUCH_ERR_MSG("Work Sync Failed: Irq-pin has some unknown problems\n");
 		goto err_out_critical;
-	else if (ret == -EAGAIN)
-		goto out;
+	}
+
+#ifdef LGE_TOUCH_TIME_DEBUG
+	do_gettimeofday(&t_debug[TIME_WORKQUEUE_START]);
+#endif
+
+	if (unlikely(touch_debug_mask & DEBUG_TRACE))
+		TOUCH_DEBUG_MSG("\n");
+
+	if (touch_device_func->data(ts->client, ts->ts_data.curr_data,
+			&ts->ts_data.curr_button, &ts->ts_data.total_num) < 0) {
+		TOUCH_ERR_MSG("get data fail\n");
+		goto err_out_critical;
+	}
+
+		if(likely(ts->pdata->role->operation_mode == INTERRUPT_MODE))
+			int_pin = gpio_get_value(ts->pdata->int_pin);
+
+		/* Ghost finger solution */
+		if (unlikely(ts->gf_ctrl.stage)){
+			if(ghost_finger_solution(ts)){
+				TOUCH_ERR_MSG("ghost_finger_solution was failed\n");
+				goto err_out_critical;
+		}
+	}
+
+	/* Accuracy Solution */
+	if (likely(ts->pdata->role->accuracy_filter_enable)){
+		if (accuracy_filter_func(ts) < 0)
+			goto out;
+		}
+
+	/* Jitter Solution */
+	if (likely(ts->pdata->role->jitter_filter_enable)){
+		if (jitter_filter_func(ts) < 0)
+			goto out;
+	}
 
 	if (ts->ts_data.total_num == 0)
 		op_mode = OP_RELEASE;
@@ -1464,13 +1288,7 @@ static void touch_work_func_b(struct work_struct *work)
 		break;
 
 	case OP_SINGLE:
-		for (id = 0; id < ts->pdata->caps->max_id; id++){
-			if (ts->ts_data.curr_data[id].status == FINGER_PRESSED) {
-				break;
-			}
-		}
-
-		tmp_button = find_button(ts->ts_data.curr_data[id], ts->st_info);
+		tmp_button = find_button(ts->ts_data.curr_data[0], ts->st_info);
 		if (unlikely(touch_debug_mask & DEBUG_BUTTON))
 			TOUCH_INFO_MSG("button_now [%d]\n", tmp_button);
 
@@ -1482,8 +1300,8 @@ static void touch_work_func_b(struct work_struct *work)
 					ts->ts_data.state = ABS_PRESS;
 			}
 			else{
-				if (check_cancel(ts->ts_data.prev_button.key_code, ts->ts_data.curr_data[id].x_position,
-						ts->ts_data.curr_data[id].y_position, ts->st_info))
+				if (check_cancel(ts->ts_data.prev_button.key_code, ts->ts_data.curr_data[0].x_position,
+						ts->ts_data.curr_data[0].y_position, ts->st_info))
 					ts->ts_data.state = BUTTON_CANCEL;
 				else
 					ts->ts_data.state = DO_NOT_ANYTHING;
@@ -1513,12 +1331,10 @@ static void touch_work_func_b(struct work_struct *work)
 		break;
 
 	case OP_LOCK:
-		for (id = 0; id < ts->pdata->caps->max_id; id++){
-			if (ts->ts_data.curr_data[id].status == FINGER_PRESSED) {
-				if (ts->ts_data.curr_data[id].y_position < ts->pdata->caps->y_button_boundary){
-					ts->ts_data.curr_button.key_code = KEY_PANEL;
-					ts->ts_data.state = ABS_PRESS;
-				}
+		for(i=0; i<ts->ts_data.total_num; i++){
+			if (ts->ts_data.curr_data[i].y_position < ts->pdata->caps->y_button_boundary){
+				ts->ts_data.curr_button.key_code = KEY_PANEL;
+				ts->ts_data.state = ABS_PRESS;
 			}
 		}
 		break;
@@ -1530,26 +1346,83 @@ static void touch_work_func_b(struct work_struct *work)
 	if (unlikely(touch_debug_mask & (DEBUG_ABS |DEBUG_BUTTON)))
 		TOUCH_INFO_MSG("op_mode[%d] state[%d]\n", op_mode, ts->ts_data.state);
 
+//mo2haewoon.you@lge.com => [START]  keylock command
+#if defined(CONFIG_MACH_LGE_COSMO) || defined(CONFIG_MACH_LGE_CX2)
+	if(atcmd_keylock == 1)
+		ts->ts_data.state = DO_NOT_ANYTHING;
+#endif
+//mo2haewoon.you@lge.com <= [END]
 	switch(ts->ts_data.state){
 	case ABS_PRESS:
 abs_report:
 		i=0;
+		while(ts->ts_data.total_num--) {
+			if (ts->ts_data.curr_data[ts->ts_data.total_num].y_position
+					>= ts->pdata->caps->y_button_boundary)
+				continue;
 
-		i = touch_asb_input_report(ts, FINGER_PRESSED);
+			input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
+					ts->ts_data.curr_data[ts->ts_data.total_num].x_position);
+
+			/* When a user's finger cross the boundary (from key to LCD),
+			    a ABS-event will change its y-position to edge of LCD, automatically.*/
+			if(ts->ts_data.curr_data[ts->ts_data.total_num].y_position < ts->pdata->caps->y_button_boundary &&
+			   ts->ts_data.prev_data[ts->ts_data.total_num].y_position > ts->pdata->caps->y_button_boundary &&
+			   ts->ts_data.prev_button.key_code != KEY_NULL)
+				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, ts->pdata->caps->y_button_boundary);
+			else
+				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
+					ts->ts_data.curr_data[ts->ts_data.total_num].y_position);
+
+			if (ts->pdata->caps->is_pressure_supported)
+				input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
+								 ts->ts_data.curr_data[ts->ts_data.total_num].pressure);
+			if (ts->pdata->caps->is_width_supported) {
+				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR,
+								 ts->ts_data.curr_data[ts->ts_data.total_num].width_major);
+				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MINOR,
+								 ts->ts_data.curr_data[ts->ts_data.total_num].width_minor);
+				input_report_abs(ts->input_dev, ABS_MT_ORIENTATION,
+								 ts->ts_data.curr_data[ts->ts_data.total_num].width_orientation);
+			}
+			if (ts->pdata->caps->is_id_supported)
+				input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID,
+								 ts->ts_data.curr_data[ts->ts_data.total_num].id);
+			input_mt_sync(ts->input_dev);
+			i++;
+
+			if (unlikely(touch_debug_mask & DEBUG_ABS))
+				TOUCH_INFO_MSG("<%d> pos[%4d,%4d] w_m[%2d] w_n[%2d] w_o[%2d] p[%3d]\n",
+						ts->pdata->caps->is_id_supported?
+						ts->ts_data.curr_data[ts->ts_data.total_num].id : 0,
+						ts->ts_data.curr_data[ts->ts_data.total_num].x_position,
+						ts->ts_data.curr_data[ts->ts_data.total_num].y_position,
+						ts->pdata->caps->is_width_supported?
+						ts->ts_data.curr_data[ts->ts_data.total_num].width_major: 0,
+						ts->pdata->caps->is_width_supported?
+						ts->ts_data.curr_data[ts->ts_data.total_num].width_minor: 0,
+						ts->pdata->caps->is_width_supported?
+						ts->ts_data.curr_data[ts->ts_data.total_num].width_orientation: 0,
+						ts->pdata->caps->is_pressure_supported ?
+						ts->ts_data.curr_data[ts->ts_data.total_num].pressure : 0);
+		}
 
 		if (!i) {
-			touch_asb_input_report(ts, FINGER_RELEASED);
+			input_mt_sync(ts->input_dev);
+
 			ts->ts_data.prev_total_num = 0;
 		}
 		else {
-			if (likely(touch_debug_mask & DEBUG_ABS))
-				check_log_finger_changed(ts, i);
+			if (likely(touch_debug_mask & DEBUG_ABS)) {
+				if (ts->ts_data.prev_total_num != i)
+					TOUCH_INFO_MSG("%d finger pressed\n", i);
+			}
 
 			ts->ts_data.prev_total_num = i;
 		}
 		break;
 	case ABS_RELEASE:
-		touch_asb_input_report(ts, FINGER_RELEASED);
+		input_mt_sync(ts->input_dev);
 		break;
 	case BUTTON_PRESS:
 		input_report_key(ts->input_dev, ts->ts_data.curr_button.key_code, BUTTON_PRESSED);
@@ -1563,7 +1436,7 @@ abs_report:
 		break;
 	case BUTTON_CANCEL:
 		input_report_key(ts->input_dev, ts->ts_data.prev_button.key_code, BUTTON_CANCLED);
-		if (unlikely(touch_debug_mask & DEBUG_BUTTON))
+			if (unlikely(touch_debug_mask & DEBUG_BUTTON))
 			TOUCH_INFO_MSG("Touch KEY[%d] is canceled\n", ts->ts_data.prev_button.key_code);
 		if (ts->ts_data.curr_data[0].y_position < ts->pdata->caps->y_button_boundary){
 			input_sync(ts->input_dev);
@@ -1582,7 +1455,8 @@ abs_report:
 
 	if (likely(touch_debug_mask & DEBUG_BASE_INFO)){
 		if (ts->ts_data.state == ABS_RELEASE)
-			check_log_finger_released(ts);
+			TOUCH_INFO_MSG("touch_release : x[%4d] y[%4d]\n",
+					ts->ts_data.curr_data[0].x_position, ts->ts_data.curr_data[0].y_position);
 		if(ts->ts_data.state == BUTTON_RELEASE)
 			TOUCH_INFO_MSG("touch_release : button[%d]\n", ts->ts_data.prev_button.key_code);
 	}
@@ -1597,11 +1471,39 @@ abs_report:
 	memcpy(&ts->ts_data.prev_button, &ts->ts_data.curr_button, sizeof(ts->ts_data.curr_button));
 
 out:
-	touch_work_post_proc(ts, WORK_POST_OUT);
+	if(likely(ts->pdata->role->operation_mode == INTERRUPT_MODE)){
+		next_work = atomic_read(&ts->next_work);
+
+		if(unlikely(int_pin != 1 && next_work <= 0)){
+			TOUCH_INFO_MSG("WARN: Interrupt pin is low - next_work: %d, try_count: %d]\n",
+					next_work, ts->work_sync_err_cnt);
+			goto err_out_retry;
+		}
+	}
+
+#ifdef LGE_TOUCH_TIME_DEBUG
+	do_gettimeofday(&t_debug[TIME_WORKQUEUE_END]);
+	if (next_work)
+		memset(t_debug, 0x0, sizeof(t_debug));
+	time_profile_result(ts);
+#endif
+
+	ts->work_sync_err_cnt = 0;
+
+	return;
+
+err_out_retry:
+	ts->work_sync_err_cnt++;
+	atomic_inc(&ts->next_work);
+	queue_work(touch_wq, &ts->work);
+
 	return;
 
 err_out_critical:
-	touch_work_post_proc(ts, WORK_POST_ERR_CIRTICAL);
+	ts->work_sync_err_cnt = 0;
+	safety_reset(ts);
+	touch_ic_init(ts);
+
 	return;
 }
 
@@ -1610,31 +1512,107 @@ static void touch_work_func_c(struct work_struct *work)
 	struct lge_touch_data *ts =
 			container_of(work, struct lge_touch_data, work);
 	u8 report_enable = 0;
-	int ret = 0;
+	int int_pin = 0;
+	int next_work = 0;
 
-	ret = touch_work_pre_proc(ts);
-	if (ret == -EIO)
+	atomic_dec(&ts->next_work);
+
+	ts->ts_data.total_num =0;
+	if(unlikely(ts->work_sync_err_cnt >= MAX_RETRY_COUNT)){
+		TOUCH_ERR_MSG("Work Sync Failed: Irq-pin has some unknown problems\n");
 		goto err_out_critical;
-	else if (ret == -EAGAIN)
-		goto out;
+	}
+
+#ifdef LGE_TOUCH_TIME_DEBUG
+	do_gettimeofday(&t_debug[TIME_WORKQUEUE_START]);
+#endif
+
+	if (unlikely(touch_debug_mask & DEBUG_TRACE))
+		TOUCH_DEBUG_MSG("\n");
+
+	if (touch_device_func->data(ts->client, ts->ts_data.curr_data,
+			&ts->ts_data.curr_button, &ts->ts_data.total_num) < 0) {
+		TOUCH_ERR_MSG("get data fail\n");
+		goto err_out_critical;
+	}
+
+	if(likely(ts->pdata->role->operation_mode == INTERRUPT_MODE))
+		int_pin = gpio_get_value(ts->pdata->int_pin);
+
+	/* Ghost finger solution */
+	if (unlikely(ts->gf_ctrl.stage)){
+		if(ghost_finger_solution(ts)){
+			TOUCH_ERR_MSG("ghost_finger_solution was failed\n");
+			goto err_out_critical;
+		}
+	}
+	/* Accuracy Solution */
+	if (likely(ts->pdata->role->accuracy_filter_enable)){
+		if (accuracy_filter_func(ts) < 0)
+			goto out;
+	}
+
+	/* Jitter Solution */
+	if (likely(ts->pdata->role->jitter_filter_enable)){
+		if (jitter_filter_func(ts) < 0)
+			goto out;
+	}
 
 	if (!ts->ts_data.total_num) {
-		touch_asb_input_report(ts, FINGER_RELEASED);
+		input_mt_sync(ts->input_dev);
 		report_enable = 1;
 
 		if (likely(touch_debug_mask & (DEBUG_BASE_INFO | DEBUG_ABS))) {
 			if (ts->ts_data.prev_total_num)
-				check_log_finger_released(ts);
+				TOUCH_INFO_MSG("touch_release : x[%4d] y[%4d]\n",
+						ts->ts_data.prev_data[0].x_position, ts->ts_data.prev_data[0].y_position);
 		}
 
 		ts->ts_data.prev_total_num = 0;
-	} else if (ts->ts_data.total_num <= ts->pdata->caps->max_id) {
-		if (likely(touch_debug_mask & (DEBUG_BASE_INFO | DEBUG_ABS)))
-			check_log_finger_changed(ts, ts->ts_data.total_num);
+	} else if (ts->ts_data.total_num <= MAX_FINGER) {
+		if (likely(touch_debug_mask & (DEBUG_BASE_INFO | DEBUG_ABS))) {
+			if (ts->ts_data.prev_total_num != ts->ts_data.total_num)
+				TOUCH_INFO_MSG("%d finger pressed\n", ts->ts_data.total_num);
+		}
 
 		ts->ts_data.prev_total_num = ts->ts_data.total_num;
 
-		touch_asb_input_report(ts, FINGER_PRESSED);
+		while(ts->ts_data.total_num--) {
+			input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
+					ts->ts_data.curr_data[ts->ts_data.total_num].x_position);
+			input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
+					ts->ts_data.curr_data[ts->ts_data.total_num].y_position);
+			if (ts->pdata->caps->is_pressure_supported)
+				input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
+								 ts->ts_data.curr_data[ts->ts_data.total_num].pressure);
+			if (ts->pdata->caps->is_width_supported) {
+				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR,
+								 ts->ts_data.curr_data[ts->ts_data.total_num].width_major);
+				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MINOR,
+								 ts->ts_data.curr_data[ts->ts_data.total_num].width_minor);
+				input_report_abs(ts->input_dev, ABS_MT_ORIENTATION,
+								 ts->ts_data.curr_data[ts->ts_data.total_num].width_orientation);
+			}
+			if (ts->pdata->caps->is_id_supported)
+				input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID,
+								 ts->ts_data.curr_data[ts->ts_data.total_num].id);
+			input_mt_sync(ts->input_dev);
+
+			if (unlikely(touch_debug_mask & DEBUG_ABS))
+				TOUCH_INFO_MSG("<%d> pos[%4d,%4d] w_m[%2d] w_n[%2d] w_o[%2d] p[%3d]\n",
+						ts->pdata->caps->is_id_supported?
+						ts->ts_data.curr_data[ts->ts_data.total_num].id : 0,
+						ts->ts_data.curr_data[ts->ts_data.total_num].x_position,
+						ts->ts_data.curr_data[ts->ts_data.total_num].y_position,
+						ts->pdata->caps->is_width_supported?
+						ts->ts_data.curr_data[ts->ts_data.total_num].width_major: 0,
+						ts->pdata->caps->is_width_supported?
+						ts->ts_data.curr_data[ts->ts_data.total_num].width_minor: 0,
+						ts->pdata->caps->is_width_supported?
+						ts->ts_data.curr_data[ts->ts_data.total_num].width_orientation: 0,
+						ts->pdata->caps->is_pressure_supported ?
+						ts->ts_data.curr_data[ts->ts_data.total_num].pressure : 0);
+		}
 		report_enable = 1;
 
 		memcpy(ts->ts_data.prev_data, ts->ts_data.curr_data, sizeof(ts->ts_data.curr_data));
@@ -1647,11 +1625,39 @@ static void touch_work_func_c(struct work_struct *work)
 		input_sync(ts->input_dev);
 
 out:
-	touch_work_post_proc(ts, WORK_POST_OUT);
+	if(likely(ts->pdata->role->operation_mode == INTERRUPT_MODE)){
+		next_work = atomic_read(&ts->next_work);
+
+		if(unlikely(int_pin != 1 && next_work <= 0)){
+			TOUCH_INFO_MSG("WARN: Interrupt pin is low - next_work: %d, try_count: %d]\n",
+					next_work, ts->work_sync_err_cnt);
+			goto err_out_retry;
+		}
+	}
+
+#ifdef LGE_TOUCH_TIME_DEBUG
+	do_gettimeofday(&t_debug[TIME_WORKQUEUE_END]);
+	if (next_work)
+		memset(t_debug, 0x0, sizeof(t_debug));
+	time_profile_result(ts);
+#endif
+
+	ts->work_sync_err_cnt = 0;
+
+	return;
+
+err_out_retry:
+	ts->work_sync_err_cnt++;
+	atomic_inc(&ts->next_work);
+	queue_work(touch_wq, &ts->work);
+
 	return;
 
 err_out_critical:
-	touch_work_post_proc(ts, WORK_POST_ERR_CIRTICAL);
+	ts->work_sync_err_cnt = 0;
+	safety_reset(ts);
+	touch_ic_init(ts);
+
 	return;
 }
 
@@ -1666,14 +1672,15 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 			container_of(work_fw_upgrade, struct lge_touch_data, work_fw_upgrade);
 	u8	saved_state = ts->curr_pwr_state;
 
-#ifdef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200        /*                                                                                        */
-	u8  ic_fw_version;
-	u8  fw_image_version;
-	u8  b_need_upgrade = 0;
+#ifdef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200        /* seungbum.park@lge.com - 2012/06/11 - for synaptics 3200 series (S3203) and 7000 series */
+	u8  config_id_ver;
+	u8  fw_image_config_id_ver;
+        u8  b_need_upgrade = 0;
 
-	long  simple_fw_ver;
-	long  simple_ic_fw_ver;
+	long  config_id;
+	long  fw_image_config_id;
 #endif
+
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
 
@@ -1683,64 +1690,73 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 	}
 
 	if (likely(touch_debug_mask & (DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
-		TOUCH_INFO_MSG("IC identifier[%s] fw_version[%s:%s] : force[%d]\n",
-				ts->fw_info.ic_fw_identifier, ts->fw_info.ic_fw_version,
-				ts->fw_info.fw_version, ts->fw_info.fw_upgrade.fw_force_upgrade);
+#ifdef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200        /* seungbum.park@lge.com - 2012/06/11 - for synaptics 3200 series (S3203) and 7000 series */
+		TOUCH_INFO_MSG("fw_rev[%d:%d] product_id[%s:%s] config_id[%s:%s] force_upgrade[%d]\n",
+                                                ts->fw_info.fw_rev, ts->fw_info.fw_image_rev,
+                                                ts->fw_info.product_id, ts->fw_info.fw_image_product_id,
+						ts->fw_info.config_id,	ts->fw_info.fw_image_config_id,
+                                                ts->fw_upgrade.fw_force_upgrade);
+#else
+		TOUCH_INFO_MSG("fw_rev[%d:%d] product_id[%s:%s] force_upgrade[%d]\n",
+						ts->fw_info.fw_rev, ts->fw_info.fw_image_rev,
+						ts->fw_info.product_id, ts->fw_info.fw_image_product_id,
+						ts->fw_upgrade.fw_force_upgrade);
+#endif
+	ts->fw_upgrade.is_downloading = UNDER_DOWNLOADING;
 
-	ts->fw_info.fw_upgrade.is_downloading = UNDER_DOWNLOADING;
-
-	if (!strcmp(ts->fw_info.fw_version, ts->fw_info.ic_fw_version)
-			&& !ts->fw_info.fw_upgrade.fw_force_upgrade){
+#ifndef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200        /* seungbum.park@lge.com - 2012/06/13 - for only synaptics 3000 series */
+	if (((ts->fw_info.fw_rev >= ts->fw_info.fw_image_rev
+			&& ts->fw_info.fw_rev < 100)	/* test revision should be over 100 */
+			|| strncmp(ts->fw_info.product_id , ts->fw_info.fw_image_product_id, 10))
+			&& !ts->fw_upgrade.fw_force_upgrade){
 		TOUCH_INFO_MSG("FW-upgrade is not executed\n");
 		goto out;
 	}
-#ifdef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200
+#elif defined(CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200)
 	// S3200 series [START] ----------------------------------------
         // formal version :  S001, S002, ... ,S00N
 	// test   version :  E001, E002, ... ,E00N
 
 	// check the version( S: formal version, E: test version)
-	if(ts->fw_info.ic_fw_version[0] == 'S')
-	   ic_fw_version = CONFIG_ID_FORMAL_VER;
-	else if(ts->fw_info.ic_fw_version[0] == 'E')
-	   ic_fw_version = CONFIG_ID_TEST_VER;
+	if(ts->fw_info.config_id[0] == 'S')
+	   config_id_ver = CONFIG_ID_FORMAL_VER;
+	else if(ts->fw_info.config_id[0] == 'E')
+	   config_id_ver = CONFIG_ID_TEST_VER;
 	else
-	   ic_fw_version = CONFIG_ID_NONE;
+	   config_id_ver = CONFIG_ID_NONE;
 
-	if(ts->fw_info.fw_version[0] == 'S')
-	   fw_image_version = CONFIG_ID_FORMAL_VER;
-	else if(ts->fw_info.fw_version[0] == 'E')
-	   fw_image_version = CONFIG_ID_TEST_VER;
+	if(ts->fw_info.fw_image_config_id[0] == 'S')
+	   fw_image_config_id_ver = CONFIG_ID_FORMAL_VER;
+	else if(ts->fw_info.fw_image_config_id[0] == 'E')
+	   fw_image_config_id_ver = CONFIG_ID_TEST_VER;
 	else
-	   fw_image_version = CONFIG_ID_NONE;
+	   fw_image_config_id_ver = CONFIG_ID_NONE;
 
 	// to make config_id numeric value to compare id easily
-	simple_fw_ver	= simple_strtol(&ts->fw_info.fw_version[1],NULL,10);
-	simple_ic_fw_ver			= simple_strtol(&ts->fw_info.ic_fw_version[1],NULL,10);
+	fw_image_config_id	= simple_strtol(&ts->fw_info.fw_image_config_id[1],NULL,10);
+	config_id			= simple_strtol(&ts->fw_info.config_id[1],NULL,10);
+	TOUCH_INFO_MSG("config_id :%ld fw_image_config_id:%ld\n",
+		       config_id,fw_image_config_id);
 
 	if (likely(touch_debug_mask & (DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
 		TOUCH_INFO_MSG("config_id_ver[ic:%d/fw:%d] config_id[ic:%s/fw:%s] config_id_int[ic:%ld/fw:%ld]\n",
-						ic_fw_version, fw_image_version,
-						ts->fw_info.ic_fw_version,	ts->fw_info.fw_version,
-						simple_ic_fw_ver, simple_fw_ver);
+						config_id_ver, fw_image_config_id_ver,
+						ts->fw_info.config_id,	ts->fw_info.fw_image_config_id,
+						config_id, fw_image_config_id);
 
 	// check whether upgrading firmware is able or not
-	if((ic_fw_version == fw_image_version) && (simple_ic_fw_ver < simple_fw_ver))
+	if((config_id_ver == fw_image_config_id_ver) && (config_id < fw_image_config_id))
 	    b_need_upgrade = 1;
-	else if ((ic_fw_version != fw_image_version)&& (fw_image_version != CONFIG_ID_NONE )) // for test version
+	else if ((config_id_ver != fw_image_config_id_ver)&& (fw_image_config_id_ver != CONFIG_ID_NONE )) // for test version
 	    b_need_upgrade = 1;
-	else if ((ic_fw_version == CONFIG_ID_NONE) && (simple_ic_fw_ver < simple_fw_ver))
+	else if ((config_id_ver == CONFIG_ID_NONE) && (config_id < fw_image_config_id))
+	    b_need_upgrade = 1;
+	else if (!strncmp(ts->fw_info.product_id , "TM2195-001", 10))
 	    b_need_upgrade = 1;
 	else
 	    b_need_upgrade = 0;
-#ifdef CONFIG_MACH_LGE_U2_P760 //temporary for P760
-       if (simple_ic_fw_ver == 8 && simple_fw_ver == 7) {
-	    TOUCH_INFO_MSG("FW-down-upgrade is start (E008--> E007)!! This is temporary !!\n");
-	    b_need_upgrade = 1;
-	}
-#endif
 
-	if(!b_need_upgrade && !ts->fw_info.fw_upgrade.fw_force_upgrade){
+	if(!b_need_upgrade && !ts->fw_upgrade.fw_force_upgrade){
 	    TOUCH_INFO_MSG("FW-upgrade is not executed\n");
 	    goto out;
 	}
@@ -1765,13 +1781,8 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 	do_gettimeofday(&t_debug[TIME_FW_UPGRADE_START]);
 #endif
 
-	if (touch_device_func->fw_upgrade(ts->client, &ts->fw_info) < 0) {
+	if (touch_device_func->fw_upgrade(ts->client, ts->fw_upgrade.fw_path) < 0) {
 		TOUCH_ERR_MSG("Firmware upgrade was failed\n");
-		if (ts->pdata->role->operation_mode)
-			enable_irq(ts->client->irq);
-		else
-			hrtimer_start(&ts->timer, ktime_set(0, ts->pdata->role->report_period), HRTIMER_MODE_REL);
-
 		goto err_out;
 	}
 
@@ -1817,7 +1828,7 @@ err_out:
 	touch_ic_init(ts);
 
 out:
-	memset(&ts->fw_info.fw_upgrade, 0, sizeof(ts->fw_info.fw_upgrade));
+	memset(&ts->fw_upgrade, 0, sizeof(ts->fw_upgrade));
 
 	return;
 }
@@ -1914,7 +1925,6 @@ static int check_platform_data(struct touch_platform_data *pdata)
 			TOUCH_ERR_MSG("button_support = 1, but key_type is not defined\n");
 			return -1;
 		}
-
 		if (!pdata->caps->y_button_boundary) {
 			if (pdata->role->key_type == TOUCH_HARD_KEY)
 				pdata->caps->y_button_boundary = pdata->caps->y_max;
@@ -1960,10 +1970,7 @@ static int check_platform_data(struct touch_platform_data *pdata)
 	}
 
 	if(pdata->role->report_period == 0)
-		pdata->role->report_period = 10000000;
-
-	if (pdata->caps->max_id > MAX_FINGER)
-		pdata->caps->max_id = MAX_FINGER;
+		pdata->role->report_period = 12500000;
 
 	return 0;
 }
@@ -2062,9 +2069,13 @@ static ssize_t show_fw_info(struct lge_touch_data *ts, char *buf)
 {
 	int ret = 0;
 
-	ret = sprintf(buf, "\n====== Firmware Info ======\n");
-	ret += sprintf(buf+ret, "ic_fw_identifier    = %s\n", ts->fw_info.ic_fw_identifier);
-	ret += sprintf(buf+ret, "ic_fw_version       = %s\n", ts->fw_info.ic_fw_version);
+	ret = sprintf(buf, "====== Firmware Info ======\n");
+	ret += sprintf(buf+ret, "manufacturer_id  = %d\n", ts->fw_info.manufacturer_id);
+	ret += sprintf(buf+ret, "product_id       = %s\n", ts->fw_info.product_id);
+#ifdef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200        /* seungbum.park@lge.com - 2012/06/11 - for synaptics 3200 series (S3203) and 7000 series */
+	ret += sprintf(buf+ret, "config_id        = %s\n", ts->fw_info.config_id);
+#endif
+	ret += sprintf(buf+ret, "fw_rev           = %d\n", ts->fw_info.fw_rev);
 
 	return ret;
 }
@@ -2088,24 +2099,24 @@ static ssize_t store_fw_upgrade(struct lge_touch_data *ts, const char *buf, size
 	if (value) {
 		for(repeat = 0; repeat < value; repeat++) {
 			/* sync for n-th repeat test */
-			while(ts->fw_info.fw_upgrade.is_downloading);
+			while(ts->fw_upgrade.is_downloading);
 
 			msleep(ts->pdata->role->booting_delay * 2);
 			printk(KERN_INFO "\n");
 			TOUCH_INFO_MSG("Firmware image upgrade: No.%d", repeat+1);
 
-			/* for n-th repeat test - because ts->fw_info.fw_upgrade is setted 0 after FW upgrade */
-			memcpy(ts->fw_info.fw_upgrade.fw_path, path, sizeof(ts->fw_info.fw_upgrade.fw_path)-1);
+			/* for n-th repeat test - because ts->fw_upgrade is setted 0 after FW upgrade */
+			memcpy(ts->fw_upgrade.fw_path, path, sizeof(ts->fw_upgrade.fw_path)-1);
 
 			/* set downloading flag for sync for n-th test */
-			ts->fw_info.fw_upgrade.is_downloading = UNDER_DOWNLOADING;
-			ts->fw_info.fw_upgrade.fw_force_upgrade = 1;
+			ts->fw_upgrade.is_downloading = UNDER_DOWNLOADING;
+			ts->fw_upgrade.fw_force_upgrade = 1;
 
 			queue_work(touch_wq, &ts->work_fw_upgrade);
 		}
 
 		/* sync for fw_upgrade test */
-		while(ts->fw_info.fw_upgrade.is_downloading);
+		while(ts->fw_upgrade.is_downloading);
 	}
 
 	return count;
@@ -2120,12 +2131,12 @@ static ssize_t show_fw_ver(struct lge_touch_data *ts, char *buf)
 {
 	int ret = 0;
 
-#ifdef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200        /*                                                                                        */
+#ifdef CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS_S3200        /* seungbum.park@lge.com - 2012/06/11 - for synaptics 3200 series (S3203) and 7000 series */
 	u8 fw_version;
-	fw_version = simple_strtol(&ts->fw_info.ic_fw_version[1],NULL,10);
+	fw_version = simple_strtol(&ts->fw_info.config_id[1],NULL,10);
 	ret = sprintf(buf, "%ld\n", fw_version);
 #else
-	ret = sprintf(buf, "%s\n", ts->fw_info.ic_fw_version);
+	ret = sprintf(buf, "%d\n", ts->fw_info.fw_rev);
 #endif
 	return ret;
 }
@@ -2298,16 +2309,17 @@ static ssize_t store_keyguard_info(struct lge_touch_data *ts, const char *buf, s
 	sscanf(buf, "%d", &value);
 
 	if(value == KEYGUARD_ENABLE)
-		ts->gf_ctrl.stage = GHOST_STAGE_1 | GHOST_STAGE_2 | GHOST_STAGE_4;
+		ts->gf_ctrl.stage = GHOST_STAGE_1 | GHOST_STAGE_2 | GHOST_STAGE_3;
 	else if(value == KEYGUARD_RESERVED)
 		ts->gf_ctrl.stage &= ~GHOST_STAGE_2;
 
-	if (touch_debug_mask & DEBUG_GHOST || touch_debug_mask & DEBUG_BASE_INFO){
-		TOUCH_INFO_MSG("ghost_stage [0x%x]\n", ts->gf_ctrl.stage);
+	
+	if (touch_debug_mask & DEBUG_GHOST){
+		TOUCH_INFO_MSG("ghost_stage = 0x%x\n", ts->gf_ctrl.stage);
 		if(value == KEYGUARD_RESERVED)
 			TOUCH_INFO_MSG("ghost_stage2 : cleared[0x%x]\n", ts->gf_ctrl.stage);
 	}
-
+	
 	return count;
 }
 
@@ -2333,7 +2345,6 @@ static ssize_t show_virtual_key(struct lge_touch_data *ts, char *buf)
 		for(i=0; i<ts->pdata->caps->number_of_button; i++) {
 			if (i)
 				ret += sprintf(buf+ret, ":");
-
 			ret += sprintf(buf+ret, "0x01:%d:%d:%d:%d:%d", ts->pdata->caps->button_name[i],
 						center_x * (i*2 + 1), center_y,
 						ts->st_info.b_inner_width, ts->st_info.b_height);
@@ -2488,19 +2499,8 @@ static int touch_probe(struct i2c_client *client, const struct i2c_device_id *id
 	one_sec = 1000000 / (ts->pdata->role->report_period/1000);
 	ts->ic_init_err_cnt = 0;
 	ts->work_sync_err_cnt = 0;
-
-	/* Ghost-Finger solution
-	 * max_count : if melt-time > 7-sec, max_count should be changed to 'one_sec * 3'
-	 */
-	ts->gf_ctrl.min_count = one_sec / 12;
+	ts->gf_ctrl.min_count = 75000 / (ts->pdata->role->report_period/1000);
 	ts->gf_ctrl.max_count = one_sec * 3;
-	ts->gf_ctrl.saved_x = -1;
-	ts->gf_ctrl.saved_y = -1;
-	ts->gf_ctrl.saved_last_x = 0;
-	ts->gf_ctrl.saved_last_y = 0;
-	ts->gf_ctrl.max_moved = ts->pdata->caps->x_max / 4;
-	ts->gf_ctrl.max_pressure = 255;
-
 	get_section(&ts->st_info, ts->pdata);
 
 	ts->client = client;
@@ -2620,8 +2620,6 @@ static int touch_probe(struct i2c_client *client, const struct i2c_device_id *id
 		hrtimer_start(&ts->timer, ktime_set(0, ts->pdata->role->report_period), HRTIMER_MODE_REL);
 	}
 
-	/* ghost-finger solution */
-	ts->gf_ctrl.probe = 1;
 	/* Specific device initialization */
 	touch_ic_init(ts);
 
@@ -2632,13 +2630,17 @@ static int touch_probe(struct i2c_client *client, const struct i2c_device_id *id
 
 	/* jitter solution */
 	if (ts->pdata->role->jitter_filter_enable){
-		ts->jitter_filter.adjust_margin = 50;
+		ts->jitter_filter.adjust_margin = 100;
 	}
 
 	/* accuracy solution */
 	if (ts->pdata->role->accuracy_filter_enable){
 		ts->accuracy_filter.ignore_pressure_gap = 5;
+#if defined(CONFIG_MACH_LGE_CX2)
 		ts->accuracy_filter.delta_max = 30;
+#else
+		ts->accuracy_filter.delta_max = 100;
+#endif
 		ts->accuracy_filter.max_pressure = 255;
 		ts->accuracy_filter.time_to_max_pressure = one_sec / 20;
 		ts->accuracy_filter.direction_count = one_sec / 6;
@@ -2740,7 +2742,7 @@ static void touch_early_suspend(struct early_suspend *h)
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
 
-	if (ts->fw_info.fw_upgrade.is_downloading == UNDER_DOWNLOADING){
+	if (ts->fw_upgrade.is_downloading == UNDER_DOWNLOADING){
 		TOUCH_INFO_MSG("early_suspend is not executed\n");
 		return;
 	}
@@ -2752,11 +2754,11 @@ static void touch_early_suspend(struct early_suspend *h)
 
 	cancel_work_sync(&ts->work);
 	cancel_delayed_work_sync(&ts->work_init);
+
 	if (ts->pdata->role->key_type == TOUCH_HARD_KEY)
 		cancel_delayed_work_sync(&ts->work_touch_lock);
 
 	release_all_ts_event(ts);
-
 	touch_power_cntl(ts, ts->pdata->role->suspend_pwr);
 }
 
@@ -2768,13 +2770,12 @@ static void touch_late_resume(struct early_suspend *h)
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
 
-	if (ts->fw_info.fw_upgrade.is_downloading == UNDER_DOWNLOADING){
+	if (ts->fw_upgrade.is_downloading == UNDER_DOWNLOADING){
 		TOUCH_INFO_MSG("late_resume is not executed\n");
 		return;
 	}
 
-	touch_power_cntl(ts, ts->pdata->role->resume_pwr);
-
+ 	touch_power_cntl(ts, ts->pdata->role->resume_pwr); 
 	if (ts->pdata->role->operation_mode)
 		enable_irq(ts->client->irq);
 	else
@@ -2789,13 +2790,22 @@ static void touch_late_resume(struct early_suspend *h)
 #endif
 
 #if defined(CONFIG_PM)
+#ifdef CONFIG_MACH_LGE_CX2
+extern int is_suspend;
+#endif
 static int touch_suspend(struct device *device)
 {
+#ifdef CONFIG_MACH_LGE_CX2
+	is_suspend=1;
+#endif
 	return 0;
 }
 
 static int touch_resume(struct device *device)
 {
+#ifdef CONFIG_MACH_LGE_CX2
+	is_suspend=0;
+#endif
 	return 0;
 }
 #endif

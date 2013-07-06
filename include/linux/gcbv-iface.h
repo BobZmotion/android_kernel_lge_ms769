@@ -15,7 +15,7 @@
 #ifndef GCBV_IFACE_H
 #define GCBV_IFACE_H
 
-#include "bltsville.h"
+#include <linux/bltsville.h>
 
 void gcbv_init(struct bventry *entry);
 

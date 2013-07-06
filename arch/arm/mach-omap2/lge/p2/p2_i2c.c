@@ -26,14 +26,14 @@
 #include <lge/board_rev.h>
 #include <linux/err.h>
 #include <linux/fuel_gauge_max17043.h>
-/*                                           
-                                   
+/* LGE_CHANGE [yehan.ahn@lge.com] 2011-03-23,
+ * [P940] change touch_driver files
  */
-//                                                                            
+// LGE_CHANGE_S [dukwung.kim@lge.com] 2011-07-13, [P940_DCM] change charger IC
 #if defined(CONFIG_MAX8971_CHARGER)
 #include <linux/max8971.h>
 #endif
-//                                   
+// LGE_CHANGE_E [dukwung.kim@lge.com]
 #if defined(CONFIG_TOUCHSCREEN_P940_GENERAL)
 #include <linux/lge_touch_synaptics.h>
 #endif
@@ -49,13 +49,13 @@
 #include <linux/lge/lm3530.h>
 #include <linux/lge/lm3559.h>
 #include <linux/muic/muic.h>
-//                 
-#ifdef CONFIG_LGE_NFC_PN544
+//garam.kim@lge.com
+#ifdef CONFIG_LGE_NFC_PN544_C3
 #include "board-lge-nfc.h"
 #endif
 
-/*                                             
-                                                 
+/* LGE_CHANGE_S [yehan.ahn@lge.com] 2011-04-07,
+ * [P940] general power control for device driver
  */
 int device_power_control(char *reg_id, int on)
 {
@@ -112,7 +112,7 @@ int vibrator_power_control(int on)
 }
 
 int touch_power_control(int on){
-//                                                                                    
+// LGE_CHANGE_S [younglae.kim@lge.com] 2012-02-21 , add for LDO Enable (domestic only)
 #ifdef CONFIG_MACH_LGE_P2_P940
 	return device_power_control("touch_power", on);
 #else
@@ -126,7 +126,7 @@ int touch_power_control(int on){
 	gpio_free(GPIO_TOUCH_VIO);
 	return ret;
 #endif
-//                                    
+// LGE_CHANGE_E [younglae.kim@lge.com]
 }
 
 #if defined(CONFIG_MHL_TX_SII9244_LEGACY)
@@ -142,12 +142,12 @@ int hpd_enable_control(int on)
 
 EXPORT_SYMBOL(hpd_enable_control);
 #endif
-/*                               */
+/* LGE_CHANGE_E [jh.koo@lge.com] */
 
-/*                                            
-                                 
+/* LGE_CHANGE_S [yehan.ahn@lge.com] 2011-04-16
+ * [P940] Regulator initilization
  */
-/*                                                                  */
+/* LGE_SJIT 2011-10-18 [jongrak.kwon@lge.com] Change for Kernel 3.0 */
 static struct regulator_consumer_supply twl6030_vmmc_supply[] = {
 	REGULATOR_SUPPLY("vmmc", "omap_hsmmc.0"),
 };
@@ -221,8 +221,8 @@ static struct regulator_consumer_supply twl6030_vaux3_supply[] = {
 		.consumer_supplies = twl6030_##_id##_supply,		\
 	};
 
-//                                                                
-TWL6030_REGULATOR_DEVICE(vmmc,  3000000, 3000000, 0, 1);	// SD
+// LGE_SJIT 2011-10-18 [jongrak.kwon@lge.com] Match the constraint
+TWL6030_REGULATOR_DEVICE(vmmc,  1200000, 3300000, 0, 1);	// SD
 TWL6030_REGULATOR_DEVICE(vpp,   1800000, 1800000, 0, 0);	// OMAP_VPP_CUST
 #if defined(CONFIG_MACH_LGE_P2_P940) || defined(CONFIG_MACH_LGE_P2_DCM)
 TWL6030_REGULATOR_DEVICE(vusim, 3200000, 3200000, 0, 0);	// Vibrator
@@ -231,7 +231,7 @@ TWL6030_REGULATOR_DEVICE(vusim, 3100000, 3100000, 0, 0);	// Vibrator
 #endif
 /* The Vusb is defined directly instead of below def() for 172777*/
 /* TWL6030_REGULATOR_DEVICE(vusb, 	3300000, 3300000, 0,0);	// USB */
-TWL6030_REGULATOR_DEVICE(vaux1, 3000000, 3000000, 0, 1);	// eMMC
+TWL6030_REGULATOR_DEVICE(vaux1, 2800000, 2800000, 0, 1);	// eMMC
 TWL6030_REGULATOR_DEVICE(vaux2, 1800000, 1800000, 0, 0);	// MHL 1.8V
 TWL6030_REGULATOR_DEVICE(vaux3, 1800000, 1800000, 0, 0);	// Cam
 
@@ -296,7 +296,7 @@ static struct regulator_init_data twl6030_vusb_data = {
 	.constraints = {
 		.min_uV = 3300000,
 		.max_uV = 3300000,
-		.apply_uV = false,//                                                                                                         
+		.apply_uV = false,//true,	// LGE_BSP 2012.03.13 [myeonggyu.son@lge.com] 4AI.1.2 patch - failed on setting VUSB regulator node
 		.valid_modes_mask = REGULATOR_MODE_NORMAL
 			| REGULATOR_MODE_STANDBY,
 		.valid_ops_mask = REGULATOR_CHANGE_MODE
@@ -446,9 +446,9 @@ static struct twl4030_codec_data twl6040_codec = {
 static struct regulator_init_data p940_clk32kg = {
 	.constraints = {
 		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
-		/*                                               
-                                            
-   */
+		/* LGE_SJIT_S 11/18/2011 [mohamed.khadri@lge.com]
+		 * CLK32K enabled by default for WLAN SDIO
+		 */
 		.always_on = true,
 	},
 };
@@ -477,7 +477,7 @@ static struct twl4030_platform_data p940_twldata = {
 	.codec = &twl6040_codec,
 };
 
-/*                                  */
+/* LGE_CHANGE_E [yehan.ahn@lge.com] */
 
 /*
  * The Clock Driver Chip (TCXO) on OMAP4 based SDP needs to
@@ -501,11 +501,11 @@ static struct cdc_tcxo_platform_data sdp4430_cdc_data = {
 };
 
 /* Touchscreen I2C platform_data */
-/*                                             
-                                   
+/* LGE_CHANGE_S [yehan.ahn@lge.com] 2011-03-23,
+ * [P940] change touch_driver files
  */
 #if defined(CONFIG_MAX8971_CHARGER)
-//                                                
+// LGE_CHANGES_S [dukwung.kim@lge.com] 2011-07-13,
 static struct max8971_platform_data max8971_data = {
 
 //        .chgcc = 0x0C,                  // Fast Charge Current - 600mA
@@ -546,7 +546,7 @@ static struct p940_synaptics_platform_data p940_ts_data = {
 	.power = &touch_power_control,
 };
 
-/*                                  */
+/* LGE_CHANGE_E [yehan.ahn@lge.com] */
 #endif
 
 #if defined(CONFIG_TOUCHSCREEN_COMMON_SYNAPTICS)
@@ -555,10 +555,10 @@ static struct touch_device_caps touch_caps = {
 #if defined(CONFIG_INPUT_LGE_ANDROID_3KEYS)	// S, K, L
 	.number_of_button = 3,
 	.button_name = {KEY_MENU, KEY_HOME, KEY_BACK},
-#else //                               
+#else // CONFIG_INPUT_LGE_ANDROID_3KEYS
 	.number_of_button = 4,
 	.button_name = {KEY_MENU, KEY_HOME, KEY_BACK, KEY_SEARCH},
-#endif //                               
+#endif // CONFIG_INPUT_LGE_ANDROID_3KEYS
 	.button_margin = 10,
 	.is_width_supported = 1,
 	.is_pressure_supported = 1,
@@ -622,8 +622,8 @@ static struct lm3559_platform_data lm3559_pdata = {
 */
 
 /* Charger I2C platform_data */
-/*                                                
-                                          
+/* LGE_CHANGE_S [euiseop.shin@lge.com] 2011-06-09,
+ * [P940] Add Charger IC(Max8971) in Rev.A
  */
 /*
 #if defined(CONFIG_LG_FW_MAX8971_CHARGER)
@@ -634,15 +634,15 @@ static struct max8971_platform_data max8971_pdata = {
 };
 #endif
 */
-/*                                                        */
+/* LGE_CHANGE_E [euiseop.shin@lge.com] 2011-06-09, [P940] */
 
-/*                                                    */
+/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] add rotcpy */
 static void rotcpy(s8 dst[3 * 3], const s8 src[3 * 3])
 {
 	memcpy(dst, src, 3 * 3);
 }
 
-/*                                                                  */
+/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] mpu orientation for HW A */
 static s8 orientation_a[] = {
 	-1, 0, 0,
 	0, -1, 0,
@@ -724,8 +724,8 @@ static struct mpu3050_platform_data mpu3050_data = {
 	},
 };
 
-/*                                        
-                                        
+/* LGE_SJIT 2011-12-02 [dojip.kim@lge.com]
+ * define the platform_data for APDS9900
  */
 static struct apds9900_platform_data apds9900_pdata = {
 	.atime = 0xf6,		// 27.2ms . minimum ALS integration time
@@ -759,7 +759,7 @@ static struct apds9900_platform_data apds9900_pdata = {
 	.ldo_gpio = GPIO_APDS_LDO,
 };
 
-/*                                                                    */
+/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] add max17043 platform_data */
 static struct max17043_platform_data max17043_pdata = {
 	.gpio_alert = GPIO_GAUGE_INT,
 	.rcomp = RCOMP_BL44JN,
@@ -782,8 +782,8 @@ static void omap_mux_hpd_pull_up(bool on)
 	}
 }
 
-/*                                              
-                                
+/* LGE_SJIT 2011-12-08 [choongryeol.lee@lge.com]
+ * add MHL sii9244 platform data
  */
 struct sii9244_platform_data sii9244_pdata = {
 	.int_gpio = GPIO_MHL_INT,
@@ -795,7 +795,7 @@ struct sii9244_platform_data sii9244_pdata = {
 };
 #endif
 
-/*                                                                */
+/* LGE_SJIT 2012-01-27 [dojip.kim@lge.com] Add muic platform data */
 static struct muic_platform_data muic_pdata = {
 	.gpio_int = GPIO_MUIC_INT,
 	.gpio_mhl = GPIO_MHL_SEL,
@@ -870,9 +870,9 @@ static struct i2c_board_info i2c_2_info[] __initdata = {
 /* i2c_3_info */
 static struct i2c_board_info i2c_3_info[] __initdata = {
 	/* MUIC */
-	/*                                        
-                          
-  */
+	/* LGE_SJIT 2012-01-27 [dojip.kim@lge.com]
+	 * Add muic platform data
+	 */
 #ifdef CONFIG_MUIC_TSU5611
 	{
 		I2C_BOARD_INFO("tsu5611", 0x44),
@@ -887,9 +887,9 @@ static struct i2c_board_info i2c_3_info[] __initdata = {
 		.platform_data = &muic_pdata,
 	},
 #endif //CONFIG_MUIC_TS5USBA33402
-	/*                                                 
-                                                   
-  */
+	/* LGE_CHANGE_S [dongjin73.kim@lge.com] 2011-05-25,
+	 * Proximity/Ambient sensor is disabled in EVB H/W
+	 */
 	{
 		I2C_BOARD_INFO("apds9900", 0x39),
 		.platform_data = &apds9900_pdata,
@@ -907,9 +907,9 @@ static struct i2c_board_info i2c_4_info[] __initdata = {
 		.irq = OMAP_GPIO_IRQ(GPIO_GYRO_INT),
 		.platform_data = &mpu3050_data,
 	},
-	/*                                                   
-                     
-  */
+	/* LGE_SJIT 2011-11-24 [dojip.kim@lge.com] 2011-11-24
+	 * add kxtf9, ami306
+	 */
 	{
 		I2C_BOARD_INFO("kxtf9", 0x0f),
 		.irq = OMAP_GPIO_IRQ(GPIO_MOTION_INT),
@@ -920,25 +920,25 @@ static struct i2c_board_info i2c_4_info[] __initdata = {
 		.irq = OMAP_GPIO_IRQ(GPIO_COMPASS_INT),
 		.platform_data = &mpu3050_data.compass,
 	},
-//                 
-#ifdef CONFIG_LGE_NFC_PN544
+//garam.kim@lge.com
+#ifdef CONFIG_LGE_NFC_PN544_C3
 	NFC_I2C_BOARD_INFO,
 #endif
-	/*                                                                    */
-	/*                                              
-                                             
-  */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] add max17043 platform_data */
+	/* LGE_CHANGE [euiseop.shin@lge.com] 2011-05-26,
+	 * LGE_P940. Fuel Gauge Max17043 [START_LGE]
+	 */
 #if  defined(CONFIG_LG_FW_MAX17043_FUEL_GAUGE_I2C)
 	{
 		I2C_BOARD_INFO(MAX17043_I2C_NAME, MAX17043_I2C_ADDR),
 		.platform_data = &max17043_pdata,
 	},
 #endif
-	/*                                                                   */
-	/*                                                
-                                                
-  */
-//                                                                                        
+	/* LGE_CHANGE [euiseop.shin@lge.com] 2011-05-26, LGE_P940. [END_LGE] */
+	/* LGE_CHANGE_S [euiseop.shin@lge.com] 2011-06-09,
+	 * [P940] Add Charger IC(Max8971) in Rev.A only
+	 */
+// LGE_CHANGE_S [euiseop.shin@lge.com] 2011-06-09, [P940] Add Charger IC(Max8971) in Rev.A
 /*
 #if defined(CONFIG_LG_FW_MAX8971_CHARGER)
 	{
@@ -947,8 +947,8 @@ static struct i2c_board_info i2c_4_info[] __initdata = {
 	},
 #endif
 */
-	/*                                                        */
-//                                               
+	/* LGE_CHANGE_E [euiseop.shin@lge.com] 2011-06-09, [P940] */
+// LGE_CHANGES_S [dukwung.kim@lge.com] 2011-07-13
 
 #if defined(CONFIG_MAX8971_CHARGER)
         {
@@ -958,7 +958,7 @@ static struct i2c_board_info i2c_4_info[] __initdata = {
                 .platform_data = &max8971_data,
         },
 #endif
-//                                               
+// LGE_CHANGES_E [dukwung.kim@lge.com] 2011-07-13
 };
 
 /* i2c_1_config */
@@ -997,9 +997,9 @@ int __init lge_i2c_init(void)
 {
 	int fixed_rev = 0;
 
-	/*                                        
-                                           
-  */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com]
+	 * fix the regulator for touch on revision
+	 */
 #ifdef CONFIG_MACH_LGE_P2
 	if (system_rev <= LGE_PCB_EVB) {
 		/* regulator */
@@ -1016,10 +1016,10 @@ int __init lge_i2c_init(void)
 	}
 #endif
 
-	/*                                        
-                                  
-                        
-  */
+	/* LGE_SJIT 2011-12-07 [dojip.kim@lge.com]
+	 * Sensor orientation on revision
+	 * muic int on revision
+	 */
 #ifdef CONFIG_MACH_LGE_P2_P940
 	if (system_rev <= LGE_PCB_A) {
 		rotcpy(mpu3050_data.orientation, orientation_a);
@@ -1028,39 +1028,39 @@ int __init lge_i2c_init(void)
 #endif
 
 #if defined(CONFIG_MHL_TX_SII9244) || defined(CONFIG_MHL_TX_SII9244_LEGACY)
-	/*                                               
-                                              */
-//                                                                                       
+	/* LGE_SJIT 2011-12-15 [choongryeol.lee@lge.com] 
+	  * After revision C, MHL doesn't use HW I2C */
+// LGE_CHANGE_S [sungho.jung@lge.com] 2012-02-13. Featuring [SU540, KU5400, LU5400, L02D]
 #ifdef CONFIG_MACH_LGE_P2_P940
 	if (system_rev >= LGE_PCB_C) {
 		i2c_2_config.len = i2c_2_config.len - 4; // remove last 4 array which is for MHL data
 	}
 #elif defined(CONFIG_MACH_LGE_P2_SU540) || defined(CONFIG_MACH_LGE_P2_KU5400) || defined(CONFIG_MACH_LGE_P2_LU5400) || defined(CONFIG_MACH_LGE_P2_DCM)
-//                               
+//	if (system_rev >= LGE_PCB_B) {
 		i2c_2_config.len = i2c_2_config.len - 4; // remove last 4 array which is for MHL data
 //	}
 #endif
-//                                              
+// LGE_CHANGE_E [sungho.jung@lge.com] 2012-02-13
 #endif
 
-	/*                                             
-                                                  
-                                       
-  */
+	/* LGE_SJIT 2011-12-14 [mohamed.khadri@lge.com]
+	 * Hack pn544_i2c_platform_data to be able to set
+	 * firm_gpio based on HW board variant
+	 */
 #ifdef CONFIG_MACH_LGE_P2_P940
 	fixed_rev = LGE_PCB_1_1;
 #elif defined(CONFIG_MACH_LGE_P2_SU540) || defined(CONFIG_MACH_LGE_P2_KU5400)
 	fixed_rev = LGE_PCB_1_0;
 #endif
 
-#ifdef CONFIG_LGE_NFC_PN544
+#ifdef CONFIG_LGE_NFC_PN544_C3
 	((struct pn544_i2c_platform_data *)i2c_4_info[3].platform_data)->
 	    firm_gpio =
 	    (system_rev >= fixed_rev) ? NFC_GPIO_FRIM_HW_1_X : NFC_GPIO_FIRM;
 #endif
 
 #ifdef CONFIG_MACH_LGE_P2_P940
-	/*                                                        */
+	/* LGE_SJIT 2011-12-23 [dojip.kim@lge.com] camera subpmic */
 	if (system_rev >= LGE_PCB_C)
 		lp8720_pdata.en_gpio_num = GPIO_LP8720_C;
 #endif

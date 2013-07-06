@@ -704,14 +704,14 @@ static ssize_t fsg_show_file(struct device *dev, struct device_attribute *attr,
 	return rc;
 }
 
-/*                                                                 */
+/* LGE_SJIT_S 1/19/2012 [mohamed.khadri@lge.com] LG Gadget driver  */
 static ssize_t fsg_show_cdrom(struct device *dev, struct device_attribute *attr,
                            char *buf)
 {
         struct fsg_lun  *curlun = fsg_lun_from_dev(dev);
         return sprintf(buf, "%d\n", curlun->cdrom); 
 }
-/*                                                                 */
+/* LGE_SJIT_E 1/19/2012 [mohamed.khadri@lge.com] LG Gadget driver  */
 
 static ssize_t fsg_store_ro(struct device *dev, struct device_attribute *attr,
 			    const char *buf, size_t count)
@@ -804,7 +804,7 @@ static ssize_t fsg_store_file(struct device *dev, struct device_attribute *attr,
 	return (rc < 0 ? rc : count);
 }
 
-/*                                                                 */
+/* LGE_SJIT_S 1/19/2012 [mohamed.khadri@lge.com] LG Gadget driver  */
 static ssize_t fsg_store_cdrom(struct device *dev,
                                struct device_attribute *attr,
                                const char *buf, size_t count)
@@ -821,4 +821,4 @@ static ssize_t fsg_store_cdrom(struct device *dev,
 
         return count;
 }
-/*                                                                 */
+/* LGE_SJIT_E 1/19/2012 [mohamed.khadri@lge.com] LG Gadget driver  */

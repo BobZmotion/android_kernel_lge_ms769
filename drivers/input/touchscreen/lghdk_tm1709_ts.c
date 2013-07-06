@@ -709,13 +709,13 @@ static int synaptics_handle_single_touch(struct synaptics_ts_data* ts, int finge
 		//////////////////////////////////////////////////////debug////////////////////////////////////////
 
 
-		#ifdef LGHDK_TOUCH_GRIP_SUPPRESSION //                                                
+		#ifdef LGHDK_TOUCH_GRIP_SUPPRESSION // 20101215 seven@lge.com grip suppression [start]
 		if ( (g_gripIgnoreRangeValue > 0) && ( (curr_ts_data.X_position[finger_index] <= g_gripIgnoreRangeValue ) || (curr_ts_data.X_position[finger_index] >= (TS_W - g_gripIgnoreRangeValue) )) )
 		{
 			DEBUG_MSG("[TOUCH] Girp Region Pressed. IGNORE!!! X[%d] grip[%d] \n",curr_ts_data.X_position[finger_index], g_gripIgnoreRangeValue );
 			goto err_input_grip_suppression_failed;
 		}
-		#endif //                                                
+		#endif // 20101215 seven@lge.com grip suppression [start]
 
 		#ifdef LGHDK_TOUCH_HAND_SUPPRESSION
 		if(synaptics_ts_handle_is_ignorearea(curr_ts_data.X_position[finger_index], curr_ts_data.Y_position[finger_index]) == true)
@@ -1031,7 +1031,7 @@ err:
 static DEVICE_ATTR(version, 0444, version_show, NULL);
 
 
-//                                                
+// 20101215 seven@lge.com grip suppression [START]
 #ifdef LGHDK_TOUCH_GRIP_SUPPRESSION
 static int touch_ConvertPixelToRawData(int pixel)
 {
@@ -1062,7 +1062,7 @@ ssize_t touch_gripsuppression_store(struct device *dev, struct device_attribute 
 
 DEVICE_ATTR(gripsuppression, 0664, touch_gripsuppression_show, touch_gripsuppression_store);
 #endif /* LGHDK_TOUCH_GRIP_SUPPRESSION */
-//                                              
+// 20101215 seven@lge.com grip suppression [END]
 
 #ifdef LGHDK_TOUCH_HAND_SUPPRESSION
 
@@ -1614,7 +1614,7 @@ static int synaptics_ts_probe(
 
 	ret = device_create_file(&client->dev, &dev_attr_version);
 
-	//                                                    
+	// 20101215 seven.kim@lge.com grip suppression [START]
 #ifdef LGHDK_TOUCH_GRIP_SUPPRESSION
 		ret = device_create_file(&client->dev, &dev_attr_gripsuppression);
 		if (ret) {
@@ -1670,9 +1670,9 @@ static int synaptics_ts_remove(struct i2c_client *client)
 {
 	struct synaptics_ts_data *ts = i2c_get_clientdata(client);
 
-#ifdef LGHDK_TOUCH_GRIP_SUPPRESSION	//                                  
+#ifdef LGHDK_TOUCH_GRIP_SUPPRESSION	//20101216 seven.kim@lge.com [start]
 	device_remove_file(&client->dev, &dev_attr_gripsuppression);
-#endif //                                
+#endif //20101216 seven.kim@lge.com [end]
 #ifdef LGHDK_TOUCH_HAND_SUPPRESSION
 		device_remove_file(&client->dev, &dev_attr_handsuppression);
 #endif

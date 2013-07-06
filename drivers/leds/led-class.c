@@ -72,7 +72,7 @@ static ssize_t led_max_brightness_show(struct device *dev,
 	return sprintf(buf, "%u\n", led_cdev->max_brightness);
 }
 
-/*                                                                                 */
+/* 20120224 sangjae.han@lge.com Add sysfile to maintain the backlight on[LGE_START]*/
 static ssize_t led_br_maintain_on_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
@@ -109,7 +109,7 @@ static struct device_attribute led_class_attrs[] = {
 #endif
 	__ATTR_NULL,
 };
-/*                                                                               */
+/* 20120224 sangjae.han@lge.com Add sysfile to maintain the backlight on[LGE_END]*/
 
 static void led_timer_function(unsigned long data)
 {

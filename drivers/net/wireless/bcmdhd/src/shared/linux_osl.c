@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: linux_osl.c 373382 2012-12-07 07:59:52Z $
+ * $Id: linux_osl.c 311099 2012-01-27 14:46:59Z $
  */
 
 #define LINUX_PORT
@@ -35,20 +35,19 @@
 #include <linux/delay.h>
 #include <pcicfg.h>
 
+#ifdef BCMASSERT_LOG
+#include <bcm_assert_log.h>
+#endif
+
 
 #include <linux/fs.h>
 
 #define PCI_CFG_RETRY 		10
 
-#define OS_HANDLE_MAGIC		0x1234abcd	/* Magic # to recognize osh */
-#define BCM_MEM_FILENAME_LEN 	24		/* Mem. filename length */
+#define OS_HANDLE_MAGIC		0x1234abcd	
+#define BCM_MEM_FILENAME_LEN 	24		
 
 #ifdef CONFIG_DHD_USE_STATIC_BUF
-#define DHD_SKB_HDRSIZE 		336
-#define DHD_SKB_1PAGE_BUFSIZE	((PAGE_SIZE*1)-DHD_SKB_HDRSIZE)
-#define DHD_SKB_2PAGE_BUFSIZE	((PAGE_SIZE*2)-DHD_SKB_HDRSIZE)
-#define DHD_SKB_4PAGE_BUFSIZE	((PAGE_SIZE*4)-DHD_SKB_HDRSIZE)
-
 #define STATIC_BUF_MAX_NUM	16
 #define STATIC_BUF_SIZE	(PAGE_SIZE*2)
 #define STATIC_BUF_TOTAL_LEN	(STATIC_BUF_MAX_NUM * STATIC_BUF_SIZE)
@@ -62,22 +61,18 @@ typedef struct bcm_static_buf {
 static bcm_static_buf_t *bcm_static_buf = 0;
 
 #define STATIC_PKT_MAX_NUM	8
-#if defined(ENHANCED_STATIC_BUF)
-#define STATIC_PKT_4PAGE_NUM	1
-#define DHD_SKB_MAX_BUFSIZE	DHD_SKB_4PAGE_BUFSIZE
-#else
-#define STATIC_PKT_4PAGE_NUM	0
-#define DHD_SKB_MAX_BUFSIZE DHD_SKB_2PAGE_BUFSIZE
-#endif 
 
 typedef struct bcm_static_pkt {
 	struct sk_buff *skb_4k[STATIC_PKT_MAX_NUM];
+// LGE_CHANGE_S, real-wifi@lge.com by wo0ngs 2011-08-29, for Memory Allocation Fail evation
+#if 0
 	struct sk_buff *skb_8k[STATIC_PKT_MAX_NUM];
-#ifdef ENHANCED_STATIC_BUF
-	struct sk_buff *skb_16k;
+#else
+	struct sk_buff *skb_12k[STATIC_PKT_MAX_NUM];
 #endif
+// LGE_CHANGE_E, real-wifi@lge.com by wo0ngs 2011-08-29, for Memory Allocation Fail evation
 	struct semaphore osl_pkt_sem;
-	unsigned char pkt_use[STATIC_PKT_MAX_NUM * 2 + STATIC_PKT_4PAGE_NUM];
+	unsigned char pkt_use[STATIC_PKT_MAX_NUM * 2];
 } bcm_static_pkt_t;
 
 static bcm_static_pkt_t *bcm_static_skb = 0;
@@ -184,15 +179,8 @@ osl_t *
 osl_attach(void *pdev, uint bustype, bool pkttag)
 {
 	osl_t *osh;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
-	gfp_t flags;
 
-	flags = (in_atomic() || in_interrupt()) ? GFP_ATOMIC : GFP_KERNEL;
-	osh = kmalloc(sizeof(osl_t), flags);
-#else
 	osh = kmalloc(sizeof(osl_t), GFP_ATOMIC);
-#endif
-
 	ASSERT(osh);
 
 	bzero(osh, sizeof(osl_t));
@@ -248,9 +236,8 @@ osl_attach(void *pdev, uint bustype, bool pkttag)
 		bcm_static_skb = (bcm_static_pkt_t *)((char *)bcm_static_buf + 2048);
 		skb_buff_ptr = dhd_os_prealloc(osh, 4, 0);
 
-		bcopy(skb_buff_ptr, bcm_static_skb, sizeof(struct sk_buff *)*
-			(STATIC_PKT_MAX_NUM * 2 + STATIC_PKT_4PAGE_NUM));
-		for (i = 0; i < (STATIC_PKT_MAX_NUM * 2 + STATIC_PKT_4PAGE_NUM); i++)
+		bcopy(skb_buff_ptr, bcm_static_skb, sizeof(struct sk_buff *)*16);
+		for (i = 0; i < STATIC_PKT_MAX_NUM * 2; i++)
 			bcm_static_skb->pkt_use[i] = 0;
 
 		sema_init(&bcm_static_skb->osl_pkt_sem, 1);
@@ -284,7 +271,7 @@ osl_detach(osl_t *osh)
 static struct sk_buff *osl_alloc_skb(unsigned int len)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)
-	gfp_t flags = (in_atomic() || in_interrupt()) ? GFP_ATOMIC : GFP_KERNEL;
+	gfp_t flags = GFP_ATOMIC;
 
 	return __dev_alloc_skb(len, flags);
 #else
@@ -366,14 +353,7 @@ osl_ctfpool_replenish(osl_t *osh, uint thresh)
 int32
 osl_ctfpool_init(osl_t *osh, uint numobj, uint size)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
-	gfp_t flags;
-
-	flags = (in_atomic() || in_interrupt()) ? GFP_ATOMIC : GFP_KERNEL;
-	osh->ctfpool = kmalloc(sizeof(ctfpool_t), flags);
-#else
 	osh->ctfpool = kmalloc(sizeof(ctfpool_t), GFP_ATOMIC);
-#endif
 	ASSERT(osh->ctfpool);
 	bzero(osh->ctfpool, sizeof(ctfpool_t));
 
@@ -657,16 +637,23 @@ osl_pktget_static(osl_t *osh, uint len)
 	int i = 0;
 	struct sk_buff *skb;
 
-
-	if (len > DHD_SKB_MAX_BUFSIZE) {
-		printk("osl_pktget_static: Do we really need this big skb??"
-			" len=%d\n", len);
+// LGE_CHANGE_S, real-wifi@lge.com by wo0ngs 2011-08-29, for Memory Allocation Fail evation
+#if 0
+	if (len > (PAGE_SIZE*2)) {
+		printk("%s: attempt to allocate huge packet (0x%x)\n", __FUNCTION__, len);
 		return osl_pktget(osh, len);
 	}
+#else
+	if (len > (PAGE_SIZE*3)) {
+		printk("%s: attempt to allocate huge packet (0x%x)\n", __FUNCTION__, len);
+		return osl_pktget(osh, len);
+	}
+#endif
+// LGE_CHANGE_E, real-wifi@lge.com by wo0ngs 2011-08-29, for Memory Allocation Fail evation
 
 	down(&bcm_static_skb->osl_pkt_sem);
 
-	if (len <= DHD_SKB_1PAGE_BUFSIZE) {
+	if (len <= PAGE_SIZE) {
 		for (i = 0; i < STATIC_PKT_MAX_NUM; i++) {
 			if (bcm_static_skb->pkt_use[i] == 0)
 				break;
@@ -674,50 +661,37 @@ osl_pktget_static(osl_t *osh, uint len)
 
 		if (i != STATIC_PKT_MAX_NUM) {
 			bcm_static_skb->pkt_use[i] = 1;
-
+			up(&bcm_static_skb->osl_pkt_sem);
 			skb = bcm_static_skb->skb_4k[i];
 			skb->tail = skb->data + len;
 			skb->len = len;
-
-			up(&bcm_static_skb->osl_pkt_sem);
 			return skb;
 		}
 	}
 
-	if (len <= DHD_SKB_2PAGE_BUFSIZE) {
 
-		for (i = 0; i < STATIC_PKT_MAX_NUM; i++) {
-			if (bcm_static_skb->pkt_use[i + STATIC_PKT_MAX_NUM]
-				== 0)
-				break;
-		}
-
-		if (i != STATIC_PKT_MAX_NUM) {
-			bcm_static_skb->pkt_use[i + STATIC_PKT_MAX_NUM] = 1;
-			skb = bcm_static_skb->skb_8k[i];
-			skb->tail = skb->data + len;
-			skb->len = len;
-
-			up(&bcm_static_skb->osl_pkt_sem);
-			return skb;
-		}
+	for (i = 0; i < STATIC_PKT_MAX_NUM; i++) {
+		if (bcm_static_skb->pkt_use[i+STATIC_PKT_MAX_NUM] == 0)
+			break;
 	}
 
-#if defined(ENHANCED_STATIC_BUF)
-	if (bcm_static_skb->pkt_use[STATIC_PKT_MAX_NUM * 2] == 0) {
-		bcm_static_skb->pkt_use[STATIC_PKT_MAX_NUM * 2] = 1;
-
-		skb = bcm_static_skb->skb_16k;
+	if (i != STATIC_PKT_MAX_NUM) {
+		bcm_static_skb->pkt_use[i+STATIC_PKT_MAX_NUM] = 1;
+		up(&bcm_static_skb->osl_pkt_sem);
+// LGE_CHANGE_S, real-wifi@lge.com by wo0ngs 2011-08-29, for Memory Allocation Fail evation
+#if 0
+		skb = bcm_static_skb->skb_8k[i];
+#else
+		skb = bcm_static_skb->skb_12k[i];
+#endif
+// LGE_CHANGE_E, real-wifi@lge.com by wo0ngs 2011-08-29, for Memory Allocation Fail evation
 		skb->tail = skb->data + len;
 		skb->len = len;
-
-		up(&bcm_static_skb->osl_pkt_sem);
 		return skb;
 	}
-#endif
 
 	up(&bcm_static_skb->osl_pkt_sem);
-	printk("osl_pktget_static: all static pkt in use!\n");
+	printk("%s: all static pkt in use!\n", __FUNCTION__);
 	return osl_pktget(osh, len);
 }
 
@@ -725,14 +699,10 @@ void
 osl_pktfree_static(osl_t *osh, void *p, bool send)
 {
 	int i;
-	if (!bcm_static_skb) {
-		osl_pktfree(osh, p, send);
-		return;
-	}
 
-	down(&bcm_static_skb->osl_pkt_sem);
 	for (i = 0; i < STATIC_PKT_MAX_NUM; i++) {
 		if (p == bcm_static_skb->skb_4k[i]) {
+			down(&bcm_static_skb->osl_pkt_sem);
 			bcm_static_skb->pkt_use[i] = 0;
 			up(&bcm_static_skb->osl_pkt_sem);
 			return;
@@ -740,23 +710,21 @@ osl_pktfree_static(osl_t *osh, void *p, bool send)
 	}
 
 	for (i = 0; i < STATIC_PKT_MAX_NUM; i++) {
+// LGE_CHANGE_S, real-wifi@lge.com by wo0ngs 2011-08-29, for Memory Allocation Fail evation
+#if 0
 		if (p == bcm_static_skb->skb_8k[i]) {
+#else
+		if (p == bcm_static_skb->skb_12k[i]) {
+#endif
+// LGE_CHANGE_E, real-wifi@lge.com by wo0ngs 2011-08-29, for Memory Allocation Fail evation
+			down(&bcm_static_skb->osl_pkt_sem);
 			bcm_static_skb->pkt_use[i + STATIC_PKT_MAX_NUM] = 0;
 			up(&bcm_static_skb->osl_pkt_sem);
 			return;
 		}
 	}
-#ifdef ENHANCED_STATIC_BUF
-	if (p == bcm_static_skb->skb_16k) {
-		bcm_static_skb->pkt_use[STATIC_PKT_MAX_NUM*2] = 0;
-		up(&bcm_static_skb->osl_pkt_sem);
-		return;
-	}
-#endif
-	up(&bcm_static_skb->osl_pkt_sem);
 
-	osl_pktfree(osh, p, send);
-	return;
+	return osl_pktfree(osh, p, send);
 }
 #endif 
 
@@ -849,9 +817,6 @@ void *
 osl_malloc(osl_t *osh, uint size)
 {
 	void *addr;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
-	gfp_t flags;
-#endif
 
 	
 	if (osh)
@@ -891,12 +856,7 @@ osl_malloc(osl_t *osh, uint size)
 original:
 #endif 
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
-	flags = (in_atomic() || in_interrupt()) ? GFP_ATOMIC : GFP_KERNEL;
-	if ((addr = kmalloc(size, flags)) == NULL) {
-#else
 	if ((addr = kmalloc(size, GFP_ATOMIC)) == NULL) {
-#endif
 		if (osh)
 			osh->failed++;
 		return (NULL);
@@ -1009,17 +969,19 @@ osl_assert(const char *exp, const char *file, int line)
 	const char *basename;
 
 	basename = strrchr(file, '/');
-	/* skip the '/' */
+	
 	if (basename)
 		basename++;
 
 	if (!basename)
 		basename = file;
 
+#ifdef BCMASSERT_LOG
 	snprintf(tempbuf, 64, "\"%s\": file \"%s\", line %d\n",
 		exp, basename, line);
 
-	printk("%s", tempbuf);
+	bcm_assert_log(tempbuf);
+#endif 
 
 
 }
@@ -1044,19 +1006,11 @@ osl_pktdup(osl_t *osh, void *skb)
 {
 	void * p;
 	unsigned long irqflags;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
-	gfp_t flags;
-#endif
 
 	
 	PKTCTFMAP(osh, skb);
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
-	flags = (in_atomic() || in_interrupt()) ? GFP_ATOMIC : GFP_KERNEL;
-	if ((p = skb_clone((struct sk_buff *)skb, flags)) == NULL)
-#else
-	if ((p = skb_clone((struct sk_buff*)skb, GFP_ATOMIC)) == NULL)
-#endif
+	if ((p = skb_clone((struct sk_buff *)skb, GFP_ATOMIC)) == NULL)
 		return NULL;
 
 #ifdef CTFPOOL

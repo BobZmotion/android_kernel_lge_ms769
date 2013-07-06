@@ -109,7 +109,7 @@ typedef unsigned char           BOOLEAN;
 // VDD
 //----------------*/
 #if MCSDL_USE_VDD_CONTROL
-/*                                                       */
+/* LGE_SJIT 2011-12-09 [dojip.kim@lge.com] power control */
 #if 0
 #define MCSDL_VDD_SET_HIGH()                                    gpio_set_value(GPIO_TOUCH_EN, 1)
 #define MCSDL_VDD_SET_LOW()                                     gpio_set_value(GPIO_TOUCH_EN, 0)

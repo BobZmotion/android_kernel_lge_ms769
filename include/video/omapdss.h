@@ -132,6 +132,14 @@ enum omap_panel_config {
 	OMAP_DSS_LCD_TFT		= 1<<20,
 };
 
+/* DSI */
+#ifdef CONFIG_PANEL_LH430WV5_SD01
+enum omap_dsi_index { //##hwcho_20120428
+	DSI1 = 0,
+	DSI2 = 1,
+};
+#endif
+
 enum omap_dss_dsi_type {
 	OMAP_DSS_DSI_TYPE_CMD_MODE = 0,
 	OMAP_DSS_DSI_TYPE_VIDEO_MODE,
@@ -290,6 +298,12 @@ struct omap_dss_board_info {
 	void (*dsi_mux_pads)(bool enable);
 };
 
+//#if defined(CONFIG_PANEL_LH430WV2_SD01) //##hw2002.cho@lge.com
+#define PWM2ON		0x03
+#define PWM2OFF		0x04
+#define TOGGLE3		0x92
+//#endif //##
+
 #if defined(CONFIG_OMAP2_DSS_MODULE) || defined(CONFIG_OMAP2_DSS)
 /* Init with the board info */
 extern int omap_display_init(struct omap_dss_board_info *board_data);
@@ -324,45 +338,6 @@ struct omap_video_timings {
 	u16 vfp;	/* Vertical front porch */
 	/* Unit: line clocks */
 	u16 vbp;	/* Vertical back porch */
-};
-
-struct omap_dsi_timings {
-	/* Unit: HS DSI byte clocks */
-	u16 tl;		/* Total line length */
-	/* Unit: pixels */
-	u16 vact;	/* Active lines */
-	/* Unit: HS DSI byte clocks */
-	u16 hsa;	/* Horizontal synchronization pulse width */
-	/* Unit: HS DSI byte clocks */
-	u16 hfp;	/* Horizontal front porch */
-	/* Unit: HS DSI byte clocks */
-	u16 hbp;	/* Horizontal back porch */
-	/* Unit: Line clocks */
-	u16 vsa;	/* Vertical synchronization pulse width */
-	/* Unit: Line clocks */
-	u16 vfp;	/* Vertical front porch */
-	/* Unit: Line clocks */
-	u16 vbp;	/* Vertical back porch */
-	/* Unit: HS DSI byte clocks */
-	u16 hsa_hs_int;	/* HSA HS interleaving */
-	/* Unit: HS DSI byte clocks */
-	u16 hfp_hs_int;	/* HFP HS interleaving */
-	/* Unit: HS DSI byte clocks */
-	u16 hbp_hs_int;	/* HBP HS interleaving */
-	/* Unit: DSI Command mode packets */
-	u16 hsa_lp_int;	/* HSA LP interleaving */
-	/* Unit: DSI Command mode packets */
-	u16 hfp_lp_int;	/* HFP LP interleaving */
-	/* Unit: DSI Command mode packets */
-	u16 hbp_lp_int;	/* HBP LP interleaving */
-	/* Unit: HS DSI byte clocks */
-	u16 bl_hs_int;	/* Blanking HS interleaving */
-	/* Unit: DSI command mode packets */
-	u16 bl_lp_int;	/* Blanking LP interleaving */
-	/* Unit: HS DSI byte clocks */
-	u16 enter_lat;	/* Enter HS mode latency */
-	/* Unit: HS DSI byte clocks */
-	u16 exit_lat;	/* Exit HS mode latency */
 };
 
 #ifdef CONFIG_OMAP2_DSS_VENC
@@ -429,7 +404,6 @@ struct omap_overlay_info {
 	u16 out_height;	/* if 0, out_height == height */
 	u8 global_alpha;
 	u8 pre_mult_alpha;
-	u8 wb_source;
 	enum omap_overlay_zorder zorder;
 	u16 min_x_decim, max_x_decim, min_y_decim, max_y_decim;
 	struct omap_dss_cconv_coefs cconv;
@@ -476,7 +450,7 @@ struct omap_dss_dmb_coefs {
 	s16 ccs[FB_CCS_SIZE];
 	s16 bv[FB_DV_SIZE];
 };
-#endif /*                      */
+#endif /* CONFIG_LGE_BROADCAST */
 
 struct omap_overlay_manager_info {
 	u32 default_color;
@@ -487,9 +461,6 @@ struct omap_overlay_manager_info {
 
 	bool alpha_enabled;
 
-	/* if true, manager is used in MEM2MEM mode */
-	bool wb_only;
-
 	struct omapdss_ovl_cb cb;
 
 	bool cpr_enable;
@@ -497,7 +468,7 @@ struct omap_overlay_manager_info {
 
 #ifdef CONFIG_LGE_BROADCAST_TDMB
 	struct omap_dss_dmb_coefs dmb_coefs;
-#endif /*                      */
+#endif /* CONFIG_LGE_BROADCAST */
 };
 
 struct omap_overlay_manager {
@@ -594,16 +565,71 @@ struct omap_writeback {
 	/* mutex to control access to wb data */
 	struct mutex			lock;
 	struct omap_writeback_info	info;
-	struct completion		wb_completion;
 
 	bool (*check_wb)(struct omap_writeback *wb);
 	int (*set_wb_info)(struct omap_writeback *wb,
 			struct omap_writeback_info *info);
 	void (*get_wb_info)(struct omap_writeback *wb,
 			struct omap_writeback_info *info);
-	int (*register_framedone)(struct omap_writeback *wb);
-	int (*wait_framedone)(struct omap_writeback *wb);
 };
+
+#if defined(CONFIG_MACH_LGE_COSMO_3D_DISPLAY) || defined(CONFIG_MACH_LGE_CX2_3D_DISPLAY) //##hwcho_20120522
+/* Stereoscopic Panel types
+ * row, column, overunder, sidebyside options
+ * are with respect to native scan order
+*/
+enum s3d_disp_type {
+	S3D_DISP_NONE = 0,
+	S3D_DISP_FRAME_SEQ,
+	S3D_DISP_ROW_IL,
+	S3D_DISP_COL_IL,
+	S3D_DISP_PIX_IL,
+	S3D_DISP_CHECKB,
+	S3D_DISP_OVERUNDER,
+	S3D_DISP_SIDEBYSIDE,
+	S3D_DISP_DECISION_IN_DSSCOMP,	/*decision will be done in kernel's dsscomp*/
+};
+
+/* Subsampling direction is based on native panel scan order.
+*/
+enum s3d_disp_sub_sampling {
+	S3D_DISP_SUB_SAMPLE_NONE = 0,
+	S3D_DISP_SUB_SAMPLE_V,
+	S3D_DISP_SUB_SAMPLE_H,
+};
+
+/* Indicates if display expects left view first followed by right or viceversa
+ * For row interlaved displays, defines first row view
+ * For column interleaved displays, defines first column view
+ * For checkerboard, defines first pixel view
+ * For overunder, defines top view
+ * For sidebyside, defines west view
+*/
+enum s3d_disp_order {
+	S3D_DISP_ORDER_L = 0,
+	S3D_DISP_ORDER_R = 1,
+};
+
+/* Indicates current view
+ * Used mainly for displays that need to trigger a sync signal
+*/
+enum s3d_disp_view {
+	S3D_DISP_VIEW_L = 0,
+	S3D_DISP_VIEW_R,
+};
+
+struct s3d_disp_info {
+	enum s3d_disp_type type;
+	enum s3d_disp_sub_sampling sub_samp;
+	enum s3d_disp_order order;
+	/* Gap between left and right views
+	 * For over/under units are lines
+	 * For sidebyside units are pixels
+	  *For other types ignored*/
+	unsigned int gap;
+};
+#endif //##
+
 struct omap_dss_device {
 	struct device dev;
 
@@ -644,7 +670,6 @@ struct omap_dss_device {
 
 			bool ext_te;
 			u8 ext_te_gpio;
-			u8 line_bufs;
 		} dsi;
 
 		struct {
@@ -673,18 +698,6 @@ struct omap_dss_device {
 			u16 lp_clk_div;
 			unsigned offset_ddr_clk;
 			enum omap_dss_clk_source dsi_fclk_src;
-			u8 tlpx;
-			struct {
-				u8 zero;
-				u8 prepare;
-				u8 trail;
-			} tclk;
-			struct {
-				u8 zero;
-				u8 prepare;
-				u8 trail;
-				u8 exit;
-			} ths;
 		} dsi;
 
 		struct {
@@ -707,9 +720,6 @@ struct omap_dss_device {
 
 		u32 width_in_um;
 		u32 height_in_um;
-		u16 fb_xres;
-		u16 fb_yres;
-		u32 hdmi_default_cea_code;
 	} panel;
 
 	struct {
@@ -749,14 +759,6 @@ struct omap_dss_device {
 	void (*platform_disable)(struct omap_dss_device *dssdev);
 	int (*set_backlight)(struct omap_dss_device *dssdev, int level);
 	int (*get_backlight)(struct omap_dss_device *dssdev);
-
-	struct omap_video_timings *dispc_timings;
-	struct omap_dsi_timings *dsi_timings;
-};
-
-struct omap_dss_hdmi_data
-{
-	int hpd_gpio;
 };
 
 struct omap_dss_driver {
@@ -817,7 +819,25 @@ struct omap_dss_driver {
 	/* for wrapping around state changes */
 	void (*disable_orig)(struct omap_dss_device *display);
 	int (*enable_orig)(struct omap_dss_device *display);
-	int (*suspend_orig)(struct omap_dss_device *display);
+#if defined(CONFIG_MACH_LGE_COSMO_3D_DISPLAY) || defined(CONFIG_MACH_LGE_CX2_3D_DISPLAY)
+/* S3D specific */
+/* Used for displays that can switch 3D mode on/off
+3D only displays should return non-zero value when trying to disable */
+	int (*enable_s3d)(struct omap_dss_device *dssdev, bool enable);
+/* 3D only panels should return true always */
+	bool (*get_s3d_enabled)(struct omap_dss_device *dssdev);
+/* Only used for frame sequential displays*/
+	int (*set_s3d_view)(struct omap_dss_device *dssdev, enum s3d_disp_view view);
+/*Some displays may accept multiple 3D packing formats (like HDMI)
+ *hence we add capability to choose the most optimal one given a source
+ *Returns non-zero if the type was not supported*/
+	int (*set_s3d_disp_type)(struct omap_dss_device *dssdev, struct s3d_disp_info *info);
+	int (*get_s3d_disp_type)(struct omap_dss_device *dssdev, struct s3d_disp_info *info);
+// LGE_CHANGE [mo2sanggill.lee@lge.com] 2011-11-12 CX2 for realtime edid read
+	void (*get_edid_realtime)(struct omap_dss_device *dssdev,
+		struct omap_video_timings *timings);
+// LGE_CHANGE [mo2sanggill.lee@lge.com] 2011-11-12 CX2 for realtime edid read
+#endif //##	
 };
 
 int omap_dss_register_driver(struct omap_dss_driver *);
@@ -903,10 +923,10 @@ int omap_rfbi_configure(struct omap_dss_device *dssdev, int pixel_size,
 int omap_dss_manager_unregister_callback(struct omap_overlay_manager *mgr,
 					 struct omapdss_ovl_cb *cb);
 
-/*                                                              */
+/* LGE_SJIT 2011-12-14 [choongryeol.lee@lge.com] VC mode update */
 void omapdss_dsi_update_vc_mode(struct omap_dss_device *dssdev, int channel, bool is_l4);
 
-/*                                                                                 */
+/* LGE_SJIT 2012-03-06 [choongryeol.lee@lge.com] set first_vsync value per channel */
 void omap_dispc_set_first_vsync(enum omap_channel channel, bool enable);
 
 

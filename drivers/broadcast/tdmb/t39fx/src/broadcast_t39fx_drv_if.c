@@ -43,7 +43,7 @@ boolean broadcast_drv_if_read_data(void)
 	tunerbb_drv_t39fx_read_data(read_buffer_ptr, &read_buffer_size);
 
 	if(gBBBuffer_ridx == ((gBBBuffer_widx + 1)%TDMB_MPI_BUF_CHUNK_NUM))
-	{
+	{	
 		//printk("======================================\n");
 		printk("### buffer is full, skip the data (ridx=%d, widx=%d)  ###\n", gBBBuffer_ridx, gBBBuffer_widx);
 		//printk("======================================\n");

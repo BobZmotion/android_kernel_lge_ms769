@@ -9,7 +9,7 @@ mac80211-y := \
 	scan.o offchannel.o \
 	ht.o agg-tx.o agg-rx.o \
 	ibss.o \
-	work.o \
+	mlme.o work.o \
 	iface.o \
 	rate.o \
 	michael.o \
@@ -24,8 +24,7 @@ mac80211-y := \
 	util.o \
 	wme.o \
 	event.o \
-	chan.o \
-	driver-trace.o mlme.o
+	chan.o
 
 mac80211-$(CONFIG_MAC80211_LEDS) += led.o
 mac80211-$(CONFIG_MAC80211_DEBUGFS) += \
@@ -42,6 +41,7 @@ mac80211-$(CONFIG_MAC80211_MESH) += \
 
 mac80211-$(CONFIG_PM) += pm.o
 
+mac80211-$(CONFIG_MAC80211_DRIVER_API_TRACER) += driver-trace.o
 CFLAGS_driver-trace.o := -I$(src)
 
 # objects for PID algorithm
