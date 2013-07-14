@@ -18,7 +18,7 @@
 
 #include <asm/current.h>
 
-#include <include/lge/lge_blocking_monitor.h>
+#include <../../../arch/arm/mach-omap2/lge/include/lge/lge_blocking_monitor.h>
 
 #define MAX_BLOCKING_MONITOR_NUMBER	10
 
