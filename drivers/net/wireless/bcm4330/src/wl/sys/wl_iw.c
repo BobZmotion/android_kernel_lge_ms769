@@ -5165,9 +5165,7 @@ wl_iw_set_power(
 
 	WL_TRACE(("%s: SIOCSIWPOWER\n", dev->name));
 
-	//bill.jung@lge.com - Don't use legacy power save mode.
-	//pm = vwrq->disabled ? PM_OFF : PM_MAX;
-	pm = vwrq->disabled ? PM_OFF : PM_FAST;
+	pm = vwrq->disabled ? PM_OFF : PM_MAX;
 
 	pm = htod32(pm);
 	if ((error = dev_wlc_ioctl(dev, WLC_SET_PM, &pm, sizeof(pm))))
