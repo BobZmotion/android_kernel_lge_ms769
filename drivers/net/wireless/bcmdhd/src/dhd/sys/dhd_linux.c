@@ -79,6 +79,8 @@ extern bool g_ifup;	/* LGE_patch : wifi direct GO interface up */
 #include <linux/time.h>
 #include <htsf.h>
 
+#define ALLOW_MDNS_PACKET // to pass multicastDNS packet and NOT filter out as Broadcast
+
 #define HTSF_MINLEN 200    /* min. packet length to timestamp */
 #define HTSF_BUS_DELAY 150 /* assume a fix propagation in us  */
 #define TSMAX  1000        /* max no. of timing record kept   */
@@ -3766,7 +3768,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 
 #ifdef PKT_FILTER_SUPPORT
 	/* Setup defintions for pktfilter , enable in suspend */
-#ifdef CONFIG_COMMON_PATCH
+#if defined( CONFIG_COMMON_PATCH ) && defined ( ALLOW_MDNS_PACKET )
 	dhd->pktfilter_count = 5;
 #else
 	dhd->pktfilter_count = 4;
@@ -3776,8 +3778,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	dhd->pktfilter[1] = NULL;
 	dhd->pktfilter[2] = NULL;
 	dhd->pktfilter[3] = NULL;
-#ifdef CONFIG_COMMON_PATCH
-	dhd->pktfilter[4] = "104 0 0 0 0xFFFFFF 0x01005E";
+#if defined( CONFIG_COMMON_PATCH ) && defined ( ALLOW_MDNS_PACKET )
+	/* Add filter to pass multicastDNS packet and NOT filter out as Broadcast */
+	dhd->pktfilter[4] = "104 0 0 0 0xFFFFFFFFFFFF 0x01005E0000FB";
 #endif
 #if defined(SOFTAP)
 	if (ap_fw_loaded) {
@@ -4960,7 +4963,11 @@ int net_os_rxfilter_add_remove(struct net_device *dev, int add_remove, int num)
 	char *filterp = NULL;
 	int ret = 0;
 
+#if defined( CONFIG_COMMON_PATCH ) && defined( ALLOW_MDNS_PACKET )
+	if (!dhd || (num == DHD_UNICAST_FILTER_NUM) || (num == DHD_MDNS_FILTER_NUM))
+#else
 	if (!dhd || (num == DHD_UNICAST_FILTER_NUM))
+#endif
 		return ret;
 	if (num >= dhd->pub.pktfilter_count)
 		return -EINVAL;
@@ -4980,6 +4987,7 @@ int net_os_rxfilter_add_remove(struct net_device *dev, int add_remove, int num)
 		}
 	}
 	dhd->pub.pktfilter[num] = filterp;
+	dhd_pktfilter_offload_set(&dhd->pub, dhd->pub.pktfilter[num]);
 	return ret;
 }
 
