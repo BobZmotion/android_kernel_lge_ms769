@@ -3473,9 +3473,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	char eventmask[WL_EVENTING_MASK_LEN];
 	char iovbuf[WL_EVENTING_MASK_LEN + 12];	/*  Room for "event_msgs" + '\0' + bitvec  */
 
-	//bill.jung@lge.com - For config file setup
-	//uint power_mode = PM_FAST;
-	//bill.jung@lge.com - For config file setup
+#ifndef SUPPORT_PM2_ONLY
+	uint power_mode = PM_FAST;
+#endif
 	uint32 dongle_align = DHD_SDALIGN;
 	uint32 glom = 0;
 	uint bcn_timeout = 8;  // for CCX
