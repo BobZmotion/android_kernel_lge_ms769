@@ -233,7 +233,7 @@ extern pgprot_t		pgprot_kernel;
 	__pgprot_modify(prot, L_PTE_MT_MASK, L_PTE_MT_BUFFERABLE)
 
 #define pgprot_stronglyordered(prot) \
-	__pgprot_modify(prot, L_PTE_MT_MASK, L_PTE_MT_UNCACHED)
+	__pgprot_modify(prot, L_PTE_MT_MASK, L_PTE_MT_UNCACHED | L_PTE_XN)
 
 #ifdef CONFIG_ARM_DMA_MEM_BUFFERABLE
 #define pgprot_dmacoherent(prot) \
