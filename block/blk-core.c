@@ -966,7 +966,7 @@ int blk_reinsert_request(struct request_queue *q, struct request *rq)
 
 	BUG_ON(blk_queued_rq(rq));
 
-	return elv_reinsert_request(q, rq);
+//	return elv_reinsert_request(q, rq);
 }
 EXPORT_SYMBOL(blk_reinsert_request);
 
