@@ -885,11 +885,20 @@ static void handle_channel(struct wiphy *wiphy,
 	chan->flags = flags | bw_flags | map_regdom_flags(reg_rule->flags);
 	chan->max_antenna_gain = min(chan->orig_mag,
 		(int) MBI_TO_DBI(power_rule->max_antenna_gain));
-	if (chan->orig_mpwr)
-		chan->max_power = min(chan->orig_mpwr,
-			(int) MBM_TO_DBM(power_rule->max_eirp));
-	else
-		chan->max_power = (int) MBM_TO_DBM(power_rule->max_eirp);
+	chan->max_power = (int) MBM_TO_DBM(power_rule->max_eirp);
+	if (chan->orig_mpwr) {
+		/*
+		 * Devices that use NL80211_COUNTRY_IE_FOLLOW_POWER will always
+		 * follow the passed country IE power settings.
+		 */
+		if (initiator == NL80211_REGDOM_SET_BY_COUNTRY_IE &&
+		    wiphy->country_ie_pref & NL80211_COUNTRY_IE_FOLLOW_POWER)
+			chan->max_power = chan->max_power;
+		else
+			chan->max_power = min(chan->orig_mpwr,
+					      chan->max_power);
+	} else
+		chan->max_power = chan->max_power;
 }
 
 static void handle_band(struct wiphy *wiphy,
@@ -1277,6 +1286,8 @@ static int ignore_request(struct wiphy *wiphy,
 	case NL80211_REGDOM_SET_BY_CORE:
 		return 0;
 	case NL80211_REGDOM_SET_BY_COUNTRY_IE:
+		if (wiphy->country_ie_pref & NL80211_COUNTRY_IE_IGNORE_CORE)
+			return -EALREADY;
 
 		last_wiphy = wiphy_idx_to_wiphy(last_request->wiphy_idx);
 
