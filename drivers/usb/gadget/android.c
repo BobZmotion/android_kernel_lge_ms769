@@ -233,11 +233,14 @@ static struct usb_configuration android_config_driver = {
 
 //!![S] 2011-05-06 by pilsu.kim@leg.com : change to bmAttributes for USB-IF Test
 //++            If you want to pass USB-IF test, you have to change like below things
-//++            bmAttributes    = USB_CONFIG_ATT_WAKEUP
-#if 0
-	.bmAttributes   = USB_CONFIG_ATT_WAKEUP,
+//++            bmAttributes    = USB_CONFIG__ATT_ONE | USB_CONFIG_ATT_WAKEUP
+#if defined(CONFIG_LGE_ANDROID_USB)
+	.bmAttributes   = USB_CONFIG_ATT_ONE | USB_CONFIG_ATT_WAKEUP,
+#else
+	.bmAttributes	= USB_CONFIG_ATT_ONE,
 #endif
 //                                       
+	.bMaxPower	= 0xFA, /* 500ma */
 };
 
 /* Factory USB(0x6000) for MFT in case of AP USB & QEM =1 */

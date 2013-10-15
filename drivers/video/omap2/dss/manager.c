@@ -30,7 +30,6 @@
 #include <linux/jiffies.h>
 #include <linux/ratelimit.h>
 #include <linux/seq_file.h>
-#include <linux/jiffies.h>
 
 #include <video/omapdss.h>
 #include <plat/cpu.h>
@@ -41,10 +40,6 @@
 static int num_managers;
 static struct list_head manager_list;
 static struct omap_overlay_manager *mgrs[MAX_DSS_MANAGERS];
-
-#if defined(CONFIG_INVERT_COLOR)
-static int suspend_status = 0;
-#endif
 
 static ssize_t manager_name_show(struct omap_overlay_manager *mgr, char *buf)
 {
@@ -309,16 +304,7 @@ static ssize_t manager_cpr_enable_store(struct omap_overlay_manager *mgr,
 		return r;
 
 	enable = !!v;
-#if defined(CONFIG_INVERT_COLOR)
-//                    
-	//this should be always true for rb swap;
-	if(suspend_status)
-		return -EBUSY;
 
-	mgr->info.cpr_enable = enable;
-	dispc_enable_cpr(mgr->device->channel, enable);
-
-#else
 	mgr->get_manager_info(mgr, &info);
 
 	if (info.cpr_enable == enable)
@@ -333,7 +319,6 @@ static ssize_t manager_cpr_enable_store(struct omap_overlay_manager *mgr,
 	r = mgr->apply(mgr);
 	if (r)
 		return r;
-#endif
 
 	return size;
 }
@@ -365,11 +350,6 @@ static ssize_t manager_cpr_coef_store(struct omap_overlay_manager *mgr,
 	struct omap_dss_cpr_coefs coefs;
 	int r, i;
 	s16 *arr;
-#if defined(CONFIG_INVERT_COLOR)
-	const struct omap_dss_cpr_coefs default_coefs = { 256, 0, 0, 0, 256, 0, 0, 0, 256 };
-	if(suspend_status)
-		return -EBUSY;
-#endif
 
 	if (!dss_has_feature(FEAT_CPR))
 		return -ENODEV;
@@ -389,46 +369,20 @@ static ssize_t manager_cpr_coef_store(struct omap_overlay_manager *mgr,
 			return -EINVAL;
 	}
 
-
-	//                   
-#if defined(CONFIG_INVERT_COLOR)
-	//swap(coefs.rr, coefs.br);
-	//swap(coefs.rg, coefs.bg);
-	//swap(coefs.rb, coefs.bb);
-	if(!mgr->info.cpr_enable)
-	{
-		coefs = default_coefs;
-	}
-
-	mgr->info.cpr_coefs = coefs;
-
-	printk("[LCD]: %s\n{%d, %d, %d}\n{%d, %d, %d}\n{%d, %d, %d}\n", __func__, coefs.rr, coefs.rg, coefs.rb, coefs.gr, coefs.gg, coefs.gb, coefs.br, coefs.bg, coefs.bb);
-
-	dispc_set_cpr_coef(mgr->device->channel, &coefs);
-#else
 	mgr->get_manager_info(mgr, &info);
 
 	info.cpr_coefs = coefs;
 
 	r = mgr->set_manager_info(mgr, &info);
-
 	if (r)
 		return r;
 
 	r = mgr->apply(mgr);
 	if (r)
 		return r;
-#endif
 
 	return size;
 }
-
-#if defined(CONFIG_INVERT_COLOR)
-void set_panel_suspended(int status)
-{
-	suspend_status = status;
-}
-#endif
 
 #ifdef CONFIG_LGE_BROADCAST_TDMB
 static ssize_t manager_dmb_coefs_show(struct omap_overlay_manager *mgr, char *buf)
@@ -556,10 +510,10 @@ static MANAGER_ATTR(trans_key_enabled, S_IRUGO|S_IWUSR,
 static MANAGER_ATTR(alpha_blending_enabled, S_IRUGO|S_IWUSR,
 		manager_alpha_blending_enabled_show,
 		manager_alpha_blending_enabled_store);
-static MANAGER_ATTR(cpr_enable, S_IRUGO|S_IWUSR|S_IWGRP,
+static MANAGER_ATTR(cpr_enable, S_IRUGO|S_IWUSR,
 		manager_cpr_enable_show,
 		manager_cpr_enable_store);
-static MANAGER_ATTR(cpr_coef, S_IRUGO|S_IWUSR|S_IWGRP,
+static MANAGER_ATTR(cpr_coef, S_IRUGO|S_IWUSR,
 		manager_cpr_coef_show,
 		manager_cpr_coef_store);
 
@@ -1355,15 +1309,10 @@ static void configure_manager(enum omap_channel channel)
 	} else {
 		dispc_enable_alpha_blending(channel, c->alpha_enabled);
 	}
-#if defined(CONFIG_INVERT_COLOR)
-	//                                         
-	  // this will be done by lk_bootloader and manager_cpr_coef_store only.
-#else
 	if (dss_has_feature(FEAT_CPR)) {
 		dispc_enable_cpr(channel, c->cpr_enable);
 		dispc_set_cpr_coef(channel, &c->cpr_coefs);
 	}
-#endif
 }
 
 /* configure_dispc() tries to write values from cache to shadow registers.

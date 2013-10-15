@@ -479,11 +479,8 @@ int set_dss_mgr_info(struct dss2_mgr_info *mi, struct omapdss_ovl_cb *cb,
 	info.trans_key = mi->trans_key;
 	info.trans_key_type = mi->trans_key_type;
 
-#if defined(CONFIG_INVERT_COLOR)
-#else
 	info.cpr_coefs = mi->cpr_coefs;
 	info.cpr_enable = mi->cpr_enabled;
-#endif
 	info.cb = *cb;
 	info.wb_only = m2m_mode;
 

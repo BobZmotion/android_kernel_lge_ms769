@@ -1407,10 +1407,6 @@ static int tx11d108vm_panel_suspend(struct omap_dss_device *dssdev)
 		goto err;
 	}
 
-#if defined(CONFIG_INVERT_COLOR)
-	set_panel_suspended(1);
-#endif
-
 	tx11d108vm_panel_cancel_ulps_work(dssdev);
 	tx11d108vm_panel_cancel_esd_work(dssdev);
 
@@ -1458,10 +1454,6 @@ static int tx11d108vm_panel_resume(struct omap_dss_device *dssdev)
 		dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
 		tx11d108vm_panel_queue_esd_work(dssdev);
 	}
-
-#if defined(CONFIG_INVERT_COLOR)
-	set_panel_suspended(0);
-#endif
 
 	mutex_unlock(&td->lock);
 

@@ -788,13 +788,4 @@ static inline u16 DISPC_PRELOAD_OFFSET(enum omap_plane plane)
 		BUG();
 	}
 }
-
-
-#if defined(CONFIG_INVERT_COLOR)
-void set_invert_color(struct device *dev, int set_invert_color);
-int	get_invert_color(void);
-u32 cal_saturation(u32 gamma);
-void set_saturation(struct device *dev, int sat);
-int get_saturation(void);
-#endif
 #endif

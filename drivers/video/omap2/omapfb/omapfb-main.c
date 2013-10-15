@@ -51,12 +51,6 @@ static int def_vrfb;
 static int def_rotate;
 static int def_mirror;
 
-#if defined(CONFIG_INVERT_COLOR)
-static int invert_color;
-static int hue;
-static int saturation;
-#endif
-
 /* Max 4 framebuffers assumed : FB-ix-W-H */
 #define MAX_FB_COUNT	4
 #define ELEMENT_COUNT	3
@@ -1365,94 +1359,6 @@ static int _setcolreg(struct fb_info *fbi, u_int regno, u_int red, u_int green,
 	return r;
 }
 
-#if defined(CONFIG_INVERT_COLOR)
-extern int dispc_enable_gamma(enum omap_channel ch, u8 gamma);
-void set_invert_color(struct device *dev, int set_invert_color)
-{
-	if(set_invert_color)
-	{
-		invert_color = 1;
-	}
-	else
-	{
-		invert_color = 0;
-	}
-
-	dispc_enable_gamma(OMAP_DSS_CHANNEL_LCD2, 0);
-
-	return;
-}
-EXPORT_SYMBOL_GPL(set_invert_color);
-
-int	get_invert_color(void)
-{
-	return invert_color;
-}
-EXPORT_SYMBOL_GPL(get_invert_color);
-
-//FIXME: this is not the best way. get cuberoot(color)*saturation_k
-u32 get_saturation_coef(u32 t)
-{
-	int i=0, coef;
-
-	coef = (int) t;
-
-	for( i = 1 ; t < i*i*i ; i++)
-	{
-		//Do nothing. just increasing i.
-	}
-
-	coef += saturation * (i-1);
-
-	if( coef > 0xff)
-	{
-		t = 0xff;
-	}
-	else if( coef < 0 )
-	{
-		coef = 0;
-	}
-
-	return (u32)coef;
-}
-
-u32 cal_saturation(u32 gamma)
-{
-	int i;
-	u32 c = 0, t = 0;
-
-	if(!saturation)
-		return gamma;
-
-	for( i = 0; i<3 ; i++)
-	{
-		t = (gamma >> (8*i)) & 0xff;
-		c |= get_saturation_coef(t) << (8*i);
-	}
-
-	return c;
-}
-EXPORT_SYMBOL_GPL(cal_saturation);
-
-void set_saturation(struct device *dev, int sat)
-{
-	saturation = sat;
-
-	dispc_enable_gamma(OMAP_DSS_CHANNEL_LCD2, 0);
-
-	return;
-}
-EXPORT_SYMBOL_GPL(set_saturation);
-
-int get_saturation(void)
-{
-	return saturation;
-}
-EXPORT_SYMBOL_GPL(get_saturation);
-
-
-#endif
-
 static int omapfb_setcolreg(u_int regno, u_int red, u_int green, u_int blue,
 		u_int transp, struct fb_info *info)
 {
@@ -2541,12 +2447,6 @@ static int omapfb_probe(struct platform_device *pdev)
 	u16 fb_ov_start_ix = 0;
 
 	DBG("omapfb_probe\n");
-
-#if defined(CONFIG_INVERT_COLOR)
-	invert_color = 0;
-	hue = 0;
-	saturation = 0;
-#endif
 
 	if (pdev->num_resources != 0) {
 		dev_err(&pdev->dev, "probed for an unknown device\n");

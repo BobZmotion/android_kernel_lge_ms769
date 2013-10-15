@@ -55,12 +55,6 @@ struct adb_dev {
 	wait_queue_head_t write_wq;
 	struct usb_request *rx_req;
 	int rx_done;
-/* USB: android: Don't disable configuration for every adb close */
-/* USB: android: Fix adb device file closing bug */
-#if defined(CONFIG_LGE_ANDROID_USB)
-	bool notify_close;
-	bool close_notified;
-#endif
 };
 
 static struct usb_interface_descriptor adb_interface_desc = {
@@ -213,12 +207,7 @@ static void adb_complete_out(struct usb_ep *ep, struct usb_request *req)
 	struct adb_dev *dev = _adb_dev;
 
 	dev->rx_done = 1;
-/* adb: do not set error flag when dequeuing req */
-#if defined(CONFIG_LGE_ANDROID_USB)
-	if (req->status != 0 && req->status != -ECONNRESET)
-#else
 	if (req->status != 0)
-#endif
 		dev->error = 1;
 
 	wake_up(&dev->read_wq);
@@ -326,10 +315,6 @@ requeue_req:
 	/* wait for a request to complete */
 	ret = wait_event_interruptible(dev->read_wq, dev->rx_done);
 	if (ret < 0) {
-/* adb: allow freezing in adb_read */
-#if defined(CONFIG_LGE_ANDROID_USB)
-		if (ret != -ERESTARTSYS)
-#endif
 		dev->error = 1;
 		r = ret;
 		usb_ep_dequeue(dev->ep_out, req);
@@ -435,18 +420,7 @@ static int adb_open(struct inode *ip, struct file *fp)
 	/* clear the error latch */
 	_adb_dev->error = 0;
 
-/* USB: android: Don't disable configuration for every adb close */
-/* USB: android: Fix adb device file closing bug */
-#if defined(CONFIG_LGE_ANDROID_USB)
-	if (_adb_dev->close_notified) {
-		_adb_dev->close_notified = false;
-		adb_ready_callback();
-	}
-
-	_adb_dev->notify_close = true;
-#else
 	adb_ready_callback();
-#endif
 
 	return 0;
 }
@@ -455,24 +429,7 @@ static int adb_release(struct inode *ip, struct file *fp)
 {
 	pr_info("adb_release\n");
 
-/* USB: android: Don't disable configuration for every adb close */
-/* USB: android: Fix adb device file closing bug */
-#if defined(CONFIG_LGE_ANDROID_USB)
-	/*
-	 * ADB daemon closes the device file after I/O error.  The
-	 * I/O error happen when Rx requests are flushed during
-	 * cable disconnect or bus reset in configured state.  Disabling
-	 * USB configuration and pull-up during these scenarios are
-	 * undesired.  We want to force bus reset only for certain
-	 * commands like "adb root" and "adb usb".
-	 */
-	if (_adb_dev->notify_close) {
-		adb_closed_callback();
-		_adb_dev->close_notified = true;
-	}
-#else
 	adb_closed_callback();
-#endif
 
 	adb_unlock(&_adb_dev->open_excl);
 	return 0;
@@ -585,18 +542,6 @@ static void adb_function_disable(struct usb_function *f)
 	struct usb_composite_dev	*cdev = dev->cdev;
 
 	DBG(cdev, "adb_function_disable cdev %p\n", cdev);
-
-/* USB: android: Don't disable configuration for every adb close */
-/* USB: android: Fix adb device file closing bug */
-#if defined(CONFIG_LGE_ANDROID_USB)
-	/*
-	 * Bus reset happened or cable disconnected.  No
-	 * need to disable the configuration now.  We will
-	 * set noify_close to true when device file is re-opened.
-	 */
-	dev->notify_close = false;
-#endif
-
 	dev->online = 0;
 	dev->error = 1;
 	usb_ep_disable(dev->ep_in);
@@ -643,13 +588,6 @@ static int adb_setup(void)
 	atomic_set(&dev->open_excl, 0);
 	atomic_set(&dev->read_excl, 0);
 	atomic_set(&dev->write_excl, 0);
-
-/* USB: android: Don't disable configuration for every adb close */
-/* USB: android: Fix adb device file closing bug */
-#if defined(CONFIG_LGE_ANDROID_USB)
-	/* config is disabled by default if adb is present. */
-	dev->close_notified = true;
-#endif
 
 	INIT_LIST_HEAD(&dev->tx_idle);
 

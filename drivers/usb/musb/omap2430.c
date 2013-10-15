@@ -35,10 +35,6 @@
 #include <linux/dma-mapping.h>
 #include <linux/pm_runtime.h>
 #include <linux/err.h>
-/* usb: musb: omap2430: don't loop indefinitely in interrupt */
-#if defined(CONFIG_MACH_LGE)
-#include <linux/delay.h>
-#endif
 
 #include "musb_core.h"
 #include "omap2430.h"
@@ -155,10 +151,6 @@ static void omap2430_musb_set_vbus(struct musb *musb, int is_on)
 
 	if (is_on) {
 		if (musb->xceiv->state == OTG_STATE_A_IDLE) {
-/* usb: musb: omap2430: don't loop indefinitely in interrupt */
-#if defined(CONFIG_MACH_LGE)
-			int loops = 100;
-#endif
 			/* start the session */
 			devctl |= MUSB_DEVCTL_SESSION;
 			musb_writeb(musb->mregs, MUSB_DEVCTL, devctl);
@@ -168,19 +160,9 @@ static void omap2430_musb_set_vbus(struct musb *musb, int is_on)
 			 */
 			while (musb_readb(musb->mregs, MUSB_DEVCTL) & 0x80) {
 
-/* usb: musb: omap2430: don't loop indefinitely in interrupt */
-#if defined(CONFIG_MACH_LGE)
-				mdelay(5);
-#endif
 				cpu_relax();
 
-/* usb: musb: omap2430: don't loop indefinitely in interrupt */
-#if defined(CONFIG_MACH_LGE)
-				if (time_after(jiffies, timeout)
-				    || loops-- <= 0) {
-#else
 				if (time_after(jiffies, timeout)) {
-#endif
 					dev_err(musb->controller,
 					"configured as A device timeout");
 					ret = -EINVAL;

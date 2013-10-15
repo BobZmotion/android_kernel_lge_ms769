@@ -1375,7 +1375,6 @@ void dispc_enable_cpr(enum omap_channel channel, bool enable)
 
 	REG_FLD_MOD(reg, enable, 15, 15);
 }
-EXPORT_SYMBOL_GPL(dispc_enable_cpr);
 
 void dispc_set_cpr_coef(enum omap_channel channel,
 		struct omap_dss_cpr_coefs *coefs)
@@ -1396,7 +1395,6 @@ void dispc_set_cpr_coef(enum omap_channel channel,
 	dispc_write_reg(DISPC_CPR_COEF_G(channel), coef_g);
 	dispc_write_reg(DISPC_CPR_COEF_B(channel), coef_b);
 }
-EXPORT_SYMBOL_GPL(dispc_set_cpr_coef);
 
 static void _dispc_set_vid_color_conv(enum omap_plane plane, bool enable)
 {
@@ -3242,60 +3240,17 @@ int dispc_enable_gamma(enum omap_channel ch, u8 gamma)
 	{
 #endif
 		for (i = 0; i < GAMMA_TBL_SZ; i++) {
-#if defined(CONFIG_INVERT_COLOR)
-
-			if(ch == OMAP_DSS_CHANNEL_LCD2)
-			{
-				temp =  cal_saturation(GammaTable[i]);
-
-				if(get_invert_color())
-				{
-					temp |= ((~i)<<24);
-				}
-				else
-				{
-					temp |= (i<<24);
-				}
-			}
-			else
-			{
 				temp =  GammaTable[i] | (i<<24);
-			}
-#else
-			temp =  GammaTable[i] | (i<<24);
-#endif
-			//if(i == 255)
-			//printk("GAMMA	:	MAX_RGB = %x\n", temp);
-			dispc_write_reg(DISPC_GAMMA_TABLE(channel), temp);
+				//if(i == 255)
+					//printk("GAMMA	:	MAX_RGB = %x\n", temp);
+				dispc_write_reg(DISPC_GAMMA_TABLE(channel), temp);
 		}
 #if defined(CONFIG_LUT_FILE_TUNING)
 	}
 	else
 	{
 		for (i = 0; i < GAMMA_TBL_SZ; i++) {
-#if defined(CONFIG_INVERT_COLOR)
-
-			if(ch == OMAP_DSS_CHANNEL_LCD2)
-			{
-				temp =  cal_saturation(tuning_table[i]);
-
-				if(get_invert_color())
-				{
-					temp |= ((~i)<<24);
-				}
-				else
-				{
-					temp |= (i<<24);
-				}
-			}
-			else
-			{
-				temp = tuning_table[i] | (i<<24);
-			}
-
-#else
-			temp = tuning_table[i] | (i<<24);
-#endif
+				temp =  tuning_table[i] | (i<<24);
 				printk("[dyotest]Tuning LUT num=%d, value= 0x%x\n", i,temp);
 				dispc_write_reg(DISPC_GAMMA_TABLE(channel), temp);
 		}
@@ -3320,7 +3275,6 @@ int dispc_enable_gamma(enum omap_channel ch, u8 gamma)
         return 0;
 #endif
 }
-EXPORT_SYMBOL_GPL(dispc_enable_gamma);
 //                                                                   
 //                                                                                          
 
@@ -3367,9 +3321,9 @@ int dispc_set_gamma_rgb(enum omap_channel ch, u8 gamma,int red,int green,int blu
 	for ( i = 0; i <GAMMA_TBL_SZ; i++) {
 		temp = tablePtr[i];
 		temp = dispc_convert_gamma_rgb(i,temp,red, green, blue);
-		if(i==255)
-			printk("GAMMA	:	Tabel_values %dth is 0x%x\n",i,temp);
-		dispc_write_reg(DISPC_GAMMA_TABLE(channel), temp);
+	if(i==255)
+		printk("GAMMA	:	Tabel_values %dth is 0x%x\n",i,temp);
+	dispc_write_reg(DISPC_GAMMA_TABLE(channel), temp);
 	}
 
 #else

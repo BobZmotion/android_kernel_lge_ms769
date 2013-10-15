@@ -518,58 +518,6 @@ static ssize_t show_virt(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%p\n", ofbi->region->vaddr);
 }
 
-#if defined(CONFIG_INVERT_COLOR)
-static ssize_t show_invert_color(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	return snprintf(buf, PAGE_SIZE, "%d\n", get_invert_color());
-}
-
-static ssize_t store_invert_color(struct device *dev, struct device_attribute *attr,
-		const char *buf, size_t count)
-{
-	int invert_color = 0;
-
-	int r;
-
-	r = kstrtoint(buf, 0, &invert_color);
-	if (r)
-		return r;
-
-	set_invert_color(dev, invert_color);
-
-	r = count;
-out:
-
-	return r;
-}
-
-static ssize_t show_saturation(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	return snprintf(buf, PAGE_SIZE, "%d\n", get_saturation());
-}
-
-static ssize_t store_saturation(struct device *dev, struct device_attribute *attr,
-		const char *buf, size_t count)
-{
-	int sat = 0;
-
-	int r;
-
-	r = kstrtoint(buf, 0, &sat);
-	if (r)
-		return r;
-
-	set_saturation(dev, sat);
-
-	r = count;
-out:
-
-	return r;
-}
-#endif
-
 static struct device_attribute omapfb_attrs[] = {
 	__ATTR(rotate_type, S_IRUGO | S_IWUSR, show_rotate_type,
 			store_rotate_type),
@@ -580,10 +528,6 @@ static struct device_attribute omapfb_attrs[] = {
 			store_overlays_rotate),
 	__ATTR(phys_addr, S_IRUGO, show_phys, NULL),
 	__ATTR(virt_addr, S_IRUGO, show_virt, NULL),
-#if defined(CONFIG_INVERT_COLOR)
-	__ATTR(invert_color, 00664, show_invert_color, store_invert_color),
-	__ATTR(saturation, 00664, show_saturation, store_saturation),
-#endif
 };
 
 int omapfb_create_sysfs(struct omapfb2_device *fbdev)

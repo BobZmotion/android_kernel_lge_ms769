@@ -188,11 +188,4 @@ static inline void omapfb_put_mem_region(struct omapfb2_mem_region *rg)
 	up_read(&rg->lock);
 }
 
-#if defined(CONFIG_INVERT_COLOR)
-void set_invert_color(struct device *dev, int set_invert_color);
-int	get_invert_color(void);
-void set_saturation(struct device *dev, int sat);
-int get_saturation(void);
-#endif
-
 #endif

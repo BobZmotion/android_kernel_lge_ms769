@@ -187,6 +187,7 @@ static int hsi_ch_net_write(int chno, void *data, int len)
 	int n = 0;
 	int flag = 1;
 	int ret = 0;
+    unsigned int wq_flags = 0; //                                                                                  
 #ifdef XMD_TX_MULTI_PACKET
 	if (d && hsi_channels[chno].write_queued == HSI_TRUE) {
 		if (d->being_used == HSI_FALSE && (d->size + len) < HSI_MEM_LARGE_BLOCK_SIZE) {
@@ -235,12 +236,35 @@ static int hsi_ch_net_write(int chno, void *data, int len)
 			hsi_channels[chno].tx_blocked = 1;
 			hsi_mem_free(buf);
 			PREPARE_WORK(&hsi_channels[chno].write_work, hsi_write_work);
+/*                                                                                           */
+#if 0 /* ORIGINAL CODE */
             queue_work(hsi_write_wq, &hsi_channels[chno].write_work);
-
+#else
+            wq_flags = *((unsigned int *)hsi_write_wq);
+            if (wq_flags & WQ_DYING) {
+                printk("mcm: Workqueue Flag Check is done 0x%x.\n", wq_flags);
+            } else {
+                queue_work(hsi_write_wq, &hsi_channels[chno].write_work);
+            }
+#endif
+/*                                                                                         */
 			ret = -EBUSY;
 		} else if (n == 1) {
 			PREPARE_WORK(&hsi_channels[chno].write_work, hsi_write_work);
+/*                                                                                           */
+#if 0 /* ORIGINAL CODE */
             queue_work(hsi_write_wq, &hsi_channels[chno].write_work);
+#else
+            wq_flags = *((unsigned int *)hsi_write_wq);
+            if (wq_flags & WQ_DYING) {
+                printk("mcm: Workqueue Flag Check is done 0x%x.\n", wq_flags);
+            } else {
+                queue_work(hsi_write_wq, &hsi_channels[chno].write_work);
+            }
+#endif
+/*                                                                                         */
+
+
 
 			ret = 0;
 		}
@@ -315,6 +339,13 @@ int xmd_ch_write(int chno, void *data, int len)
 	printk("\nmcm: write entering, ch %d\n",chno);
 #endif
 
+//                                                                         
+	if (hsi_channels[chno].state == HSI_CH_FREE){
+		printk("mcm: ch[%d].state = HSI_CH_FREE is not yet ready to write.... \n",chno);
+		return -ENOTBLK;
+	}
+//                                                                       
+
 	if (!hsi_channels[chno].write) {
 #if MCM_DBG_ERR_LOG
 		printk("\nmcm:write func NULL for ch: %d\n",chno);
@@ -372,9 +403,21 @@ void xmd_ch_close(int chno)
 					hsi_channels[chno].read_happening == HSI_FALSE);
 	}
 	
+/*                                                                                           */
+    if(chno >= 13) {
+        flush_workqueue(hsi_write_wq);
+        flush_workqueue(hsi_read_wq);
+#if defined (HSI_LL_ENABLE_RX_BUF_RETRY_WQ)
+        flush_workqueue(hsi_buf_retry_wq);
+#endif
+    }
+/*                                                                                         */
 	hsi_ll_close(chno);
 	spin_lock_bh(&hsi_channels[chno].lock);
 	hsi_channels[chno].state = HSI_CH_FREE;
+//                                                                         
+    hsi_channels[chno].write = NULL;
+//                                                                       
 	spin_unlock_bh(&hsi_channels[chno].lock);
 }
 
@@ -421,11 +464,14 @@ int xmd_ch_open(struct xmd_ch_info* info, void (*notify_cb)(int chno))
 				}
 
 				hsi_channels[i].info = info;
-
+//                                                                         
+// This block is processed at the end of this function
+#if 0 /* ORIGINAL CODE */
 				spin_lock_bh(&hsi_channels[i].lock);
 				hsi_channels[i].state = HSI_CH_BUSY;
 				spin_unlock_bh(&hsi_channels[i].lock);
-
+#endif
+//                                                                       
 				hsi_channels[i].notify = notify_cb;
 				switch(info->user)
 				{
@@ -443,26 +489,19 @@ int xmd_ch_open(struct xmd_ch_info* info, void (*notify_cb)(int chno))
 #endif
 					return -EINVAL;
 				}
-
-/*                                                                          
-                                                                                               
-                                                                                     
-                                                                                      */
-#if 0 /* ORIGINAL CODE */
 				INIT_WORK(&hsi_channels[i].read_work, hsi_read_work);
 				INIT_WORK(&hsi_channels[i].write_work, hsi_write_work);
 #if defined (HSI_LL_ENABLE_RX_BUF_RETRY_WQ)
 				INIT_WORK(&hsi_channels[i].buf_retry_work, hsi_buf_retry_work);
 #endif
-#else /* HSI patch for MST test */
-				PREPARE_WORK(&hsi_channels[i].read_work, hsi_read_work);
-				PREPARE_WORK(&hsi_channels[i].write_work, hsi_write_work);
-#if defined (HSI_LL_ENABLE_RX_BUF_RETRY_WQ)
-				PREPARE_WORK(&hsi_channels[i].buf_retry_work, hsi_buf_retry_work);
-#endif
-#endif
-/*                                                                         */
 
+//                                                                         
+#if 1
+                spin_lock_bh(&hsi_channels[i].lock);
+                hsi_channels[i].state = HSI_CH_BUSY;
+                spin_unlock_bh(&hsi_channels[i].lock);
+#endif
+//                                                                       
 				return i;
 			}
 	}
@@ -590,9 +629,9 @@ void hsi_write_work(struct work_struct *work)
 
 		if (hsi_channels[chno].tx_blocked == 1) {
 			hsi_channels[chno].tx_blocked = 0;
-//#if MCM_DBG_LOG
+#if MCM_DBG_LOG
 			printk("\nmcm: Channel queue free , restarting TX queue for ch %d \n",chno);
-//#endif
+#endif
 			rmnet_restart_queue(chno);
 		}
 	}
@@ -639,6 +678,7 @@ static void hsi_buf_retry_work(struct work_struct *work)
 void hsi_ch_cb(unsigned int chno, int result, int event, void* arg)
 {
 	ll_rx_tx_data *data = (ll_rx_tx_data *) arg;
+    unsigned int wq_flags = 0; //                                                                                  
 
 	if (!(chno <= MAX_HSI_CHANNELS && chno >= 0) ||
 		hsi_channels[chno].state == HSI_CH_NOT_USED) {
@@ -788,13 +828,35 @@ void hsi_ch_cb(unsigned int chno, int result, int event, void* arg)
 			hsi_mem_free(data->buffer);
 			/* Schedule work Q to send data to upper layers */
 			PREPARE_WORK(&hsi_channels[chno].read_work, hsi_read_work);
+/*                                                                                           */
+#if 0 /* ORIGINAL CODE */
             queue_work(hsi_read_wq, &hsi_channels[chno].read_work);
-        } else if (n == 1) {
+#else
+            wq_flags = *((unsigned int *)hsi_read_wq);
+            if (wq_flags & WQ_DYING) {
+                printk("mcm: Workqueue Flag Check is done 0x%x.\n", wq_flags);
+            } else {
+                queue_work(hsi_read_wq, &hsi_channels[chno].read_work);
+            }
+#endif
+/*                                                                                         */
+		} else if (n == 1) {
 			if (hsi_channels[chno].read_happening == HSI_FALSE) {
 				hsi_channels[chno].read_happening = HSI_TRUE;
 			}
 			PREPARE_WORK(&hsi_channels[chno].read_work, hsi_read_work);
+/*                                                                                           */
+#if 0 /* ORIGINAL CODE */
             queue_work(hsi_read_wq, &hsi_channels[chno].read_work);
+#else
+            wq_flags = *((unsigned int *)hsi_read_wq);
+            if (wq_flags & WQ_DYING) {
+                printk("mcm: Workqueue Flag Check is done 0x%x.\n", wq_flags);
+            } else {
+                queue_work(hsi_read_wq, &hsi_channels[chno].read_work);
+            }
+#endif
+/*                                                                                         */
 		}
 		/* if n > 1, no need to schdule the wq again. */
 		}
@@ -850,19 +912,6 @@ void __init xmd_ch_init(void)
 	hsi_buf_retry_wq = create_workqueue("hsi_buf_retry_wq");
 #endif
 	INIT_WORK(&XMD_DLP_RECOVERY_wq, xmd_dlp_recovery_wq);
-
-/*                                                                           */
-#if 1
-    for (i=0; i<size; i++) {
-        INIT_WORK(&hsi_channels[i].read_work, hsi_read_work);
-        INIT_WORK(&hsi_channels[i].write_work, hsi_write_work);
-#if defined (HSI_LL_ENABLE_RX_BUF_RETRY_WQ)
-        INIT_WORK(&hsi_channels[i].buf_retry_work, hsi_buf_retry_work);
-#endif
-    }
-#endif
-/*                                                                         */
-
 
 //                                                  
 #if defined (ENABLE_RECOVERY_WAKE_LOCK)

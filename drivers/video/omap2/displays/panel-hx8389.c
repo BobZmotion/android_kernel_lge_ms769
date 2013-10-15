@@ -714,39 +714,38 @@ err:
 	return r;
 }
 #if defined(CONFIG_LUT_FILE_TUNING)
-extern long tuning_table[256];
+	extern long tuning_table[256];
 static ssize_t display_file_tuning_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t size)
 {
-	int fd;
-	char tmp_buf[256][6]={0x00};
-	char tmp_buf2[13]={0x00};
-	char tmp_buf22[6]={0x00};
-	//char tuning_table[256];
-	int input,i,j;
-	//u32      temp[256];
-	sscanf(buf, "%d",&input);
-	set_fs(KERNEL_DS);
-	fd = sys_open((const char __user *) "/mnt/sdcard/file_tuning.txt", O_RDONLY, 0);
-	if(fd >= 0)
-	{
-		memset(tmp_buf, 0x00, sizeof(tmp_buf));
-		for(i=0;i<256;i++)
-		{
-			sys_read(fd, (const char __user *) tmp_buf2, 13);
-			for(j=0;j<6;j++)
-			{
-				tmp_buf22[j] = tmp_buf2[j+4];
-			}
-			tuning_table[i] = simple_strtol(tmp_buf22, NULL, 16);
-		}
-		dispc_enable_gamma(OMAP_DSS_CHANNEL_LCD2, 1);
-		sys_close(fd);
-	}
+	    int fd;
+           char tmp_buf[256][6]={0x00};
+           char tmp_buf2[13]={0x00};
+	    char tmp_buf22[6]={0x00};
+	    //char tuning_table[256];
+           int input,i,j;
+           //u32      temp[256];
+           sscanf(buf, "%d",&input);
+           set_fs(KERNEL_DS);
+           fd = sys_open((const char __user *) "/mnt/sdcard/file_tuning.txt", O_RDONLY, 0);
+           if(fd >= 0)
+           {
+                                memset(tmp_buf, 0x00, sizeof(tmp_buf));
+                                for(i=0;i<256;i++)
+                                {
+                                          sys_read(fd, (const char __user *) tmp_buf2, 13);
+					for(j=0;j<6;j++)
+						{
+							tmp_buf22[j] = tmp_buf2[j+4];
+						}
+						tuning_table[i] = simple_strtol(tmp_buf22, NULL, 16);
+                                }
+					dispc_enable_gamma(OMAP_DSS_CHANNEL_LCD2, 1);
+					sys_close(fd);
+           }
 	return size;
 }
-
 static DEVICE_ATTR(file_tuning, 0660, NULL, display_file_tuning_store);
 #endif
 //                                                                                                                   

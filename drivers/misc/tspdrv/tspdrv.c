@@ -526,16 +526,14 @@ static int vibrator_suspend(struct platform_device *pdev, pm_message_t state)
 {
 
 	struct pwm_vib_data *data = platform_get_drvdata(pdev);
-//	if(data->power)  
-//		data->power(0);
+	if(data->power)
+		data->power(0);
 	if (g_bIsPlaying) {
 		DbgOut((KERN_INFO "tspdrv: can't suspend, still playing effects.\n"));
 		g_bIsPlaying = false;
 		return -EBUSY;
 	}
 	else {
-		if(data->power) //vibrator is turned off when phone is suspended. 
-			data->power(0);
 		DbgOut((KERN_INFO "tspdrv: suspend.\n"));
 		return 0;
 	}
