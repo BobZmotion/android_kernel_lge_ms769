@@ -663,8 +663,4 @@ static inline void dss_collect_irq_stats(u32 irqstatus, unsigned *irq_arr)
 }
 #endif
 
-#if defined(CONFIG_INVERT_COLOR)
-void set_panel_suspended(int status);
-#endif
-
 #endif

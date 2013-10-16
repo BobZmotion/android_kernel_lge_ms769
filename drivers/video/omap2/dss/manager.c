@@ -42,10 +42,6 @@ static int num_managers;
 static struct list_head manager_list;
 static struct omap_overlay_manager *mgrs[MAX_DSS_MANAGERS];
 
-#if defined(CONFIG_INVERT_COLOR)
-static int suspend_status = 0;
-#endif
-
 static ssize_t manager_name_show(struct omap_overlay_manager *mgr, char *buf)
 {
 	return snprintf(buf, PAGE_SIZE, "%s\n", mgr->name);
@@ -312,9 +308,6 @@ static ssize_t manager_cpr_enable_store(struct omap_overlay_manager *mgr,
 #if defined(CONFIG_INVERT_COLOR)
 //                    
 	//this should be always true for rb swap;
-	if(suspend_status)
-		return -EBUSY;
-
 	mgr->info.cpr_enable = enable;
 	dispc_enable_cpr(mgr->device->channel, enable);
 
@@ -367,8 +360,6 @@ static ssize_t manager_cpr_coef_store(struct omap_overlay_manager *mgr,
 	s16 *arr;
 #if defined(CONFIG_INVERT_COLOR)
 	const struct omap_dss_cpr_coefs default_coefs = { 256, 0, 0, 0, 256, 0, 0, 0, 256 };
-	if(suspend_status)
-		return -EBUSY;
 #endif
 
 	if (!dss_has_feature(FEAT_CPR))
@@ -422,13 +413,6 @@ static ssize_t manager_cpr_coef_store(struct omap_overlay_manager *mgr,
 
 	return size;
 }
-
-#if defined(CONFIG_INVERT_COLOR)
-void set_panel_suspended(int status)
-{
-	suspend_status = status;
-}
-#endif
 
 #ifdef CONFIG_LGE_BROADCAST_TDMB
 static ssize_t manager_dmb_coefs_show(struct omap_overlay_manager *mgr, char *buf)
