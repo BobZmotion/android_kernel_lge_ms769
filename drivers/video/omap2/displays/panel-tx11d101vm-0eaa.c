@@ -81,9 +81,9 @@
 static irqreturn_t tx11d101vm_panel_te_isr(int irq, void *data);
 static void tx11d101vm_panel_te_timeout_work_callback(struct work_struct *work);
 static int _tx11d101vm_panel_enable_te(struct omap_dss_device *dssdev, bool enable);
-//                                                                                                                   
+//LGE_CHANGE_S [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 extern int dispc_enable_gamma(enum omap_channel ch, u8 gamma);
-//                                                                                                                   
+//LGE_CHANGE_E [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 #define DSI_GEN_SHORTWRITE_NOPARAM 0x3
 #define DSI_GEN_SHORTWRITE_1PARAM 0x13
 #define DSI_GEN_SHORTWRITE_2PARAM 0x23
@@ -278,11 +278,11 @@ u8 hitachi_lcd_command_for_mipi[][30] = {
 	{END_OF_COMMAND,},
 };
 #endif
-//                                                                                                 
+//LGE_CHANGE_S [sangjae.han@lge.com] 2011-10-26, Only using for HITACHI LCD to prevent Peak Current
 u8 hitachi_lcd_power_control_command_for_mipi[][30] = {
 	{LONG_CMD_MIPI, DSI_GEN_LONGWRITE,  0x06, 0xC5, 0x03, 0x33, 0x03, 0x00, 0x03, },   	
 };
-//                                             
+//LGE_CHANGE_E [sangjae.han@lge.com] 2011-10-26
 
 static inline struct lge_dsi_panel_data
 *get_panel_data(const struct omap_dss_device *dssdev)
@@ -749,28 +749,29 @@ static ssize_t display_file_tuning_store(struct device *dev,
 }
 static DEVICE_ATTR(file_tuning, 0660, NULL, display_file_tuning_store);
 #endif
-//                                                                                                                   
+//LGE_CHANGE_S [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 extern int dispc_set_gamma_rgb(enum omap_channel ch, u8 gamma,int red,int green,int blue);
-static int red = 255,green = 255,blue = 255;
+
+static int gamma_red = 255, gamma_green = 255, gamma_blue = 255;
+
 static ssize_t display_gamma_tuning_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-
-	return snprintf(buf, PAGE_SIZE, "%d,%d,%d",red,green,blue);
+	return snprintf(buf, PAGE_SIZE, "%d,%d,%d", gamma_red, gamma_green, gamma_blue); 
 }
 
 static ssize_t display_gamma_tuning_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t size)
 {
-	sscanf(buf, "%d,%d,%d",&red,&green,&blue);
-	printk("SJ	:	RED	:	%d	GREEN :		%d	BLUE :		%d\n",red,green,blue);
-	dispc_set_gamma_rgb(OMAP_DSS_CHANNEL_LCD, 0,red,green,blue);
-	dispc_set_gamma_rgb(OMAP_DSS_CHANNEL_LCD2, 0,red,green,blue);
+	sscanf(buf, "%d,%d,%d", &gamma_red, &gamma_green, &gamma_blue);
+	printk("SJ	:	RED	:	%d	GREEN :		%d	BLUE :		%d\n", gamma_red, gamma_green, gamma_blue);
+	dispc_set_gamma_rgb(OMAP_DSS_CHANNEL_LCD, 0, gamma_red, gamma_green, gamma_blue);
+	dispc_set_gamma_rgb(OMAP_DSS_CHANNEL_LCD2, 0, gamma_red, gamma_green, gamma_blue);
 	return size;
 }
 static DEVICE_ATTR(gamma_tuning, 0660, display_gamma_tuning_show, display_gamma_tuning_store);
-//                                                                                                                   
+//LGE_CHANGE_E [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 static ssize_t show_cabc_available_modes(struct device *dev,
 		struct device_attribute *attr,
 		char *buf)
@@ -939,12 +940,12 @@ static struct attribute *tx11d101vm_panel_attrs[] = {
 	&dev_attr_esd_interval.attr,
 	&dev_attr_ulps.attr,
 	&dev_attr_ulps_timeout.attr,
-//                                                                                                                   
+//LGE_CHANGE_S [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
     &dev_attr_gamma_tuning.attr,
 #if defined(CONFIG_LUT_FILE_TUNING)
     &dev_attr_file_tuning.attr,
 #endif
-//                                                                                                                   
+//LGE_CHANGE_E [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 	NULL,
 };
 
@@ -1206,21 +1207,21 @@ static int tx11d101vm_panel_power_on(struct omap_dss_device *dssdev)
 		if (r)
 			goto err;
 #if 1
-	//                                                                                                 
+	//LGE_CHANGE_S [sangjae.han@lge.com] 2011-10-26, Only using for HITACHI LCD to prevent Peak Current
 		//mdelay(140);
-//                                                                                                                   
+//LGE_CHANGE_S [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 	#if defined(CONFIG_P2_GAMMA)
 		dispc_enable_gamma(OMAP_DSS_CHANNEL_LCD, 0);
 		dispc_enable_gamma(OMAP_DSS_CHANNEL_LCD2, 0);
 	#endif
-//                                                                                                                   
+//LGE_CHANGE_E [jeonghoon.cho@lge.com] 2012-0208, P940 : Add sysfile for gamma tuning + at%kcal jeonghoon.cho@lge.com
 		//tx11d101vm_panel_dcs_write_0(td,0x00);
 		//mdelay(2);
 		dsi_vc_dcs_write(dssdev, td->channel, &hitachi_lcd_power_control_command_for_mipi[0][3], hitachi_lcd_power_control_command_for_mipi[0][2]);
 		mdelay(2);
 		//tx11d101vm_panel_dcs_write_0(td,DCS_DISPLAY_ON);
 		//mdelay(2);
-	//                                             
+	//LGE_CHANGE_E [sangjae.han@lge.com] 2011-10-26
 #endif	
 // patch from sangjae.han
 
@@ -1248,11 +1249,11 @@ static int tx11d101vm_panel_power_on(struct omap_dss_device *dssdev)
 		
 		omapdss_dsi_vc_enable_hs(dssdev, td->channel, true);
 
-		/*                                              
-                                                                    
-                                                                                  
-   */
-#ifdef CONFIG_OMAP4_DSS_HDMI
+		/* LGE_SJIT 2012-03-06 [choongryeol.lee@lge.com]
+		 * For ignoring "DISPC_IRQ_SYNC_LOST_DIGIT" that could be happened
+		 * when lcd is resumed, we set the "first_vsync" value as false for HDMI channel
+		 */
+#ifndef CONFIG_MACH_LGE_U2
 		omap_dispc_set_first_vsync(OMAP_DSS_CHANNEL_DIGIT, false);
 #endif
 		if(dssdev->phy.dsi.type == OMAP_DSS_DSI_TYPE_VIDEO_MODE){
@@ -1394,11 +1395,8 @@ static int tx11d101vm_panel_suspend(struct omap_dss_device *dssdev)
 
 	mutex_lock(&td->lock);
 
-	if (dssdev->state == OMAP_DSS_DISPLAY_DISABLED) {
+	if (dssdev->state != OMAP_DSS_DISPLAY_ACTIVE) {
 		r = -EINVAL;
-		goto err;
-	}else if (dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED) {
-		r = 0;
 		goto err;
 	}
 
@@ -1458,11 +1456,11 @@ err:
 	return r;
 }
 
-/*                                              
-                                                                              
-                                                                            
-                                                
-                                                                               
+/* LGE_SJIT 2012-02-15 [choongryeol.lee@lge.com]
+  *  When lcd is turned on, the garbage image can be displayed in command mode
+  *  The root cause of this problem is that DCS_DISPLAY_ON commnad is issued
+  *  before image data writting to the lcd gram.
+  *  So we send DCS_DISPLAY_ON command after first frame is written to lcd gram
   */
 static void tx11d101vm_panel_display_on_work(struct work_struct *work)
 {
