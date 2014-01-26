@@ -30,6 +30,7 @@
 #include <mach/omap4-common.h>
 #include <mach/emif.h>
 #include <mach/lpddr2-elpida.h>
+#include <mach/omap4_ion.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -46,7 +47,6 @@
 #include "control.h"
 #include "pm.h"
 #include "board-44xx-tablet.h"
-#include "omap4_ion.h"
 #include "omap_ram_console.h"
 
 #define WILINK_UART_DEV_NAME	"/dev/ttyO1"
@@ -306,8 +306,25 @@ static void omap4_audio_conf(void)
 
 static int tps6130x_enable(int on)
 {
-	u8 val = 0;
+	u8 rev, gpo, val = 0;
 	int ret;
+
+	ret = twl_i2c_read_u8(TWL_MODULE_AUDIO_VOICE, &rev,
+				TWL6040_REG_ASICREV);
+	if (ret < 0) {
+		pr_err("%s: failed to read ASICREV %d\n", __func__, ret);
+		return ret;
+	}
+
+	/*
+	 * tps6130x NRESET driven by:
+	 * - GPO2 in TWL6040
+	 * - GPO in TWL6041 (only one GPO supported)
+	 */
+	if (rev >= TWL6041_REV_2_0)
+		gpo = TWL6040_GPO1;
+	else
+		gpo = TWL6040_GPO2;
 
 	ret = twl_i2c_read_u8(TWL_MODULE_AUDIO_VOICE, &val, TWL6040_REG_GPOCTL);
 	if (ret < 0) {
@@ -315,11 +332,10 @@ static int tps6130x_enable(int on)
 		return ret;
 	}
 
-	/* TWL6040 GPO2 connected to TPS6130X NRESET */
 	if (on)
-		val |= TWL6040_GPO2;
+		val |= gpo;
 	else
-		val &= ~TWL6040_GPO2;
+		val &= ~gpo;
 
 	ret = twl_i2c_write_u8(TWL_MODULE_AUDIO_VOICE, val, TWL6040_REG_GPOCTL);
 	if (ret < 0)
@@ -720,7 +736,10 @@ static void __init omap_tablet_reserve(void)
 #endif
 
 #ifdef CONFIG_ION_OMAP
+	tablet_android_display_setup(get_omap_ion_platform_data());
 	omap_ion_init();
+#else
+	tablet_android_display_setup(NULL);
 #endif
 	omap_reserve();
 }

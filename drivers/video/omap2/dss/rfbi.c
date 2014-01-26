@@ -881,6 +881,11 @@ int omapdss_rfbi_display_enable(struct omap_dss_device *dssdev)
 {
 	int r;
 
+	if (dssdev->manager == NULL) {
+		DSSERR("failed to enable display: no manager\n");
+		return -ENODEV;
+	}
+
 	r = rfbi_runtime_get();
 	if (r)
 		return r;

@@ -159,6 +159,12 @@ void dsscomp_rotbuf_mgr_init(void);
 void dsscomp_rotbuf_mgr_deinit(void);
 void dsscomp_dbg_rotbuf_mgr(struct seq_file *s);
 #endif
+static inline u32 tiler1d_slot_size(struct dsscomp_dev *cdev)
+{
+	struct dsscomp_platform_data *pdata;
+	pdata = (struct dsscomp_platform_data *)cdev->pdev->platform_data;
+	return pdata->tiler1d_slotsz;
+}
 
 /*
  * Debug functions

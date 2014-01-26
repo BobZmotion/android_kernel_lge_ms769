@@ -21,6 +21,7 @@
 #include <linux/uaccess.h>
 #include <linux/string.h>
 #include <plat/cpu.h>
+#include <linux/platform_device.h>
 
 #define GCZONE_ALL		(~0U)
 #define GCZONE_INIT		(1 << 0)
@@ -29,9 +30,29 @@
 #include <linux/gcx.h>
 #include <linux/gccore.h>
 #include <linux/gcbv.h>
+#include <linux/cache-2dmanager.h>
+
 #include "gcif.h"
+#include "version.h"
 
 static struct mutex g_maplock;
+
+static struct platform_driver gcx_drv = {
+	.probe = 0,
+	.driver = {
+		.owner = THIS_MODULE,
+		.name = "gcx",
+	},
+};
+
+static const char *gcx_version = VER_FILEVERSION_STR;
+
+static ssize_t show_version(struct device_driver *driver, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%s\n", gcx_version);
+}
+
+static DRIVER_ATTR(version, 0444, show_version, NULL);
 
 /*******************************************************************************
  * Command buffer copy management.
@@ -272,7 +293,7 @@ static int gc_map_wrapper(struct gcmap *gcmap)
 	kgcmap.pagearray = NULL;
 
 	/* Call the core driver. */
-	gc_map(&kgcmap);
+	gc_map(&kgcmap, true);
 	if (kgcmap.gcerror != GCERR_NONE)
 		goto exit;
 	mapped = 1;
@@ -288,7 +309,7 @@ exit:
 
 	if (kgcmap.gcerror != GCERR_NONE) {
 		if (mapped)
-			gc_unmap(&kgcmap);
+			gc_unmap(&kgcmap, true);
 	}
 
 	return ret;
@@ -309,7 +330,7 @@ static int gc_unmap_wrapper(struct gcmap *gcmap)
 	}
 
 	/* Call the core driver. */
-	gc_unmap(&kgcmap);
+	gc_unmap(&kgcmap, true);
 
 exit:
 	if (copy_to_user(gcmap, &kgcmap, offsetof(struct gcmap, buf))) {
@@ -394,7 +415,7 @@ static void mod_exit(void);
 
 static int mod_init(void)
 {
-	int ret;
+	int ret = 0;
 
 	GCPRINT(GCDBGFILTER, GCZONE_INIT, GC_MOD_PREFIX
 		"initializing device.\n", __func__, __LINE__);
@@ -424,6 +445,22 @@ static int mod_init(void)
 		GCPRINT(NULL, 0, GC_MOD_PREFIX
 			"failed to create device (%d).\n",
 			__func__, __LINE__, ret = PTR_ERR(dev_object));
+		goto failed;
+	}
+
+	ret = platform_driver_register(&gcx_drv);
+	if (ret) {
+		GCPRINT(NULL, 0, GC_MOD_PREFIX
+			"failed to create gcx driver (%d).\n",
+			__func__, __LINE__, ret);
+		goto failed;
+	}
+
+	ret = driver_create_file(&gcx_drv.driver, &driver_attr_version);
+	if (ret) {
+		GCPRINT(NULL, 0, GC_MOD_PREFIX
+			"failed to create gcx driver version (%d).\n",
+			__func__, __LINE__, ret);
 		goto failed;
 	}
 
@@ -469,6 +506,9 @@ static void mod_exit(void)
 		unregister_chrdev(dev_major, GC_DEV_NAME);
 		dev_major = 0;
 	}
+
+	platform_driver_unregister(&gcx_drv);
+	driver_remove_file(&gcx_drv.driver, &driver_attr_version);
 }
 
 static int __init mod_init_wrapper(void)

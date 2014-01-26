@@ -466,7 +466,7 @@ static void dsscomp_mgr_delayed_cb(struct work_struct *work)
 	mutex_unlock(&mtx);
 }
 
-static u32 dsscomp_mgr_callback(void *data, int id, int status)
+u32 dsscomp_mgr_callback(void *data, int id, int status)
 {
 	struct dsscomp_data *comp = data;
 
@@ -493,6 +493,7 @@ static u32 dsscomp_mgr_callback(void *data, int id, int status)
 	/* get each callback only once */
 	return ~status;
 }
+EXPORT_SYMBOL(dsscomp_mgr_callback);
 
 static inline bool dssdev_manually_updated(struct omap_dss_device *dev)
 {
@@ -502,7 +503,7 @@ static inline bool dssdev_manually_updated(struct omap_dss_device *dev)
 
 /* apply composition */
 /* at this point the composition is not on any queue */
-static int dsscomp_apply(dsscomp_t comp)
+int dsscomp_apply(dsscomp_t comp)
 {
 	int i, r = -EFAULT;
 	u32 dmask, display_ix;
@@ -775,6 +776,7 @@ done:
 	log_event(20*comp->ix + 20, 0, comp, "dsscomp_apply done", 0, 0);
 	return r;
 }
+EXPORT_SYMBOL(dsscomp_apply);
 
 int dsscomp_state_notifier(struct notifier_block *nb,
 						unsigned long arg, void *ptr)

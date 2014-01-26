@@ -2417,8 +2417,10 @@ static int omapfb_probe(struct platform_device *pdev)
 		omap_dss_get_device(dssdev);
 
 		if (!dssdev->driver) {
-			dev_err(&pdev->dev, "no driver for display\n");
-			r = -ENODEV;
+			dev_warn(&pdev->dev, "no driver for display: %s\n",
+				dssdev->name);
+			omap_dss_put_device(dssdev);
+			continue;
 		}
 
 		fbdev->displays[fbdev->num_displays++] = dssdev;
