@@ -351,6 +351,7 @@ static struct twl4030_bci_platform_data u2_bci_data = {
 	.low_bat_voltagemV = 3300,
 	.battery_tmp_tbl = u2_batt_table,
 	.tblsize = ARRAY_SIZE(u2_batt_table),
+	.sense_resistor_mohm = 10,
 };
 
 static int tps6130x_enable(int on)
