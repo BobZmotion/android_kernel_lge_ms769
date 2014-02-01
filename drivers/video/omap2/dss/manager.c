@@ -1486,7 +1486,7 @@ static void make_even(u16 *x, u16 *w)
 
 /* Configure dispc for partial update. Return possibly modified update
  * area */
-void dss_setup_partial_planes(struct omap_dss_device *dssdev,
+int dss_setup_partial_planes(struct omap_dss_device *dssdev,
 		u16 *xi, u16 *yi, u16 *wi, u16 *hi, bool enlarge_update_area)
 {
 	struct overlay_cache_data *oc;
@@ -1497,6 +1497,7 @@ void dss_setup_partial_planes(struct omap_dss_device *dssdev,
 	u16 x, y, w, h;
 	unsigned long flags;
 	bool area_changed;
+	int r = 0;
 
 	x = *xi;
 	y = *yi;
@@ -1510,7 +1511,7 @@ void dss_setup_partial_planes(struct omap_dss_device *dssdev,
 
 	if (!mgr) {
 		DSSDBG("no manager\n");
-		return;
+		return -EINVAL;
 	}
 
 	make_even(&x, &w);
@@ -1607,7 +1608,7 @@ void dss_setup_partial_planes(struct omap_dss_device *dssdev,
 	mc->w = w;
 	mc->h = h;
 
-	configure_dispc();
+	r = configure_dispc();
 
 	mc->do_manual_update = false;
 
@@ -1617,6 +1618,8 @@ void dss_setup_partial_planes(struct omap_dss_device *dssdev,
 	*yi = y;
 	*wi = w;
 	*hi = h;
+
+	return r;
 }
 
 static void schedule_completion_irq(void);
@@ -1981,7 +1984,28 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 
 	spin_lock_irqsave(&dss_cache.lock, flags);
 
-	if (!mgr->device || mgr->device->state != OMAP_DSS_DISPLAY_ACTIVE) {
+	if (!mgr->device || (mgr->device->state != OMAP_DSS_DISPLAY_ACTIVE &&
+							!mgr->info.wb_only)) {
+		struct writeback_cache_data *wbc;
+
+		if (dss_has_feature(FEAT_OVL_WB))
+			wbc = &dss_cache.writeback_cache;
+		else
+			wbc = NULL;
+
+		/* in case, if WB was configured with MEM2MEM with manager
+		 * mode, but manager, which is source for WB, is not marked as
+		 * wb_only, then skip apply operation. We have such case, when
+		 * composition was sent to disable pipes, which are sources for
+		 * WB.
+		 */
+		if (wbc && wbc->mode == OMAP_WB_MEM2MEM_MODE &&
+				wbc->source == mgr->id && mgr->device &&
+			mgr->device->state != OMAP_DSS_DISPLAY_ACTIVE) {
+			r = 0;
+			goto done;
+		}
+
 		pr_info_ratelimited("cannot apply mgr(%s) on inactive device\n",
 								mgr->name);
 		r = -ENODEV;
@@ -2254,6 +2278,17 @@ int omap_dss_wb_apply(struct omap_overlay_manager *mgr,
 	if (!wb) {
 		printk(KERN_ERR "[%s][%d] No WB!\n", __FILE__, __LINE__);
 		return -EINVAL;
+	}
+
+	/* skip composition, if manager is enabled. It happens when HDMI/TV
+	 * physical layer is activated in the time, when MEM2MEM with manager
+	 * mode is used.
+	 */
+	if (wb->info.source == OMAP_WB_TV &&
+			dispc_is_channel_enabled(OMAP_DSS_CHANNEL_DIGIT) &&
+				wb->info.mode == OMAP_WB_MEM2MEM_MODE) {
+		DSSERR("manager %d busy, dropping\n", mgr->id);
+		return -EBUSY;
 	}
 
 	spin_lock_irqsave(&dss_cache.lock, flags);
