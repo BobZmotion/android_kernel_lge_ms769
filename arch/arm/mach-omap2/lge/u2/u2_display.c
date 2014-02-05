@@ -308,6 +308,7 @@ static struct omap_dss_device hdmi_device = {
 #endif
 		},
 	},
+	.reset_gpio = -EINVAL,
 	.hpd_gpio = GPIO_HDMI_HPD,
 	.channel = OMAP_DSS_CHANNEL_DIGIT,
 };
