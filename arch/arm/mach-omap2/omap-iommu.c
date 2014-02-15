@@ -54,8 +54,8 @@ static struct iommu_platform_data omap3_devices_data[] = {
 
 #ifdef CONFIG_ARCH_OMAP4
 
-#define SET_DSP_CONSTRAINT	10
-#define SET_MPU_CORE_CONSTRAINT	10
+#define SET_DSP_CONSTRAINT	400
+#define SET_MPU_CORE_CONSTRAINT	400
 
 static struct iommu_platform_data omap4_devices_data[] = {
 #if 1//hongkeon.kim 2012-0427 blocked for i2c-3 fail //nthyunjin.yang 120504 use ducati
@@ -126,14 +126,13 @@ static int __init omap_iommu_init(void)
 		struct iommu_platform_data *data = &devices_data[i];
 
 		oh = omap_hwmod_lookup(data->oh_name);
-		data->io_base = oh->_mpu_rt_va;
-		data->irq = oh->mpu_irqs[0].irq;
-
 		if (!oh) {
 			pr_err("%s: could not look up %s\n", __func__,
 							data->oh_name);
 			continue;
 		}
+		data->io_base = oh->_mpu_rt_va;
+		data->irq = oh->mpu_irqs[0].irq;
 		od = omap_device_build("omap-iommu", i, oh,
 					data, sizeof(*data),
 					ohl, ohl_cnt, false);

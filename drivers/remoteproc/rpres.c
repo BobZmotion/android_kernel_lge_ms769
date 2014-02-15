@@ -15,8 +15,10 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/err.h>
+#include <linux/opp.h>
 #include <plat/omap_device.h>
 #include <plat/rpres.h>
+#include <mach/omap4-common.h>
 
 static LIST_HEAD(rpres_list);
 static DEFINE_SPINLOCK(rpres_lock);
@@ -43,6 +45,7 @@ struct rpres *rpres_get(const char *name)
 	if (!r)
 		return ERR_PTR(-ENOENT);
 
+	omap4_dpll_cascading_blocker_hold(&r->pdev->dev);
 	mutex_lock(&r->lock);
 	if (r->state == RPRES_ACTIVE) {
 		pr_err("%s:resource already active\n", __func__);
@@ -72,6 +75,7 @@ void rpres_put(struct rpres *obj)
 		obj->state = RPRES_INACTIVE;
 	}
 	mutex_unlock(&obj->lock);
+	omap4_dpll_cascading_blocker_release(&obj->pdev->dev);
 }
 EXPORT_SYMBOL(rpres_put);
 
@@ -123,6 +127,22 @@ int rpres_set_constraints(struct rpres *obj, enum rpres_constraint type,
 	return ret;
 }
 EXPORT_SYMBOL(rpres_set_constraints);
+
+unsigned long rpres_get_max_freq(struct rpres *obj)
+{
+	struct platform_device *pdev = obj->pdev;
+	struct opp *opp;
+	unsigned long maxfreq = ULONG_MAX;
+
+	rcu_read_lock();
+	opp = opp_find_freq_floor(&pdev->dev, &maxfreq);
+	if (IS_ERR(opp))
+		maxfreq = 0;
+	rcu_read_unlock();
+
+	return maxfreq;
+}
+EXPORT_SYMBOL(rpres_get_max_freq);
 
 static int rpres_probe(struct platform_device *pdev)
 {

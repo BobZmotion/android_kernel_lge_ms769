@@ -1113,6 +1113,11 @@ void musb_host_tx(struct musb *musb, u8 epnum)
 		return;
 	}
 
+	if (!qh->is_ready) {
+		dev_dbg(musb->controller, "received TX%d completion when qh is not ready\n", epnum);
+		return;
+	}
+
 	pipe = urb->pipe;
 	dma = is_dma_capable() ? hw_ep->tx_channel : NULL;
 	dev_dbg(musb->controller, "OUT/TX%d end, csr %04x%s\n", epnum, tx_csr,
@@ -1451,6 +1456,12 @@ void musb_host_rx(struct musb *musb, u8 epnum)
 		return;
 	}
 
+	if (!qh->is_ready) {
+		dev_dbg(musb->controller, "received RX%d completion when qh is not ready\n", epnum);
+		musb_h_flush_rxfifo(hw_ep, MUSB_RXCSR_CLRDATATOG);
+		return;
+	}
+
 	pipe = urb->pipe;
 
 	dev_dbg(musb->controller, "<== hw %d rxcsr %04x, urb actual %d (+dma %zu)\n",
@@ -1664,7 +1675,7 @@ void musb_host_rx(struct musb *musb, u8 epnum)
 				d->status = d_status;
 				buf = urb->transfer_dma + d->offset;
 			} else {
-				length = rx_count;
+				length = min((u32)rx_count, urb->transfer_buffer_length);
 				buf = urb->transfer_dma +
 						urb->actual_length;
 			}
@@ -2310,6 +2321,7 @@ static int musb_bus_resume(struct usb_hcd *hcd)
 	return 0;
 }
 
+#ifndef CONFIG_MUSB_PIO_ONLY
 
 #define MUSB_USB_DMA_ALIGN 4
 
@@ -2401,6 +2413,7 @@ static void musb_unmap_urb_for_dma(struct usb_hcd *hcd, struct urb *urb)
 	usb_hcd_unmap_urb_for_dma(hcd, urb);
 	musb_free_temp_buffer(urb);
 }
+#endif /* !CONFIG_MUSB_PIO_ONLY */
 
 
 const struct hc_driver musb_hc_driver = {
@@ -2422,8 +2435,10 @@ const struct hc_driver musb_hc_driver = {
 	.urb_dequeue		= musb_urb_dequeue,
 	.endpoint_disable	= musb_h_disable,
 
+#ifndef CONFIG_MUSB_PIO_ONLY
 	.map_urb_for_dma	= musb_map_urb_for_dma,
 	.unmap_urb_for_dma	= musb_unmap_urb_for_dma,
+#endif
 
 	.hub_status_data	= musb_hub_status_data,
 	.hub_control		= musb_hub_control,

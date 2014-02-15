@@ -30,6 +30,7 @@
 #include <linux/platform_device.h>
 #include <linux/omapfb.h>
 #include <linux/wait.h>
+#include <linux/memblock.h>
 
 #include <video/omapdss.h>
 #include <plat/vram.h>
@@ -1014,6 +1015,24 @@ int omapfb_setup_overlay(struct fb_info *fbi, struct omap_overlay *ovl,
 	info.out_width = outw;
 	info.out_height = outh;
 
+	/*
+	 * Don't allow these to be zero or else we'll get
+	 * a divide by zero when the overlay is enabled.
+	 */
+	if (!info.max_x_decim)
+		info.max_x_decim = 255;
+	if (!info.max_y_decim)
+		info.max_y_decim = 255;
+	if (!info.min_x_decim)
+		info.min_x_decim = 1;
+	if (!info.min_y_decim)
+		info.min_y_decim = 1;
+
+	/*
+	 * If fb is used directly, set zorder to 0
+	 */
+	info.zorder = 0;
+
 	r = ovl->set_overlay_info(ovl, &info);
 	if (r) {
 		DBG("ovl->setup_overlay_info failed\n");
@@ -1759,6 +1778,7 @@ static int omapfb_allocate_all_fbs(struct omapfb2_device *fbdev)
 	int i, r;
 	unsigned long vram_sizes[10];
 	unsigned long vram_paddrs[10];
+	struct omapfb_platform_data *opd = NULL;
 
 	memset(&vram_sizes, 0, sizeof(vram_sizes));
 	memset(&vram_paddrs, 0, sizeof(vram_paddrs));
@@ -1777,7 +1797,6 @@ static int omapfb_allocate_all_fbs(struct omapfb2_device *fbdev)
 #endif
 
 	if (fbdev->dev->platform_data) {
-		struct omapfb_platform_data *opd;
 		opd = fbdev->dev->platform_data;
 		for (i = 0; i < opd->mem_desc.region_cnt; ++i) {
 			if (!vram_sizes[i]) {
@@ -1815,6 +1834,20 @@ static int omapfb_allocate_all_fbs(struct omapfb2_device *fbdev)
 				rg->paddr,
 				rg->vaddr,
 				rg->size);
+	}
+
+	if ( (opd) && (opd->boot_fb_addr) ) {
+		struct omapfb_info *ofbi = FB2OFB(fbdev->fbs[0]);
+		struct omapfb2_mem_region *rg = ofbi->region;
+		void __iomem *boot_fb_vaddr = ioremap(opd->boot_fb_addr, rg->size);
+
+		if (boot_fb_vaddr) {
+			pr_info("copying uboot splash: %d bytes from 0x%x to 0x%x",
+				rg->size, boot_fb_vaddr, rg->vaddr);
+			memcpy(rg->vaddr, boot_fb_vaddr, rg->size);
+			iounmap(boot_fb_vaddr);
+		}
+		memblock_add(opd->boot_fb_addr, opd->boot_fb_size);
 	}
 
 	return 0;
@@ -2425,10 +2458,9 @@ static void omapfb_vsync_isr(void *data, u32 mask)
 	schedule_work(&fbdev->vsync_work);
 }
 
-
 int omapfb_enable_vsync(struct omapfb2_device *fbdev, enum omap_channel ch,
 	bool enable)
- {
+{
 	int r = 0;
 	const u32 masks[] = {
 		DISPC_IRQ_VSYNC,
@@ -2440,7 +2472,7 @@ int omapfb_enable_vsync(struct omapfb2_device *fbdev, enum omap_channel ch,
 		pr_warn("%s wrong channel number\n", __func__);
 		return -ENODEV;
 	}
- 
+
 	if (enable)
 		r = omap_dispc_register_isr(omapfb_vsync_isr, fbdev,
 			masks[ch]);
@@ -2449,8 +2481,7 @@ int omapfb_enable_vsync(struct omapfb2_device *fbdev, enum omap_channel ch,
 			masks[ch]);
 
 	return r;
- }
- 
+}
 
 static int omapfb_probe(struct platform_device *pdev)
 {

@@ -133,9 +133,8 @@ int omapfb_setup_overlay(struct fb_info *fbi, struct omap_overlay *ovl,
 		u16 posx, u16 posy, u16 outw, u16 outh);
 
 int omapfb_enable_vsync(struct omapfb2_device *fbdev, enum omap_channel ch,
-                bool enable);
+			bool enable);
 
-void omapfb_disable_vsync(struct omapfb2_device *fbdev);
 void get_fb_resolution(struct omap_dss_device *dssdev,
 		u16 *xres, u16 *yres);
 

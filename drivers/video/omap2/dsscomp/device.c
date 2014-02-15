@@ -477,7 +477,7 @@ static long comp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case DSSCIOC_SETUP_MGR:
 	{
 		r = copy_from_user(&u.m.set, ptr, sizeof(u.m.set)) ? :
-		    u.m.set.num_ovls >= ARRAY_SIZE(u.m.ovl) ? -EINVAL :
+		    u.m.set.num_ovls > ARRAY_SIZE(u.m.ovl) ? -EINVAL :
 		    copy_from_user(&u.m.ovl,
 				(void __user *)arg + sizeof(u.m.set),
 				sizeof(*u.m.ovl) * u.m.set.num_ovls) ? :
@@ -494,9 +494,19 @@ static long comp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	{
 		struct dsscomp_display_info *dis = NULL;
 		r = copy_from_user(&u.dis, ptr, sizeof(u.dis));
-		if (!r)
+		if (!r) {
+			/* impose a safe limit on modedb_len to prevent
+			 * wrap around/overflow calculation of the alloced
+			 * size that would make it smaller than
+			 * struct dsscomp_display_info and cause heap
+			 * corruption.
+			 */
+			u.dis.modedb_len = clamp_t(__u32,
+						u.dis.modedb_len, 0, 256);
+
 			dis = kzalloc(sizeof(*dis->modedb) * u.dis.modedb_len +
 						sizeof(*dis), GFP_KERNEL);
+		}
 		if (dis) {
 			*dis = u.dis;
 			r = query_display(cdev, dis) ? :

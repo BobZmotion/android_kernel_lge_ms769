@@ -317,6 +317,8 @@ static inline int omap_display_init(struct omap_dss_board_info *board_data)
 struct omap_display_platform_data {
 	struct omap_dss_board_info *board_data;
 	/* TODO: Additional members to be added when PM is considered */
+	int (*device_scale) (struct device *req_dev, struct device *target_dev,
+			unsigned long rate);
 };
 
 struct omap_video_timings {
@@ -493,6 +495,8 @@ struct omap_overlay_manager {
 	bool device_changed;
 	/* if true, info has been changed but not applied() yet */
 	bool info_dirty;
+
+	bool m2m_only;
 
 	int (*set_device)(struct omap_overlay_manager *mgr,
 		struct omap_dss_device *dssdev);
@@ -830,6 +834,10 @@ struct omap_dss_driver {
 	void (*disable_orig)(struct omap_dss_device *display);
 	int (*enable_orig)(struct omap_dss_device *display);
 	int (*suspend_orig)(struct omap_dss_device *display);
+
+	int (*set_current_fps)(struct omap_dss_device *dssdev, const char *fps);
+	ssize_t (*get_current_fps)(struct omap_dss_device *dssdev, char *buf, size_t len);
+	ssize_t (*get_fps)(struct omap_dss_device *dssdev, char *buf, size_t len);
 };
 
 int omap_dss_register_driver(struct omap_dss_driver *);
@@ -844,6 +852,8 @@ struct omap_dss_device *omap_dss_find_device(void *data,
 
 int omap_dss_start_device(struct omap_dss_device *dssdev);
 void omap_dss_stop_device(struct omap_dss_device *dssdev);
+
+void dss_m2m_clock_handling(struct omap_overlay_manager *mgr);
 
 int omap_dss_get_num_overlay_managers(void);
 struct omap_overlay_manager *omap_dss_get_overlay_manager(int num);
