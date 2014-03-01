@@ -1,5 +1,5 @@
 # bcmdhd
-SRCROOT = drivers/net/wireless/bcmdhd/src
+SRCROOT = drivers/net/wireless/bcmdhd
 DHDCFLAGS = -Wall -Wstrict-prototypes -Werror -Dlinux -DBCMDRIVER \
 	-DBCMDONGLEHOST -DUNRELEASEDCHIP -DBCMDMA32 -DWLBTAMP -DBCMFILEIMAGE  \
 	-DDHDTHREAD -DDHD_GPL -DDHD_SCHED -DBDC -DTOE    \
@@ -10,12 +10,6 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Werror -Dlinux -DBCMDRIVER \
 	-DEMBEDDED_PLATFORM -DENABLE_INSMOD_NO_FW_LOAD -DPNO_SUPPORT          \
 	-I$(SRCROOT) \
 	-I$(SRCROOT)/include \
-	-I$(SRCROOT)/shared \
-	-I$(SRCROOT)/dhd/sys \
-	-I$(SRCROOT)/dongle \
-	-I$(SRCROOT)/wl/sys \
-	-I$(SRCROOT)/wl/bcmwifi/src \
-	-I$(SRCROOT)/wl/bcmwifi/include
 
 # common patch  - should be defiend!!!!
 DHDCFLAGS += -DCONFIG_COMMON_PATCH
@@ -63,41 +57,41 @@ endif
 #LGE_CHANGE_E, moon-wifi@lge.com by wo0ngs 2012-05-01
 
 DHDOFILES = \
-		src/bcmsdio/sys/bcmsdh.o \
-		src/bcmsdio/sys/bcmsdh_linux.o \
-		src/bcmsdio/sys/bcmsdh_sdmmc.o \
-		src/bcmsdio/sys/bcmsdh_sdmmc_linux.o \
-		src/dhd/sys/dhd_bta.o \
-		src/dhd/sys/dhd_cdc.o \
-		src/dhd/sys/dhd_common.o \
-		src/dhd/sys/dhd_custom_gpio.o \
-		src/dhd/sys/dhd_linux.o \
-		src/dhd/sys/dhd_linux_sched.o \
-		src/dhd/sys/dhd_sdio.o \
-		src/shared/aiutils.o \
-		src/shared/bcmutils.o   \
-		src/shared/bcmevent.o \
-		src/shared/hndpmu.o  \
-		src/shared/linux_osl.o	\
-		src/shared/sbutils.o \
-		src/shared/siutils.o \
-		src/wl/sys/wl_android.o	\
-		src/wl/sys/wldev_common.o \
-		src/wl/sys/wl_linux_mon.o \
-		src/wl/bcmwifi/src/bcmwifi_channels.o 
+		bcmsdh.o \
+		bcmsdh_linux.o \
+		bcmsdh_sdmmc.o \
+		bcmsdh_sdmmc_linux.o \
+		dhd_bta.o \
+		dhd_cdc.o \
+		dhd_common.o \
+		dhd_custom_gpio.o \
+		dhd_linux.o \
+		dhd_linux_sched.o \
+		dhd_sdio.o \
+		aiutils.o \
+		bcmutils.o   \
+		bcmevent.o \
+		hndpmu.o  \
+		linux_osl.o	\
+		sbutils.o \
+		siutils.o \
+		wl_android.o	\
+		wldev_common.o \
+		wl_linux_mon.o \
+		bcmwifi_channels.o 
 
 obj-$(CONFIG_BCMDHD_USE_STATIC_BUF) += brcm_static_buf.o
 
 obj-$(CONFIG_BCMDHD) += bcmdhd.o
 bcmdhd-objs += $(DHDOFILES)
 ifneq ($(CONFIG_WIRELESS_EXT),)
-bcmdhd-objs += src/wl/sys/wl_iw.o
+bcmdhd-objs += wl_iw.o
 DHDCFLAGS += -DSOFTAP
 endif
 ifneq ($(CONFIG_CFG80211),)
-bcmdhd-objs += src/wl/sys/wl_cfg80211.o \
-		src/wl/sys/wl_cfgp2p.o \
-		src/dhd/sys/dhd_cfg80211.o
+bcmdhd-objs += wl_cfg80211.o \
+		wl_cfgp2p.o \
+		dhd_cfg80211.o
 DHDCFLAGS += -DWL_CFG80211
 endif
 EXTRA_CFLAGS = $(DHDCFLAGS)
