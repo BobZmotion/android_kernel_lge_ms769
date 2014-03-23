@@ -800,7 +800,8 @@ static void ion_vma_open(struct vm_area_struct *vma)
 		return;
 	}
 //120817 jaeshin.lee@lge.com 	https://github.com/Albinoman887/bricked-pyramid-3.0/commit/dc5e2b81a7383a16999407e854fd80c6e67f2e62
-	ion_handle_get(handle);	
+	ion_buffer_get(buffer);
+	ion_handle_get(handle);
 	pr_debug("%s: %d client_cnt %d handle_cnt %d alloc_cnt %d\n",
 		 __func__, __LINE__,
 		 atomic_read(&client->ref.refcount),
@@ -826,11 +827,11 @@ static void ion_vma_close(struct vm_area_struct *vma)
 		 atomic_read(&handle->ref.refcount),
 		 atomic_read(&buffer->ref.refcount));
 //120817 jaeshin.lee@lge.com gpu: ion: Fix race condition with ion_import 
-	mutex_lock(&client->lock);		 
+	mutex_lock(&client->lock);
 	ion_handle_put(handle);
 	mutex_unlock(&client->lock);
 	ion_client_put(client);
-
+	ion_buffer_put(buffer);
 	pr_debug("%s: %d client_cnt %d handle_cnt %d alloc_cnt %d\n",
 		 __func__, __LINE__,
 		 atomic_read(&client->ref.refcount),
@@ -876,6 +877,7 @@ static int ion_share_mmap(struct file *file, struct vm_area_struct *vma)
 		ret = -EINVAL;
 		goto err;
 	}
+	ion_buffer_get(buffer);
 
 	if (!handle->buffer->heap->ops->map_user) {
 		pr_err("%s: this heap does not define a method for mapping "
