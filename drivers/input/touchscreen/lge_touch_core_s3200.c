@@ -750,11 +750,10 @@ int accuracy_filter_func(struct lge_touch_data *ts)
 
 	// finish the accuracy_filter
 	if(ts->accuracy_filter.finish_filter == 1 &&
-	   (ts->accuracy_filter.his_data.count > ts->accuracy_filter.touch_max_count
-	    || ts->ts_data.total_num != 1
-	    || finger_id != 0)){
-		ts->accuracy_filter.finish_filter = 0;
-		ts->accuracy_filter.his_data.count = 0;
+		(ts->accuracy_filter.his_data.count > ts->accuracy_filter.touch_max_count
+		|| ts->ts_data.total_num != 1 || finger_id != 0)){
+			ts->accuracy_filter.finish_filter = 0;
+			ts->accuracy_filter.his_data.count = 0;
 	}
 
 	delta_x = (int)ts->accuracy_filter.his_data.x - (int)ts->ts_data.curr_data[0].x_position;
@@ -2671,7 +2670,7 @@ static int touch_probe(struct i2c_client *client, const struct i2c_device_id *id
 			TOUCH_ERR_MSG("FAIL: touch_reset gpio_request\n");
 			goto err_assign_platform_data;
 		}
-		gpio_direction_output(ts->pdata->reset_pin, 1);
+		gpio_direction_output(ts->pdata->reset_pin, 0);
 	}
 
 	atomic_set(&ts->device_init, 0);

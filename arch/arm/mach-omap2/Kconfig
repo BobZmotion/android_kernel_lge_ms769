@@ -52,6 +52,14 @@ config ARCH_OMAP4
 	select USB_ARCH_HAS_EHCI
 	select ARCH_HAS_BARRIERS
 
+config ARCH_OMAP5
+	bool "TI OMAP5"
+	depends on ARCH_OMAP2PLUS
+	select CPU_V7
+	select ARM_GIC
+	select ARM_ERRATA_761171
+	select ARM_ERRATA_4668
+
 comment "OMAP Core Type"
 	depends on ARCH_OMAP2
 
@@ -400,6 +408,10 @@ config MACH_OMAP4_PANDA
 	select OMAP_TPS6236X
 	select OMAP_REBOOT_REASON
 	select OMAP_RAM_CONSOLE
+
+config SECURE_REGS
+	bool "a15: set secure l2 registers"
+	depends on ARCH_OMAP5
 
 config OMAP3_EMU
 	bool "OMAP3 debugging peripherals"

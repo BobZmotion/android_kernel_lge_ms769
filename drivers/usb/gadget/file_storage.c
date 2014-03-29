@@ -69,8 +69,7 @@
  * each LUN would be settable independently as a disk drive or a CD-ROM
  * drive, but currently all LUNs have to be the same type.  The CD-ROM
  * emulation includes a single data track and no audio tracks; hence there
- * need be only one backing file per LUN.  Note also that the CD-ROM block
- * length is set to 512 rather than the more common value 2048.
+ * need be only one backing file per LUN.
  *
  * Requirements are modest; only a bulk-in and a bulk-out endpoint are
  * needed (an interrupt-out endpoint is also needed for CBI).  The memory
@@ -846,7 +845,7 @@ static int class_setup_req(struct fsg_dev *fsg,
 			if (ctrl->bRequestType != (USB_DIR_OUT |
 					USB_TYPE_CLASS | USB_RECIP_INTERFACE))
 				break;
-			if (w_index != 0 || w_value != 0) {
+			if (w_index != 0 || w_value != 0 || w_length != 0) {
 				value = -EDOM;
 				break;
 			}
@@ -862,7 +861,7 @@ static int class_setup_req(struct fsg_dev *fsg,
 			if (ctrl->bRequestType != (USB_DIR_IN |
 					USB_TYPE_CLASS | USB_RECIP_INTERFACE))
 				break;
-			if (w_index != 0 || w_value != 0) {
+			if (w_index != 0 || w_value != 0 || w_length != 1) {
 				value = -EDOM;
 				break;
 			}
@@ -1130,7 +1129,6 @@ static int do_read(struct fsg_dev *fsg)
 	u32			amount_left;
 	loff_t			file_offset, file_offset_tmp;
 	unsigned int		amount;
-	unsigned int		partial_page;
 	ssize_t			nread;
 
 	/* Get the starting Logical Block Address and check that it's
@@ -1152,7 +1150,7 @@ static int do_read(struct fsg_dev *fsg)
 		curlun->sense_data = SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
 		return -EINVAL;
 	}
-	file_offset = ((loff_t) lba) << 9;
+	file_offset = ((loff_t) lba) << curlun->blkbits;
 
 	/* Carry out the file reads */
 	amount_left = fsg->data_size_from_cmnd;
@@ -1165,17 +1163,10 @@ static int do_read(struct fsg_dev *fsg)
 		 * Try to read the remaining amount.
 		 * But don't read more than the buffer size.
 		 * And don't try to read past the end of the file.
-		 * Finally, if we're not at a page boundary, don't read past
-		 *	the next page.
-		 * If this means reading 0 then we were asked to read past
-		 *	the end of file. */
+		 */
 		amount = min((unsigned int) amount_left, mod_data.buflen);
 		amount = min((loff_t) amount,
 				curlun->file_length - file_offset);
-		partial_page = file_offset & (PAGE_CACHE_SIZE - 1);
-		if (partial_page > 0)
-			amount = min(amount, (unsigned int) PAGE_CACHE_SIZE -
-					partial_page);
 
 		/* Wait for the next buffer to become available */
 		bh = fsg->next_buffhd_to_fill;
@@ -1190,7 +1181,7 @@ static int do_read(struct fsg_dev *fsg)
 		if (amount == 0) {
 			curlun->sense_data =
 					SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
-			curlun->sense_data_info = file_offset >> 9;
+			curlun->sense_data_info = file_offset >> curlun->blkbits;
 			curlun->info_valid = 1;
 			bh->inreq->length = 0;
 			bh->state = BUF_STATE_FULL;
@@ -1215,18 +1206,23 @@ static int do_read(struct fsg_dev *fsg)
 		} else if (nread < amount) {
 			LDBG(curlun, "partial file read: %d/%u\n",
 					(int) nread, amount);
-			nread -= (nread & 511);	// Round down to a block
+			nread = round_down(nread, curlun->blksize);
 		}
 		file_offset  += nread;
 		amount_left  -= nread;
 		fsg->residue -= nread;
+
+		/* Except at the end of the transfer, nread will be
+		 * equal to the buffer size, which is divisible by the
+		 * bulk-in maxpacket size.
+		 */
 		bh->inreq->length = nread;
 		bh->state = BUF_STATE_FULL;
 
 		/* If an error occurred, report it and its position */
 		if (nread < amount) {
 			curlun->sense_data = SS_UNRECOVERED_READ_ERROR;
-			curlun->sense_data_info = file_offset >> 9;
+			curlun->sense_data_info = file_offset >> curlun->blkbits;
 			curlun->info_valid = 1;
 			break;
 		}
@@ -1256,7 +1252,6 @@ static int do_write(struct fsg_dev *fsg)
 	u32			amount_left_to_req, amount_left_to_write;
 	loff_t			usb_offset, file_offset, file_offset_tmp;
 	unsigned int		amount;
-	unsigned int		partial_page;
 	ssize_t			nwritten;
 	int			rc;
 
@@ -1297,7 +1292,7 @@ static int do_write(struct fsg_dev *fsg)
 
 	/* Carry out the file writes */
 	get_some_more = 1;
-	file_offset = usb_offset = ((loff_t) lba) << 9;
+	file_offset = usb_offset = ((loff_t) lba) << curlun->blkbits;
 	amount_left_to_req = amount_left_to_write = fsg->data_size_from_cmnd;
 
 	while (amount_left_to_write > 0) {
@@ -1307,36 +1302,18 @@ static int do_write(struct fsg_dev *fsg)
 		if (bh->state == BUF_STATE_EMPTY && get_some_more) {
 
 			/* Figure out how much we want to get:
-			 * Try to get the remaining amount.
-			 * But don't get more than the buffer size.
-			 * And don't try to go past the end of the file.
-			 * If we're not at a page boundary,
-			 *	don't go past the next page.
-			 * If this means getting 0, then we were asked
-			 *	to write past the end of file.
-			 * Finally, round down to a block boundary. */
+			 * Try to get the remaining amount,
+			 * but not more than the buffer size.
+			 */
 			amount = min(amount_left_to_req, mod_data.buflen);
-			amount = min((loff_t) amount, curlun->file_length -
-					usb_offset);
-			partial_page = usb_offset & (PAGE_CACHE_SIZE - 1);
-			if (partial_page > 0)
-				amount = min(amount,
-	(unsigned int) PAGE_CACHE_SIZE - partial_page);
 
-			if (amount == 0) {
+			/* Beyond the end of the backing file? */
+			if (usb_offset >= curlun->file_length) {
 				get_some_more = 0;
 				curlun->sense_data =
 					SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
-				curlun->sense_data_info = usb_offset >> 9;
+				curlun->sense_data_info = usb_offset >> curlun->blkbits;
 				curlun->info_valid = 1;
-				continue;
-			}
-			amount -= (amount & 511);
-			if (amount == 0) {
-
-				/* Why were we were asked to transfer a
-				 * partial block? */
-				get_some_more = 0;
 				continue;
 			}
 
@@ -1347,11 +1324,11 @@ static int do_write(struct fsg_dev *fsg)
 			if (amount_left_to_req == 0)
 				get_some_more = 0;
 
-			/* amount is always divisible by 512, hence by
-			 * the bulk-out maxpacket size */
-			bh->outreq->length = bh->bulk_out_intended_length =
-					amount;
-			bh->outreq->short_not_ok = 1;
+			/* Except at the end of the transfer, amount will be
+			 * equal to the buffer size, which is divisible by
+			 * the bulk-out maxpacket size.
+			 */
+			set_bulk_out_req_length(fsg, bh, amount);
 			start_transfer(fsg, fsg->bulk_out, bh->outreq,
 					&bh->outreq_busy, &bh->state);
 			fsg->next_buffhd_to_fill = bh->next;
@@ -1370,7 +1347,7 @@ static int do_write(struct fsg_dev *fsg)
 			/* Did something go wrong with the transfer? */
 			if (bh->outreq->status != 0) {
 				curlun->sense_data = SS_COMMUNICATION_FAILURE;
-				curlun->sense_data_info = file_offset >> 9;
+				curlun->sense_data_info = file_offset >> curlun->blkbits;
 				curlun->info_valid = 1;
 				break;
 			}
@@ -1383,6 +1360,16 @@ static int do_write(struct fsg_dev *fsg)
 	(unsigned long long) curlun->file_length);
 				amount = curlun->file_length - file_offset;
 			}
+
+			/* Don't accept excess data.  The spec doesn't say
+			 * what to do in this case.  We'll ignore the error.
+			 */
+			amount = min(amount, bh->bulk_out_intended_length);
+
+			/* Don't write a partial block */
+			amount = round_down(amount, curlun->blksize);
+			if (amount == 0)
+				goto empty_write;
 
 			/* Perform the write */
 			file_offset_tmp = file_offset;
@@ -1402,8 +1389,7 @@ static int do_write(struct fsg_dev *fsg)
 			} else if (nwritten < amount) {
 				LDBG(curlun, "partial file write: %d/%u\n",
 						(int) nwritten, amount);
-				nwritten -= (nwritten & 511);
-						// Round down to a block
+				nwritten = round_down(nwritten, curlun->blksize);
 			}
 			file_offset += nwritten;
 			amount_left_to_write -= nwritten;
@@ -1412,13 +1398,14 @@ static int do_write(struct fsg_dev *fsg)
 			/* If an error occurred, report it and its position */
 			if (nwritten < amount) {
 				curlun->sense_data = SS_WRITE_ERROR;
-				curlun->sense_data_info = file_offset >> 9;
+				curlun->sense_data_info = file_offset >> curlun->blkbits;
 				curlun->info_valid = 1;
 				break;
 			}
 
+ empty_write:
 			/* Did the host decide to stop early? */
-			if (bh->outreq->actual != bh->outreq->length) {
+			if (bh->outreq->actual < bh->bulk_out_intended_length) {
 				fsg->short_packet_received = 1;
 				break;
 			}
@@ -1494,8 +1481,8 @@ static int do_verify(struct fsg_dev *fsg)
 		return -EIO;		// No default reply
 
 	/* Prepare to carry out the file verify */
-	amount_left = verification_length << 9;
-	file_offset = ((loff_t) lba) << 9;
+	amount_left = verification_length << curlun->blkbits;
+	file_offset = ((loff_t) lba) << curlun->blkbits;
 
 	/* Write out all the dirty buffers before invalidating them */
 	fsg_lun_fsync_sub(curlun);
@@ -1513,15 +1500,14 @@ static int do_verify(struct fsg_dev *fsg)
 		 * Try to read the remaining amount, but not more than
 		 * the buffer size.
 		 * And don't try to read past the end of the file.
-		 * If this means reading 0 then we were asked to read
-		 * past the end of file. */
+		 */
 		amount = min((unsigned int) amount_left, mod_data.buflen);
 		amount = min((loff_t) amount,
 				curlun->file_length - file_offset);
 		if (amount == 0) {
 			curlun->sense_data =
 					SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
-			curlun->sense_data_info = file_offset >> 9;
+			curlun->sense_data_info = file_offset >> curlun->blkbits;
 			curlun->info_valid = 1;
 			break;
 		}
@@ -1544,11 +1530,11 @@ static int do_verify(struct fsg_dev *fsg)
 		} else if (nread < amount) {
 			LDBG(curlun, "partial file verify: %d/%u\n",
 					(int) nread, amount);
-			nread -= (nread & 511);	// Round down to a sector
+			nread = round_down(nread, curlun->blksize);
 		}
 		if (nread == 0) {
 			curlun->sense_data = SS_UNRECOVERED_READ_ERROR;
-			curlun->sense_data_info = file_offset >> 9;
+			curlun->sense_data_info = file_offset >> curlun->blkbits;
 			curlun->info_valid = 1;
 			break;
 		}
@@ -1662,7 +1648,7 @@ static int do_read_capacity(struct fsg_dev *fsg, struct fsg_buffhd *bh)
 
 	put_unaligned_be32(curlun->num_sectors - 1, &buf[0]);
 						/* Max logical block */
-	put_unaligned_be32(512, &buf[4]);	/* Block length */
+	put_unaligned_be32(curlun->blksize, &buf[4]);	/* Block length */
 	return 8;
 }
 
@@ -1884,7 +1870,7 @@ static int do_read_format_capacities(struct fsg_dev *fsg,
 
 	put_unaligned_be32(curlun->num_sectors, &buf[0]);
 						/* Number of blocks */
-	put_unaligned_be32(512, &buf[4]);	/* Block length */
+	put_unaligned_be32(curlun->blksize, &buf[4]);	/* Block length */
 	buf[4] = 0x02;				/* Current capacity */
 	return 12;
 }
@@ -1963,7 +1949,7 @@ static int throw_away_data(struct fsg_dev *fsg)
 			fsg->next_buffhd_to_drain = bh->next;
 
 			/* A short packet or an error ends everything */
-			if (bh->outreq->actual != bh->outreq->length ||
+			if (bh->outreq->actual < bh->bulk_out_intended_length ||
 					bh->outreq->status != 0) {
 				raise_exception(fsg, FSG_STATE_ABORT_BULK_OUT);
 				return -EINTR;
@@ -1977,11 +1963,11 @@ static int throw_away_data(struct fsg_dev *fsg)
 			amount = min(fsg->usb_amount_left,
 					(u32) mod_data.buflen);
 
-			/* amount is always divisible by 512, hence by
-			 * the bulk-out maxpacket size */
-			bh->outreq->length = bh->bulk_out_intended_length =
-					amount;
-			bh->outreq->short_not_ok = 1;
+			/* Except at the end of the transfer, amount will be
+			 * equal to the buffer size, which is divisible by
+			 * the bulk-out maxpacket size.
+			 */
+			set_bulk_out_req_length(fsg, bh, amount);
 			start_transfer(fsg, fsg->bulk_out, bh->outreq,
 					&bh->outreq_busy, &bh->state);
 			fsg->next_buffhd_to_fill = bh->next;
@@ -2409,7 +2395,7 @@ static int do_scsi_command(struct fsg_dev *fsg)
 
 	case READ_6:
 		i = fsg->cmnd[4];
-		fsg->data_size_from_cmnd = (i == 0 ? 256 : i) << 9;
+		fsg->data_size_from_cmnd = (i == 0 ? 256 : i) << fsg->curlun->blkbits;
 		if ((reply = check_command(fsg, 6, DATA_DIR_TO_HOST,
 				(7<<1) | (1<<4), 1,
 				"READ(6)")) == 0)
@@ -2418,7 +2404,7 @@ static int do_scsi_command(struct fsg_dev *fsg)
 
 	case READ_10:
 		fsg->data_size_from_cmnd =
-				get_unaligned_be16(&fsg->cmnd[7]) << 9;
+				get_unaligned_be16(&fsg->cmnd[7]) << fsg->curlun->blkbits;
 		if ((reply = check_command(fsg, 10, DATA_DIR_TO_HOST,
 				(1<<1) | (0xf<<2) | (3<<7), 1,
 				"READ(10)")) == 0)
@@ -2427,7 +2413,7 @@ static int do_scsi_command(struct fsg_dev *fsg)
 
 	case READ_12:
 		fsg->data_size_from_cmnd =
-				get_unaligned_be32(&fsg->cmnd[6]) << 9;
+				get_unaligned_be32(&fsg->cmnd[6]) << fsg->curlun->blkbits;
 		if ((reply = check_command(fsg, 12, DATA_DIR_TO_HOST,
 				(1<<1) | (0xf<<2) | (0xf<<6), 1,
 				"READ(12)")) == 0)
@@ -2513,7 +2499,7 @@ static int do_scsi_command(struct fsg_dev *fsg)
 
 	case WRITE_6:
 		i = fsg->cmnd[4];
-		fsg->data_size_from_cmnd = (i == 0 ? 256 : i) << 9;
+		fsg->data_size_from_cmnd = (i == 0 ? 256 : i) << fsg->curlun->blkbits;
 		if ((reply = check_command(fsg, 6, DATA_DIR_FROM_HOST,
 				(7<<1) | (1<<4), 1,
 				"WRITE(6)")) == 0)
@@ -2522,7 +2508,7 @@ static int do_scsi_command(struct fsg_dev *fsg)
 
 	case WRITE_10:
 		fsg->data_size_from_cmnd =
-				get_unaligned_be16(&fsg->cmnd[7]) << 9;
+				get_unaligned_be16(&fsg->cmnd[7]) << fsg->curlun->blkbits;
 		if ((reply = check_command(fsg, 10, DATA_DIR_FROM_HOST,
 				(1<<1) | (0xf<<2) | (3<<7), 1,
 				"WRITE(10)")) == 0)
@@ -2531,7 +2517,7 @@ static int do_scsi_command(struct fsg_dev *fsg)
 
 	case WRITE_12:
 		fsg->data_size_from_cmnd =
-				get_unaligned_be32(&fsg->cmnd[6]) << 9;
+				get_unaligned_be32(&fsg->cmnd[6]) << fsg->curlun->blkbits;
 		if ((reply = check_command(fsg, 12, DATA_DIR_FROM_HOST,
 				(1<<1) | (0xf<<2) | (0xf<<6), 1,
 				"WRITE(12)")) == 0)
@@ -2660,7 +2646,6 @@ static int get_next_command(struct fsg_dev *fsg)
 
 		/* Queue a request to read a Bulk-only CBW */
 		set_bulk_out_req_length(fsg, bh, USB_BULK_CB_WRAP_LEN);
-		bh->outreq->short_not_ok = 1;
 		start_transfer(fsg, fsg->bulk_out, bh->outreq,
 				&bh->outreq_busy, &bh->state);
 
@@ -2855,17 +2840,10 @@ static int do_set_config(struct fsg_dev *fsg, u8 new_config)
 		fsg->config = new_config;
 		if ((rc = do_set_interface(fsg, 0)) != 0)
 			fsg->config = 0;	// Reset on errors
-		else {
-			char *speed;
-
-			switch (fsg->gadget->speed) {
-			case USB_SPEED_LOW:	speed = "low";	break;
-			case USB_SPEED_FULL:	speed = "full";	break;
-			case USB_SPEED_HIGH:	speed = "high";	break;
-			default: 		speed = "?";	break;
-			}
-			INFO(fsg, "%s speed config #%d\n", speed, fsg->config);
-		}
+		else
+			INFO(fsg, "%s config #%d\n",
+			     usb_speed_string(fsg->gadget->speed),
+			     fsg->config);
 	}
 	return rc;
 }

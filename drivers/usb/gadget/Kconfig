@@ -452,12 +452,6 @@ config USB_GADGET_PXA_U2O
 	  PXA9xx Processor series include a high speed USB2.0 device
 	  controller, which support high speed and full speed USB peripheral.
 
-config USB_PXA_U2O
-	tristate
-	depends on USB_GADGET_PXA_U2O
-	default USB_GADGET
-	select USB_GADGET_SELECTED
-
 #
 # Controllers available in both integrated and discrete versions
 #
