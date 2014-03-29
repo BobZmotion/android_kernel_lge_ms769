@@ -61,13 +61,14 @@ struct twl6030_gpadc_request {
 	int active;
 	int result_pending;
 	int rbuf[TWL6032_GPADC_MAX_CHANNELS];
-	void (*func_cb)(struct twl6030_gpadc_request *req);
+	void (*func_cb)(int len, int channels, int *buf);
 	struct twl6030_value buf[TWL6032_GPADC_MAX_CHANNELS];
 };
 
 enum conversion_methods {
 	TWL6030_GPADC_RT,
 	TWL6030_GPADC_SW2,
+	TWL6032_GPADC_SW2,
 	TWL6030_GPADC_NUM_METHODS
 };
 

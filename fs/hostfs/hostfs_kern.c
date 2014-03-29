@@ -541,7 +541,7 @@ static int read_name(struct inode *ino, char *name)
 	return 0;
 }
 
-int hostfs_create(struct inode *dir, struct dentry *dentry, int mode,
+int hostfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
 		  struct nameidata *nd)
 {
 	struct inode *inode;
@@ -690,7 +690,7 @@ int hostfs_rmdir(struct inode *ino, struct dentry *dentry)
 	return err;
 }
 
-int hostfs_mknod(struct inode *dir, struct dentry *dentry, int mode, dev_t dev)
+static int hostfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
 {
 	struct inode *inode;
 	char *name;

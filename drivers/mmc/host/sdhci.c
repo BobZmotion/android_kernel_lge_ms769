@@ -1914,9 +1914,11 @@ static void sdhci_timeout_timer(unsigned long data)
 	spin_lock_irqsave(&host->lock, flags);
 
 	if (host->mrq) {
-		printk(KERN_ERR "%s: Timeout waiting for hardware "
-			"interrupt.\n", mmc_hostname(host->mmc));
-		sdhci_dumpregs(host);
+		if (!host->mrq->cmd->ignore_timeout) {
+			pr_err("%s: Timeout waiting for hardware interrupt.\n",
+			       mmc_hostname(host->mmc));
+			sdhci_dumpregs(host);
+		}
 
 		if (host->data) {
 			host->data->error = -ETIMEDOUT;

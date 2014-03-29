@@ -467,6 +467,9 @@ long __init_memblock memblock_remove(phys_addr_t base, phys_addr_t size)
 
 long __init_memblock memblock_free(phys_addr_t base, phys_addr_t size)
 {
+	memblock_dbg("   memblock_free: [%#016llx-%#016llx] %pF\n",
+		     base, base + size, (void *)_RET_IP_);
+
 	return __memblock_remove(&memblock.reserved, base, size);
 }
 
@@ -474,6 +477,8 @@ long __init_memblock memblock_reserve(phys_addr_t base, phys_addr_t size)
 {
 	struct memblock_type *_rgn = &memblock.reserved;
 
+	memblock_dbg("memblock_reserve: [%#016llx-%#016llx] %pF\n",
+		     base, base + size, (void *)_RET_IP_);
 	BUG_ON(0 == size);
 
 	return memblock_add_region(_rgn, base, size);
@@ -812,7 +817,7 @@ static int __init early_memblock(char *p)
 }
 early_param("memblock", early_memblock);
 
-#if defined(CONFIG_DEBUG_FS) && !defined(ARCH_DISCARD_MEMBLOCK)
+#if defined(CONFIG_DEBUG_FS) && !defined(CONFIG_ARCH_DISCARD_MEMBLOCK)
 
 static int memblock_debug_show(struct seq_file *m, void *private)
 {

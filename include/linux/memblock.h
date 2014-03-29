@@ -19,8 +19,6 @@
 #include <linux/init.h>
 #include <linux/mm.h>
 
-#include <asm/memblock.h>
-
 #define INIT_MEMBLOCK_REGIONS	128
 
 struct memblock_region {
@@ -153,7 +151,7 @@ static inline unsigned long memblock_region_reserved_end_pfn(const struct memblo
 	     region++)
 
 
-#ifdef ARCH_DISCARD_MEMBLOCK
+#ifdef CONFIG_ARCH_DISCARD_MEMBLOCK
 #define __init_memblock __init
 #define __initdata_memblock __initdata
 #else

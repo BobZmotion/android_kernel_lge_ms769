@@ -84,6 +84,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
 
+ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
+
 /*
  * Convert user-nice values [ -20 ... 0 ... 19 ]
  * to static priority [ MAX_RT_PRIO..MAX_PRIO-1 ],
@@ -112,11 +114,7 @@
 
 /*
  * These are the 'tuning knobs' of the scheduler:
- *
- * default timeslice is 100 msecs (used only for SCHED_RR tasks).
- * Timeslices get refilled after they expire.
  */
-#define DEF_TIMESLICE		(100 * HZ / 1000)
 
 /*
  * single value that denotes runtime == period, ie unlimited time.
@@ -257,6 +255,8 @@ struct task_group {
 	unsigned long shares;
 
 	atomic_t load_weight;
+	atomic64_t load_avg;
+	atomic_t runnable_avg;
 #endif
 
 #ifdef CONFIG_RT_GROUP_SCHED
@@ -309,7 +309,7 @@ struct task_group root_task_group;
 /* CFS-related fields in a runqueue */
 struct cfs_rq {
 	struct load_weight load;
-	unsigned long nr_running;
+	unsigned long nr_running, h_nr_running;
 
 	u64 exec_clock;
 	u64 min_vruntime;
@@ -333,6 +333,21 @@ struct cfs_rq {
 	unsigned int nr_spread_over;
 #endif
 
+#ifdef CONFIG_SMP
+	/*
+	 * CFS Load tracking
+	 * Under CFS, load is tracked on a per-entity basis and aggregated up.
+	 * This allows for the description of both thread and group usage (in
+	 * the FAIR_GROUP_SCHED case).
+	 */
+	u64 runnable_load_avg, blocked_load_avg;
+	atomic64_t decay_counter, removed_load;
+	u64 last_decay;
+#ifdef CONFIG_FAIR_GROUP_SCHED
+	u32 tg_runnable_contrib;
+	u64 tg_load_contrib;
+#endif
+#endif
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	struct rq *rq;	/* cpu runqueue to which this cfs_rq is attached */
 
@@ -423,6 +438,7 @@ struct rt_rq {
  */
 struct root_domain {
 	atomic_t refcount;
+	atomic_t rto_count;
 	struct rcu_head rcu;
 	cpumask_var_t span;
 	cpumask_var_t online;
@@ -432,7 +448,6 @@ struct root_domain {
 	 * one runnable RT task.
 	 */
 	cpumask_var_t rto_mask;
-	atomic_t rto_count;
 	struct cpupri cpupri;
 };
 
@@ -564,6 +579,8 @@ struct rq {
 #ifdef CONFIG_SMP
 	struct task_struct *wake_list;
 #endif
+
+	struct sched_avg avg;
 };
 
 static DEFINE_PER_CPU_SHARED_ALIGNED(struct rq, runqueues);
@@ -1377,6 +1394,14 @@ static inline void update_load_sub(struct load_weight *lw, unsigned long dec)
 	lw->inv_weight = 0;
 }
 
+static inline void update_load_sub_add(struct load_weight *lw, unsigned long dec,
+					unsigned long inc)
+{
+	lw->weight -= dec;
+	lw->weight += inc;
+	lw->inv_weight = 0;
+}
+
 static inline void update_load_set(struct load_weight *lw, unsigned long w)
 {
 	lw->weight = w;
@@ -1569,38 +1594,6 @@ static unsigned long cpu_avg_load_per_task(int cpu)
 	return rq->avg_load_per_task;
 }
 
-#ifdef CONFIG_FAIR_GROUP_SCHED
-
-/*
- * Compute the cpu's hierarchical load factor for each task group.
- * This needs to be done in a top-down fashion because the load of a child
- * group is a fraction of its parents load.
- */
-static int tg_load_down(struct task_group *tg, void *data)
-{
-	unsigned long load;
-	long cpu = (long)data;
-
-	if (!tg->parent) {
-		load = cpu_rq(cpu)->load.weight;
-	} else {
-		load = tg->parent->cfs_rq[cpu]->h_load;
-		load *= tg->se[cpu]->load.weight;
-		load /= tg->parent->cfs_rq[cpu]->load.weight + 1;
-	}
-
-	tg->cfs_rq[cpu]->h_load = load;
-
-	return 0;
-}
-
-static void update_h_load(long cpu)
-{
-	walk_tg_tree(tg_load_down, tg_nop, (void *)cpu);
-}
-
-#endif
-
 #ifdef CONFIG_PREEMPT
 
 static void double_rq_lock(struct rq *rq1, struct rq *rq2);
@@ -1756,7 +1749,6 @@ static void double_rq_unlock(struct rq *rq1, struct rq *rq2)
 static void calc_load_account_idle(struct rq *this_rq);
 static void update_sysctl(void);
 static int get_update_sysctl_factor(void);
-static void update_cpu_load(struct rq *this_rq);
 
 static inline void __set_task_cpu(struct task_struct *p, unsigned int cpu)
 {
@@ -1831,7 +1823,6 @@ static void activate_task(struct rq *rq, struct task_struct *p, int flags)
 		rq->nr_uninterruptible--;
 
 	enqueue_task(rq, p, flags);
-	inc_nr_running(rq);
 }
 
 /*
@@ -1843,7 +1834,6 @@ static void deactivate_task(struct rq *rq, struct task_struct *p, int flags)
 		rq->nr_uninterruptible++;
 
 	dequeue_task(rq, p, flags);
-	dec_nr_running(rq);
 }
 
 #ifdef CONFIG_IRQ_TIME_ACCOUNTING
@@ -2220,6 +2210,8 @@ void set_task_cpu(struct task_struct *p, unsigned int new_cpu)
 	trace_sched_migrate_task(p, new_cpu);
 
 	if (task_cpu(p) != new_cpu) {
+		if (p->sched_class->migrate_task_rq)
+			p->sched_class->migrate_task_rq(p, new_cpu);
 		p->se.nr_migrations++;
 		perf_sw_event(PERF_COUNT_SW_CPU_MIGRATIONS, 1, 1, NULL, 0);
 	}
@@ -2841,6 +2833,11 @@ static void __sched_fork(struct task_struct *p)
 	p->se.nr_migrations		= 0;
 	p->se.vruntime			= 0;
 	INIT_LIST_HEAD(&p->se.group_node);
+
+#ifdef CONFIG_SMP
+	p->se.avg.runnable_avg_period = 0;
+	p->se.avg.runnable_avg_sum = 0;
+#endif
 
 #ifdef CONFIG_SCHEDSTATS
 	memset(&p->se.statistics, 0, sizeof(p->se.statistics));
@@ -3613,21 +3610,12 @@ decay_load_missed(unsigned long load, unsigned long missed_updates, int idx)
  * scheduler tick (TICK_NSEC). With tickless idle this will not be called
  * every tick. We fix it up based on jiffies.
  */
-static void update_cpu_load(struct rq *this_rq)
+static void __update_cpu_load(struct rq *this_rq, unsigned long this_load,
+			      unsigned long pending_updates)
 {
-	unsigned long this_load = this_rq->load.weight;
-	unsigned long curr_jiffies = jiffies;
-	unsigned long pending_updates;
 	int i, scale;
 
 	this_rq->nr_load_updates++;
-
-	/* Avoid repeated calls on same jiffy, when moving in and out of idle */
-	if (curr_jiffies == this_rq->last_load_update_tick)
-		return;
-
-	pending_updates = curr_jiffies - this_rq->last_load_update_tick;
-	this_rq->last_load_update_tick = curr_jiffies;
 
 	/* Update our load: */
 	this_rq->cpu_load[0] = this_load; /* Fasttrack for idx 0 */
@@ -3653,9 +3641,45 @@ static void update_cpu_load(struct rq *this_rq)
 	sched_avg_update(this_rq);
 }
 
+/*
+ * Called from nohz_idle_balance() to update the load ratings before doing the
+ * idle balance.
+ */
+void update_idle_cpu_load(struct rq *this_rq)
+{
+	unsigned long curr_jiffies = jiffies;
+	unsigned long load = this_rq->load.weight;
+	unsigned long pending_updates;
+
+	/*
+	 * Bloody broken means of dealing with nohz, but better than nothing..
+	 * jiffies is updated by one cpu, another cpu can drift wrt the jiffy
+	 * update and see 0 difference the one time and 2 the next, even though
+	 * we ticked at roughtly the same rate.
+	 *
+	 * Hence we only use this from nohz_idle_balance() and skip this
+	 * nonsense when called from the scheduler_tick() since that's
+	 * guaranteed a stable rate.
+	 */
+	if (load || curr_jiffies == this_rq->last_load_update_tick)
+		return;
+
+	pending_updates = curr_jiffies - this_rq->last_load_update_tick;
+	this_rq->last_load_update_tick = curr_jiffies;
+
+	__update_cpu_load(this_rq, load, pending_updates);
+}
+
+/*
+ * Called from scheduler_tick()
+ */
 static void update_cpu_load_active(struct rq *this_rq)
 {
-	update_cpu_load(this_rq);
+	/*
+	 * See the mess in update_idle_cpu_load().
+	 */
+	this_rq->last_load_update_tick = jiffies;
+	__update_cpu_load(this_rq, this_rq->load.weight, 1);
 
 	calc_load_account_active(this_rq);
 }
@@ -4040,7 +4064,7 @@ void task_times(struct task_struct *p, cputime_t *ut, cputime_t *st)
 	 */
 	rtime = nsecs_to_cputime(p->se.sum_exec_runtime);
 
-	if (total) {
+	if (total && total == (__force u32) total) {
 		u64 temp = rtime;
 
 		temp *= utime;
@@ -4073,7 +4097,7 @@ void thread_group_times(struct task_struct *p, cputime_t *ut, cputime_t *st)
 	total = cputime_add(cputime.utime, cputime.stime);
 	rtime = nsecs_to_cputime(cputime.sum_exec_runtime);
 
-	if (total) {
+	if (total && total == (__force u32) total) {
 		u64 temp = rtime;
 
 		temp *= cputime.utime;
@@ -4207,7 +4231,8 @@ static inline void schedule_debug(struct task_struct *prev)
 	 * schedule() atomically, we ignore that path for now.
 	 * Otherwise, whine if we are scheduling when we should not be.
 	 */
-	if (unlikely(in_atomic_preempt_off() && !prev->exit_state))
+	if (unlikely(in_atomic_preempt_off() && !prev->exit_state
+					&& system_state == SYSTEM_RUNNING))
 		__schedule_bug(prev);
 
 	profile_hit(SCHED_PROFILING, __builtin_return_address(0));
@@ -4235,7 +4260,7 @@ pick_next_task(struct rq *rq)
 	 * Optimization: we know that if all tasks are in
 	 * the fair class we can call that function directly:
 	 */
-	if (likely(rq->nr_running == rq->cfs.nr_running)) {
+	if (likely(rq->nr_running == rq->cfs.h_nr_running)) {
 		p = fair_sched_class.pick_next_task(rq);
 		if (likely(p))
 			return p;
@@ -4384,8 +4409,30 @@ fail:
  */
 int mutex_spin_on_owner(struct mutex *lock, struct task_struct *owner)
 {
+	unsigned int nrun;
+
 	if (!sched_feat(OWNER_SPIN))
 		return 0;
+
+	/*
+	 * Mutex spinning should be temporarily disabled if the load on
+	 * the current CPU is high. The load is considered high if there
+	 * are 2 or more active tasks waiting to run on this CPU. On the
+	 * other hand, if there is another task waiting and the global
+	 * load (calc_load_tasks - including uninterruptible tasks) is
+	 * bigger than 2X the # of CPUs available, it is also considered
+	 * to be high load.
+	 */
+	nrun = this_rq()->nr_running;
+	if (nrun >= 3)
+		return 0;
+	else if (nrun == 2) {
+		long active = atomic_long_read(&calc_load_tasks);
+		int  ncpu   = num_online_cpus();
+
+		if (active > 2*ncpu)
+			return 0;
+	}
 
 	while (owner_running(lock, owner)) {
 		if (need_resched())
@@ -6466,6 +6513,7 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
 
 	case CPU_UP_PREPARE:
 		rq->calc_load_update = calc_load_update;
+		rq->next_balance = jiffies;
 		break;
 
 	case CPU_ONLINE:
@@ -7214,6 +7262,11 @@ static void init_sched_groups_power(int cpu, struct sched_domain *sd)
 		return;
 
 	update_group_power(sd, cpu);
+}
+
+int __weak arch_sd_share_power_line(void)
+{
+	return 1*SD_SHARE_POWERLINE;
 }
 
 /*
@@ -8467,7 +8520,7 @@ static inline void unregister_fair_sched_group(struct task_group *tg, int cpu)
 	list_del_leaf_cfs_rq(tg->cfs_rq[cpu]);
 	raw_spin_unlock_irqrestore(&rq->lock, flags);
 }
-#else /* !CONFG_FAIR_GROUP_SCHED */
+#else /* !CONFIG_FAIR_GROUP_SCHED */
 static inline void free_fair_sched_group(struct task_group *tg)
 {
 }
@@ -8488,7 +8541,8 @@ static void free_rt_sched_group(struct task_group *tg)
 {
 	int i;
 
-	destroy_rt_bandwidth(&tg->rt_bandwidth);
+	if (tg->rt_se)
+		destroy_rt_bandwidth(&tg->rt_bandwidth);
 
 	for_each_possible_cpu(i) {
 		if (tg->rt_rq)

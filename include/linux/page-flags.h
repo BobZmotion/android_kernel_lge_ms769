@@ -107,6 +107,7 @@ enum pageflags {
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
 	PG_compound_lock,
 #endif
+	PG_readahead,		/* page in a readahead window */
 	__NR_PAGEFLAGS,
 
 	/* Filesystems */
@@ -124,9 +125,6 @@ enum pageflags {
 
 	/* SLOB */
 	PG_slob_free = PG_private,
-
-	/* SLUB */
-	PG_slub_frozen = PG_active,
 };
 
 #ifndef __GENERATING_BOUNDS_H
@@ -212,8 +210,9 @@ PAGEFLAG(SwapBacked, swapbacked) __CLEARPAGEFLAG(SwapBacked, swapbacked)
 
 __PAGEFLAG(SlobFree, slob_free)
 
-__PAGEFLAG(SlubFrozen, slub_frozen)
-
+#ifdef CONFIG_CLEANCACHE
+PAGEFLAG(WasActive, was_active)
+#endif
 /*
  * Private page markings that may be used by the filesystem that owns the page
  * for its own purposes.

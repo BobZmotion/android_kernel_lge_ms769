@@ -811,6 +811,15 @@ struct cfg80211_scan_request {
 };
 
 /**
+ * struct cfg80211_match_set - sets of attributes to match
+ *
+ * @ssid: SSID to be matched
+ */
+struct cfg80211_match_set {
+	struct cfg80211_ssid ssid;
+};
+
+/**
  * struct cfg80211_sched_scan_request - scheduled scan request description
  *
  * @ssids: SSIDs to scan for (passed in the probe_reqs in active scans)
@@ -819,6 +828,11 @@ struct cfg80211_scan_request {
  * @interval: interval between each scheduled scan cycle
  * @ie: optional information element(s) to add into Probe Request or %NULL
  * @ie_len: length of ie in octets
+ * @match_sets: sets of parameters to be matched for a scan result
+ * 	entry to be considered valid and to be passed to the host
+ * 	(others are filtered out).
+ *	If ommited, all results are passed.
+ * @n_match_sets: number of match sets
  * @wiphy: the wiphy this was for
  * @dev: the interface
  * @channels: channels to scan
@@ -830,6 +844,8 @@ struct cfg80211_sched_scan_request {
 	u32 interval;
 	const u8 *ie;
 	size_t ie_len;
+	struct cfg80211_match_set *match_sets;
+	int n_match_sets;
 
 	/* internal */
 	struct wiphy *wiphy;
@@ -1514,20 +1530,28 @@ struct cfg80211_ops {
  * enum wiphy_flags - wiphy capability flags
  *
  * @WIPHY_FLAG_CUSTOM_REGULATORY:  tells us the driver for this device
- * 	has its own custom regulatory domain and cannot identify the
- * 	ISO / IEC 3166 alpha2 it belongs to. When this is enabled
- * 	we will disregard the first regulatory hint (when the
- * 	initiator is %REGDOM_SET_BY_CORE).
- * @WIPHY_FLAG_STRICT_REGULATORY: tells us the driver for this device will
- *	ignore regulatory domain settings until it gets its own regulatory
- *	domain via its regulatory_hint() unless the regulatory hint is
- *	from a country IE. After its gets its own regulatory domain it will
- *	only allow further regulatory domain settings to further enhance
- *	compliance. For example if channel 13 and 14 are disabled by this
- *	regulatory domain no user regulatory domain can enable these channels
- *	at a later time. This can be used for devices which do not have
- *	calibration information guaranteed for frequencies or settings
- *	outside of its regulatory domain.
+ *	has its own custom regulatory domain and cannot identify the
+ *	ISO / IEC 3166 alpha2 it belongs to. When this is enabled
+ *	we will disregard the first regulatory hint (when the
+ *	initiator is %REGDOM_SET_BY_CORE). wiphys can set the custom
+ *	regulatory domain using wiphy_apply_custom_regulatory()
+ *	prior to wiphy registration.
+ * @WIPHY_FLAG_STRICT_REGULATORY: tells us that the wiphy for this device
+ *	has regulatory domain that it wishes to be considered as the
+ *	superset for regulatory rules. After this device gets its regulatory
+ *	domain programmed further regulatory hints shall only be considered
+ *	for this device to enhance regulatory compliance, forcing the
+ *	device to only possibly use subsets of the original regulatory
+ *	rules. For example if channel 13 and 14 are disabled by this
+ *	device's regulatory domain no user specified regulatory hint which
+ *	has these channels enabled would enable them for this wiphy,
+ *	the device's original regulatory domain will be trusted as the
+ *	base. You can program the superset of regulatory rules for this
+ *	wiphy with regulatory_hint() for cards programmed with an
+ *	ISO3166-alpha2 country code. wiphys that use regulatory_hint()
+ *	will have their wiphy->regd programmed once the regulatory
+ *	domain is set, and all other regulatory hints will be ignored
+ *	until their own regulatory domain gets programmed.
  * @WIPHY_FLAG_DISABLE_BEACON_HINTS: enable this if your driver needs to ensure
  *	that passive scan flags and beaconing flags may not be lifted by
  *	cfg80211 due to regulatory beacon hints. For more information on beacon
@@ -1566,6 +1590,34 @@ enum wiphy_flags {
 	WIPHY_FLAG_MESH_AUTH			= BIT(10),
 	WIPHY_FLAG_SUPPORTS_SCHED_SCAN		= BIT(11),
 	WIPHY_FLAG_ENFORCE_COMBINATIONS		= BIT(12),
+};
+
+/**
+ * enum nl80211_country_ie_pref - country IE processing preferences
+ *
+ * enumerates the different preferences a 802.11 card can advertize
+ * for parsing the country IEs. As per the current implementation
+ * country IEs are only used derive the apha2, the information
+ * for power settings that comes with the country IE is ignored
+ * and we use the power settings from regdb.
+ *
+ * @NL80211_COUNTRY_IE_FOLLOW_CORE - This is the default behaviour.
+ *	It allows the core to update channel flags according to the
+ *	ISO3166-alpha2 in the country IE. The applied power is -
+ *	MIN(power specified by custom domain, power obtained from regdb)
+ * @NL80211_COUNTRY_IE_FOLLOW_POWER - for devices that have a
+ *	preference that even though they may have programmed their own
+ *	custom power setting prior to wiphy registration, they want
+ *	to ensure their channel power settings are updated for this
+ *	connection with the power settings derived from alpha2 of the
+ *	country IE.
+ * @NL80211_COUNTRY_IE_IGNORE_CORE - for devices that have a preference to
+ *	to ignore all country IE information processed by the core.
+ */
+enum nl80211_country_ie_pref {
+	NL80211_COUNTRY_IE_FOLLOW_CORE,
+	NL80211_COUNTRY_IE_FOLLOW_POWER,
+	NL80211_COUNTRY_IE_IGNORE_CORE,
 };
 
 /**
@@ -1729,9 +1781,16 @@ struct wiphy_wowlan_support {
  *	this variable determines its size
  * @max_scan_ssids: maximum number of SSIDs the device can scan for in
  *	any given scan
+ * @max_sched_scan_ssids: maximum number of SSIDs the device can scan
+ *	for in any given scheduled scan
+ * @max_match_sets: maximum number of match sets the device can handle
+ *	when performing a scheduled scan, 0 if filtering is not
+ *	supported.
  * @max_scan_ie_len: maximum length of user-controlled IEs device can
  *	add to probe request frames transmitted during a scan, must not
  *	include fixed IEs like supported rates
+ * @max_sched_scan_ie_len: same as max_scan_ie_len, but for scheduled
+ *	scans
  * @coverage_class: current coverage class
  * @fw_version: firmware version for ethtool reporting
  * @hw_version: hardware version for ethtool reporting
@@ -1756,6 +1815,15 @@ struct wiphy_wowlan_support {
  *	may request, if implemented.
  *
  * @wowlan: WoWLAN support information
+ *
+ * @ap_sme_capa: AP SME capabilities, flags from &enum nl80211_ap_sme_features.
+ * @ht_capa_mod_mask:  Specify what ht_cap values can be over-ridden.
+ *	If null, then none can be over-ridden.
+ *
+ * @max_acl_mac_addrs: Maximum number of MAC addresses that the device
+ *	supports for ACL.
+ * @country_ie_pref: country IE processing preferences specified
+ *	by enum nl80211_country_ie_pref
  */
 struct wiphy {
 	/* assign these fields before you register the wiphy */
@@ -1783,7 +1851,10 @@ struct wiphy {
 
 	int bss_priv_size;
 	u8 max_scan_ssids;
+	u8 max_sched_scan_ssids;
+	u8 max_match_sets;
 	u16 max_scan_ie_len;
+	u16 max_sched_scan_ie_len;
 
 	int n_cipher_suites;
 	const u32 *cipher_suites;
@@ -1805,6 +1876,15 @@ struct wiphy {
 
 	u32 available_antennas_tx;
 	u32 available_antennas_rx;
+
+	/*
+	 * Bitmap of supported protocols for probe response offloading
+	 * see &enum nl80211_probe_resp_offload_support_attr. Only valid
+	 * when the wiphy flag @WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD is set.
+	 */
+	u32 probe_resp_offload;
+
+	u8 country_ie_pref;
 
 	/* If multiple wiphys are registered and you're handed e.g.
 	 * a regular netdev with assigned ieee80211_ptr, you won't
@@ -2310,6 +2390,30 @@ const u8 *cfg80211_find_ie(u8 eid, const u8 *ies, int len);
  * an -ENOMEM.
  */
 extern int regulatory_hint(struct wiphy *wiphy, const char *alpha2);
+
+/**
+ * regulatory_hint_user - hint to the wireless core a regulatory domain
+ * which the driver has received from an application
+ * @alpha2: the ISO/IEC 3166 alpha2 the driver claims its regulatory domain
+ * 	should be in. If @rd is set this should be NULL. Note that if you
+ * 	set this to NULL you should still set rd->alpha2 to some accepted
+ * 	alpha2.
+ *
+ * Wireless drivers can use this function to hint to the wireless core
+ * the current regulatory domain as specified by trusted applications,
+ * it is the driver's responsibilty to estbalish which applications it
+ * trusts.
+ *
+ * The wiphy should be registered to cfg80211 prior to this call.
+ * For cfg80211 drivers this means you must first use wiphy_register(),
+ * for mac80211 drivers you must first use ieee80211_register_hw().
+ *
+ * Drivers should check the return value, its possible you can get
+ * an -ENOMEM or an -EINVAL.
+ *
+ * Return: 0 on success. -ENOMEM, -EINVAL.
+ */
+extern int regulatory_hint_user(const char *alpha2);
 
 /**
  * wiphy_apply_custom_regulatory - apply a custom driver regulatory domain

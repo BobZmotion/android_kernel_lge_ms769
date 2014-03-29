@@ -492,7 +492,7 @@ static struct inode *hugetlbfs_get_inode(struct super_block *sb, uid_t uid,
  * File creation. Allocate an inode, and we're done..
  */
 static int hugetlbfs_mknod(struct inode *dir,
-			struct dentry *dentry, int mode, dev_t dev)
+			struct dentry *dentry, umode_t mode, dev_t dev)
 {
 	struct inode *inode;
 	int error = -ENOSPC;
@@ -523,7 +523,7 @@ static int hugetlbfs_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 	return retval;
 }
 
-static int hugetlbfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidata *nd)
+static int hugetlbfs_create(struct inode *dir, struct dentry *dentry, umode_t mode, struct nameidata *nd)
 {
 	return hugetlbfs_mknod(dir, dentry, mode | S_IFREG, 0);
 }

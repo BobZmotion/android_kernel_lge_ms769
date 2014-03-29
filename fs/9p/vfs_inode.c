@@ -679,7 +679,7 @@ error:
  */
 
 static int
-v9fs_vfs_create(struct inode *dir, struct dentry *dentry, int mode,
+v9fs_vfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
 		struct nameidata *nd)
 {
 	int err;
@@ -1376,7 +1376,7 @@ clunk_fid:
  */
 
 static int
-v9fs_vfs_mknod(struct inode *dir, struct dentry *dentry, int mode, dev_t rdev)
+v9fs_vfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t rdev)
 {
 	int retval;
 	char *name;
